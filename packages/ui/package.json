@@ -1,0 +1,12 @@
+{
+  "name": "@gorola/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo \"UI package build to be added in Phase 2\"",
+    "typecheck": "echo \"UI package typecheck to be added in Phase 2\"",
+    "lint": "echo \"UI package lint to be added in Phase 2\"",
+    "test": "echo \"UI package tests to be added in Phase 2\""
+  }
+}
