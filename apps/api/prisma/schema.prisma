@@ -1,0 +1,374 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum OrderStatus {
+  PLACED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  UPI
+  CARD
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FLAT
+}
+
+enum ActorRole {
+  ADMIN
+  STORE_OWNER
+  BUYER
+  SYSTEM
+}
+
+model User {
+  id         String    @id @default(cuid())
+  phone      String    @unique
+  name       String
+  isVerified Boolean   @default(false)
+  isDeleted  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  carts      Cart[]
+  orders     Order[]
+  addresses  Address[]
+
+  @@index([isDeleted])
+  @@index([createdAt])
+}
+
+model Store {
+  id                        String          @id @default(cuid())
+  name                      String
+  description               String
+  phone                     String
+  address                   String
+  isActive                  Boolean         @default(true)
+  weatherModeDeliveryWindow String?
+  isDeleted                 Boolean         @default(false)
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+  owners                    StoreOwner[]
+  products                  Product[]
+  orders                    Order[]
+  advertisements            Advertisement[]
+  offers                    Offer[]
+  discounts                 Discount[]
+  deliveryRiders            DeliveryRider[]
+
+  @@index([name])
+  @@index([isActive, isDeleted])
+}
+
+model StoreOwner {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  storeId      String
+  totpSecret   String?
+  totpEnabled  Boolean  @default(false)
+  isDeleted    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
+
+  @@index([storeId])
+  @@index([isDeleted])
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  totpSecret   String?
+  isDeleted    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isDeleted])
+}
+
+model Category {
+  id           String    @id @default(cuid())
+  slug         String    @unique
+  name         String
+  emoji        String?
+  icon         String?
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  products     Product[]
+
+  @@index([isActive, displayOrder])
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  storeId     String
+  categoryId  String
+  name        String
+  description String
+  imageUrl    String
+  isActive    Boolean          @default(true)
+  isDeleted   Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  category    Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  variants    ProductVariant[]
+
+  @@index([storeId, isActive, isDeleted])
+  @@index([categoryId])
+  @@index([name])
+}
+
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  label      String
+  price      Decimal     @db.Decimal(10, 2)
+  stockQty   Int         @default(0)
+  unit       String
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([productId, isActive])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items     CartItem[]
+
+  @@unique([userId])
+  @@index([userId])
+}
+
+model CartItem {
+  id               String         @id @default(cuid())
+  cartId           String
+  productVariantId String
+  quantity         Int
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  cart             Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+
+  @@unique([cartId, productVariantId])
+  @@index([cartId])
+  @@index([productVariantId])
+}
+
+model Order {
+  id                  String               @id @default(cuid())
+  userId              String
+  storeId             String
+  status              OrderStatus          @default(PLACED)
+  subtotal            Decimal              @db.Decimal(10, 2)
+  deliveryFee         Decimal              @db.Decimal(10, 2)
+  total               Decimal              @db.Decimal(10, 2)
+  paymentMethod       PaymentMethod        @default(COD)
+  deliveryNote        String?
+  landmarkDescription String
+  scheduledFor        DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  store               Store                @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  items               OrderItem[]
+  statusHistory       OrderStatusHistory[]
+
+  @@index([userId, createdAt])
+  @@index([storeId, status, createdAt])
+}
+
+model OrderItem {
+  id               String         @id @default(cuid())
+  orderId          String
+  productVariantId String
+  productName      String
+  variantLabel     String
+  price            Decimal        @db.Decimal(10, 2)
+  quantity         Int
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productVariantId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  changedBy String
+  changedAt DateTime    @default(now())
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, changedAt])
+}
+
+model Address {
+  id                  String   @id @default(cuid())
+  userId              String
+  label               String
+  landmarkDescription String
+  flatRoom            String?
+  lat                 Decimal? @db.Decimal(10, 7)
+  lng                 Decimal? @db.Decimal(10, 7)
+  isDefault           Boolean  @default(false)
+  isDeleted           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, isDeleted])
+  @@index([userId, isDefault])
+}
+
+model Advertisement {
+  id         String   @id @default(cuid())
+  storeId    String
+  title      String
+  imageUrl   String
+  linkUrl    String?
+  startsAt   DateTime
+  endsAt     DateTime
+  isApproved Boolean  @default(false)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
+
+  @@index([storeId, isActive, isApproved])
+  @@index([startsAt, endsAt])
+}
+
+model Offer {
+  id             String       @id @default(cuid())
+  storeId        String
+  title          String
+  description    String
+  discountType   DiscountType
+  discountValue  Decimal      @db.Decimal(10, 2)
+  minOrderAmount Decimal?     @db.Decimal(10, 2)
+  maxDiscount    Decimal?     @db.Decimal(10, 2)
+  startsAt       DateTime
+  endsAt         DateTime
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  store          Store        @relation(fields: [storeId], references: [id], onDelete: Restrict)
+
+  @@index([storeId, isActive])
+  @@index([startsAt, endsAt])
+}
+
+model Discount {
+  id             String       @id @default(cuid())
+  storeId        String?
+  code           String       @unique
+  discountType   DiscountType
+  discountValue  Decimal      @db.Decimal(10, 2)
+  usageLimit     Int?
+  usedCount      Int          @default(0)
+  minOrderAmount Decimal?     @db.Decimal(10, 2)
+  startsAt       DateTime
+  endsAt         DateTime
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  store          Store?       @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, isActive])
+  @@index([code, isActive])
+  @@index([startsAt, endsAt])
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Boolean
+  description String?
+  updatedBy   String
+  updatedAt   DateTime @updatedAt
+
+  @@index([key, value])
+}
+
+model OTPLog {
+  id        String   @id @default(cuid())
+  phone     String
+  hashedOtp String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone, expiresAt])
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  actorId    String
+  actorRole  ActorRole
+  action     String
+  entityType String
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  ip         String
+  userAgent  String
+  createdAt  DateTime  @default(now())
+
+  @@index([actorId, actorRole])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model DeliveryRider {
+  id        String          @id @default(cuid())
+  name      String
+  phone     String
+  storeId   String
+  isActive  Boolean         @default(true)
+  isDeleted Boolean         @default(false)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  store     Store           @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  locations RiderLocation[]
+
+  @@index([storeId, isActive, isDeleted])
+}
+
+model RiderLocation {
+  id        String        @id @default(cuid())
+  riderId   String
+  lat       Decimal       @db.Decimal(10, 7)
+  lng       Decimal       @db.Decimal(10, 7)
+  updatedAt DateTime      @updatedAt
+  rider     DeliveryRider @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@index([riderId, updatedAt])
+}
