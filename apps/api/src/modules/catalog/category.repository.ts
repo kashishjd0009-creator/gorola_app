@@ -1,0 +1,104 @@
+import { ConflictError, NotFoundError } from "@gorola/shared";
+import type { Category, PrismaClient } from "@prisma/client";
+
+export type CreateCategoryInput = {
+  slug: string;
+  name: string;
+  emoji?: string | null;
+  icon?: string | null;
+  displayOrder?: number;
+  isActive?: boolean;
+};
+
+export type UpdateCategoryInput = Partial<
+  Pick<Category, "slug" | "name" | "emoji" | "icon" | "displayOrder" | "isActive">
+>;
+
+function isPrismaError(error: unknown, code: string): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: string }).code === code
+  );
+}
+
+export class CategoryRepository {
+  public constructor(private readonly db: PrismaClient) {}
+
+  public async findById(
+    id: string,
+    options?: { includeInactive?: boolean }
+  ): Promise<Category | null> {
+    return this.db.category.findFirst({
+      where: {
+        id,
+        ...(options?.includeInactive === true ? {} : { isActive: true })
+      }
+    });
+  }
+
+  public async findBySlug(
+    slug: string,
+    options?: { includeInactive?: boolean }
+  ): Promise<Category | null> {
+    return this.db.category.findFirst({
+      where: {
+        slug,
+        ...(options?.includeInactive === true ? {} : { isActive: true })
+      }
+    });
+  }
+
+  public async findAll(options?: { includeInactive?: boolean }): Promise<Category[]> {
+    return this.db.category.findMany({
+      where: options?.includeInactive === true ? {} : { isActive: true },
+      orderBy: [{ displayOrder: "asc" }, { name: "asc" }]
+    });
+  }
+
+  public async create(input: CreateCategoryInput): Promise<Category> {
+    try {
+      return await this.db.category.create({
+        data: {
+          slug: input.slug,
+          name: input.name,
+          emoji: input.emoji ?? null,
+          icon: input.icon ?? null,
+          displayOrder: input.displayOrder ?? 0,
+          isActive: input.isActive ?? true
+        }
+      });
+    } catch (error: unknown) {
+      if (isPrismaError(error, "P2002")) {
+        throw new ConflictError(
+          "Category with this slug already exists",
+          { field: "slug" },
+          error
+        );
+      }
+      throw error;
+    }
+  }
+
+  public async update(id: string, data: UpdateCategoryInput): Promise<Category> {
+    try {
+      return await this.db.category.update({
+        where: { id },
+        data
+      });
+    } catch (error: unknown) {
+      if (isPrismaError(error, "P2025")) {
+        throw new NotFoundError("Category not found", { id }, error);
+      }
+      if (isPrismaError(error, "P2002")) {
+        throw new ConflictError(
+          "Category with this slug already exists",
+          { field: "slug" },
+          error
+        );
+      }
+      throw error;
+    }
+  }
+}
