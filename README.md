@@ -1,26 +1,33 @@
 # GoRola App
 
-GoRola is a premium quick-commerce platform focused on Mussoorie, India. This repository contains the monorepo foundation for the platform: backend API, frontend web app, and shared packages.
+GoRola is a premium quick-commerce platform for Mussoorie, India. This repository contains the monorepo for the backend API, frontend web app, and shared packages.
 
 ## Current Status
 
-This repository is in the **foundation stage**:
+Phase 1 (NFR Foundation) is actively in progress.
 
-- Monorepo and workspace tooling are set up
-- Strict TypeScript, ESLint, Prettier, and env validation are configured
-- API, web, and shared packages are scaffolded
-- Feature modules and business logic are planned but not fully implemented yet
+Completed so far:
+
+- Monorepo and workspace setup with strict TypeScript
+- Prisma schema, migration, and seed setup
+- Full repository layer for core domains
+- Fastify server bootstrap with health route and standardized error envelope
+- Integration test foundation for API repositories and server bootstrap
+
+Next major milestone:
+
+- Phase 1.5 authentication system (buyer OTP, store owner auth, admin auth)
 
 ## Monorepo Structure
 
 ```text
 GoRola_app/
 ├── apps/
-│   ├── api/          # Fastify + TypeScript backend (bootstrap scaffold)
-│   └── web/          # React/Vite frontend (bootstrap scaffold)
+│   ├── api/                # Fastify + Prisma backend
+│   └── web/                # React/Vite frontend scaffold
 ├── packages/
-│   ├── shared/       # Shared types and schemas
-│   └── ui/           # Shared UI package scaffold
+│   ├── shared/             # Shared types and domain errors
+│   └── ui/                 # Shared UI package scaffold
 ├── .env.example
 ├── eslint.config.ts
 ├── package.json
@@ -30,17 +37,19 @@ GoRola_app/
 
 ## Tech Stack
 
-- Backend: Fastify, TypeScript, Prisma, PostgreSQL, Redis, BullMQ
-- Frontend: React, Vite, Tailwind CSS, shadcn/ui
+- Backend: Fastify, Prisma, PostgreSQL, Redis, Pino
+- Frontend: React + Vite (scaffold stage)
 - Tooling: pnpm workspaces, ESLint, Prettier, TypeScript strict mode
-- Testing (target): Vitest, Supertest, Playwright
+- Testing: Vitest (API integration tests are active)
 
 ## Prerequisites
 
 - Node.js 20+
 - pnpm 10+
+- PostgreSQL (dev + test databases)
+- Redis (for app runtime features)
 
-## Getting Started
+## Setup
 
 1. Install dependencies:
 
@@ -48,59 +57,35 @@ GoRola_app/
    pnpm install
    ```
 
-2. Create local env file from the template:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   On Windows PowerShell:
+2. Create local env file:
 
    ```powershell
    Copy-Item .env.example .env
    ```
 
-3. Fill required values in `.env`.
+3. Fill `.env` values for database, Redis, JWT keys, and external services.
 
-The API currently validates environment variables at startup using `dotenv-safe` and `.env.example`.
+4. Generate Prisma client:
 
-## Workspace Commands
+   ```bash
+   pnpm --filter @gorola/api prisma:generate
+   ```
 
-Run from repository root (`GoRola_app`):
+5. Run migration in local DB:
 
-- Lint all packages:
+   ```bash
+   pnpm --filter @gorola/api prisma:migrate:dev --name init
+   ```
 
-  ```bash
-  pnpm lint
-  ```
+6. Seed local data:
 
-- Typecheck all packages:
+   ```bash
+   pnpm --filter @gorola/api prisma:seed
+   ```
 
-  ```bash
-  pnpm typecheck
-  ```
+## Root Workspace Commands
 
-- Run all package test scripts:
-
-  ```bash
-  pnpm test
-  ```
-
-- Build all packages:
-
-  ```bash
-  pnpm build
-  ```
-
-## Package Scripts
-
-- `apps/api`: `build`, `typecheck`, `lint`, `test` (placeholder)
-- `apps/web`: `build`, `typecheck`, `lint`, `test` (placeholder)
-- `packages/shared`: `build`, `typecheck`, `lint`, `test` (placeholder)
-
-## Quality Gates
-
-Before committing changes, run:
+Run these from `GoRola_app` root:
 
 ```bash
 pnpm lint
@@ -109,11 +94,43 @@ pnpm test
 pnpm build
 ```
 
+## API Commands
+
+Useful commands in `@gorola/api`:
+
+```bash
+pnpm --filter @gorola/api lint
+pnpm --filter @gorola/api typecheck
+pnpm --filter @gorola/api test
+pnpm --filter @gorola/api test:watch
+pnpm --filter @gorola/api prisma:format
+pnpm --filter @gorola/api prisma:validate
+pnpm --filter @gorola/api prisma:generate
+pnpm --filter @gorola/api prisma:migrate:dev
+pnpm --filter @gorola/api prisma:seed
+```
+
+## Implemented API Domains (Repository Layer)
+
+- `user`
+- `store`
+- `store-owner`
+- `admin`
+- `catalog` (`category`, `product`, `variant`)
+- `cart`
+- `order`
+- `address`
+- `promotion` (`advertisement`, `offer`, `discount`)
+- `feature-flag`
+- `audit`
+- `delivery` (stub with not-implemented behavior)
+
 ## Environment Variables
 
 Defined in `.env.example`:
 
 - `DATABASE_URL`
+- `DATABASE_URL_TEST`
 - `REDIS_URL`
 - `JWT_PRIVATE_KEY`
 - `JWT_PUBLIC_KEY`
@@ -121,19 +138,24 @@ Defined in `.env.example`:
 - `RAZORPAY_KEY_ID`
 - `RAZORPAY_KEY_SECRET`
 - `CORS_ALLOWED_ORIGINS`
+- `APP_ENV`
 - `NODE_ENV`
 - `LOG_LEVEL`
 - `PORT`
 - `FRONTEND_URL`
 - `OTEL_EXPORTER_ENDPOINT`
+- `DIRECT_URL`
 
-## Next Planned Work
+## Quality Gate
 
-- Prisma schema and initial migrations
-- Repository layer and module scaffolding
-- Fastify server bootstrap and health endpoints
-- Authentication flows (buyer OTP, store owner, admin)
-- CI/CD pipelines and deployment setup
+Before committing:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
 
 ---
 
