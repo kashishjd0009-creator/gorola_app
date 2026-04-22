@@ -2,9 +2,11 @@ import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import dotenv from "dotenv";
 import dotenvSafe from "dotenv-safe";
 
 import { getMonorepoRootFromThisFilePath } from "./monorepoRoot.js";
+import { primeMissingKeysFromExample } from "./primeEnvFromExample.js";
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const workspaceRoot = getMonorepoRootFromThisFilePath(currentFilePath);
@@ -17,6 +19,9 @@ const examplePath = path.resolve(workspaceRoot, ".env.example");
 if (!existsSync(envPath)) {
   writeFileSync(envPath, "", { encoding: "utf8" });
 }
+
+dotenv.config({ path: envPath });
+primeMissingKeysFromExample(examplePath);
 
 dotenvSafe.config({
   allowEmptyValues: true,

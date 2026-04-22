@@ -101,6 +101,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       dotenv-safe:
         specifier: ^9.1.0
         version: 9.1.0(dotenv@17.4.2)
