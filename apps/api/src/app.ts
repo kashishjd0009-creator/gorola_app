@@ -11,7 +11,9 @@ export async function startApp(): Promise<void> {
   const app = createServer();
   const closeWithTelemetry = async (): Promise<void> => {
     try {
-      await app.close();
+      if (typeof app.close === "function") {
+        await app.close();
+      }
     } finally {
       await shutdownTelemetry();
     }
