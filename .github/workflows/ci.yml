@@ -58,8 +58,7 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        # version comes from root package.json "packageManager" (pnpm@10.0.0) — do not set `version` here
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
