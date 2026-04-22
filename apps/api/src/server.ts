@@ -10,6 +10,13 @@ import fastify from "fastify";
 import fp from "fastify-plugin";
 import { v4 as uuidV4 } from "uuid";
 
+import { API_VERSION } from "./lib/api-version.js";
+import {
+  buildHealthData,
+  getHealthState,
+  type HealthCheckResult,
+  runHealthProbes
+} from "./lib/health.js";
 import { createAppLoggerToStream, getLogger } from "./lib/logger.js";
 import { getPrismaClient } from "./lib/prisma.js";
 import { getRedisClient } from "./lib/redis.js";
@@ -29,6 +36,16 @@ export type CreateServerOptions = {
   disableRedis?: boolean;
   /** When set, Fastify uses this pino instance target so tests can assert JSON log lines. */
   pinoTestStream?: Writable;
+  /**
+   * Override health probes (e.g. integration tests for 200 / 200 degraded / 503 down).
+   * When omitted, uses Prisma `SELECT 1` and Redis `PING` against the live clients.
+   */
+  healthProbes?: {
+    checkDatabase: () => Promise<HealthCheckResult>;
+    checkRedis: () => Promise<HealthCheckResult>;
+  };
+  /** Fixed clock for health `timestamp` in tests. */
+  nowIso?: () => string;
 };
 
 type SuccessEnvelope<T> = {
@@ -160,11 +177,18 @@ export function createServer(options: CreateServerOptions = {}): FastifyInstance
     void reply.status(appError.statusCode).send(payload);
   });
 
-  app.get("/api/health", async (request, reply) =>
-    success(request, reply, {
-      status: "ok"
-    })
-  );
+  app.get("/api/health", async (request, reply) => {
+    const checks = options.healthProbes
+      ? {
+          database: await options.healthProbes.checkDatabase(),
+          redis: await options.healthProbes.checkRedis()
+        }
+      : await runHealthProbes(getPrismaClient(), redisClient);
+    const state = getHealthState(checks);
+    const getNow = options.nowIso ?? (() => new Date().toISOString());
+    const data = buildHealthData(state, checks, API_VERSION, getNow);
+    return reply.status(state.statusCode).send(success(request, reply, data));
+  });
 
   if (options.registerRoutes) {
     void app.register(async (registeredApp) => options.registerRoutes?.(registeredApp));

@@ -1,6 +1,7 @@
 import { ValidationError } from "@gorola/shared";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { API_VERSION } from "../../../lib/api-version.js";
 import { createServer } from "../../../server.js";
 
 describe("server bootstrap", () => {
@@ -20,16 +21,19 @@ describe("server bootstrap", () => {
       url: "/api/health"
     });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      success: true,
-      data: {
-        status: "ok"
-      },
-      meta: {
-        requestId: expect.any(String)
-      }
-    });
+    const body = response.json() as {
+      success: boolean;
+      data: { status: string; version: string; timestamp: string; checks: { database: string; redis: string } };
+      meta: { requestId: string };
+    };
+    expect([200, 503]).toContain(response.statusCode);
+    expect(body.success).toBe(true);
+    expect(body.data.version).toBe(API_VERSION);
+    expect(typeof body.data.timestamp).toBe("string");
+    expect(["ok", "degraded", "down"]).toContain(body.data.status);
+    expect(["ok", "error"]).toContain(body.data.checks.database);
+    expect(["ok", "error"]).toContain(body.data.checks.redis);
+    expect(body.meta.requestId).toEqual(expect.any(String));
     expect(response.headers["x-request-id"]).toEqual(expect.any(String));
   });
 
