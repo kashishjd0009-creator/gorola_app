@@ -1,5 +1,6 @@
 import "./config/env.js";
 
+import { isNodeMainModule } from "./lib/entrypoint.js";
 import { shutdownTelemetry, startTelemetry } from "./lib/telemetry.js";
 
 export async function startApp(): Promise<void> {
@@ -25,4 +26,8 @@ export async function startApp(): Promise<void> {
     void closeWithTelemetry();
   });
   await app.listen({ port, host });
+}
+
+if (isNodeMainModule(import.meta.url, process.argv[1])) {
+  void startApp();
 }

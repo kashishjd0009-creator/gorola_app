@@ -1,0 +1,53 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
+
+// From .../api/src/__tests__/unit/deploy → 6×.. = monorepo root; 4×.. = apps/api
+const thisDir = path.dirname(fileURLToPath(import.meta.url));
+const apiRoot = path.join(thisDir, "..", "..", "..", "..");
+const repoRoot = path.join(thisDir, "..", "..", "..", "..", "..", "..");
+
+const railwayToml = path.join(repoRoot, "railway.toml");
+const procfile = path.join(repoRoot, "Procfile");
+
+describe("Phase 1.9 — Railway / Procfile (repo as code)", () => {
+  it("exposes a railway.toml with monorepo build and @gorola/api start", async () => {
+    const text = await readFile(railwayToml, "utf8");
+    expect(text).toMatch(/^\[build\]/m);
+    expect(text).toMatch(/buildCommand/s);
+    expect(text).toMatch(/@gorola\/shared/);
+    expect(text).toMatch(/@gorola\/api/);
+    expect(text).toMatch(/^\[deploy\]/m);
+    expect(text).toMatch(/startCommand/s);
+    expect(text).toMatch(/pnpm --filter @gorola\/api start/);
+  });
+
+  it("exposes a Procfile web process using the API start script", async () => {
+    const text = await readFile(procfile, "utf8");
+    expect(text).toMatch(/^web:\s*pnpm --filter @gorola\/api start/m);
+  });
+
+  it("keeps API start = migrate deploy + node on compiled app entry", async () => {
+    const text = await readFile(path.join(apiRoot, "package.json"), "utf8");
+    const apiPackage: { scripts?: { start?: string; build?: string } } = JSON.parse(text);
+    expect(apiPackage.scripts?.start).toBe("prisma migrate deploy && node dist/app.js");
+  });
+
+  it("runs prisma generate in build so tsc and deploy have a client", async () => {
+    const text = await readFile(path.join(apiRoot, "package.json"), "utf8");
+    const apiPackage: { scripts?: { build?: string } } = JSON.parse(text);
+    const build = String(apiPackage.scripts?.build ?? "");
+    expect(build).toMatch(/prisma generate/);
+    expect(build).toMatch(/tsc/);
+  });
+
+  it("keeps the Prisma CLI for migrate deploy (runtime, not only dev)", async () => {
+    const text = await readFile(path.join(apiRoot, "package.json"), "utf8");
+    const apiPackage: { dependencies?: Record<string, string> } = JSON.parse(text);
+    const deps = apiPackage.dependencies;
+    expect(deps).toBeDefined();
+    expect(Object.keys(deps ?? {})).toContain("prisma");
+  });
+});
