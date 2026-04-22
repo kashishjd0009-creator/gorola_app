@@ -3,9 +3,10 @@ import { fileURLToPath } from "node:url";
 
 import dotenvSafe from "dotenv-safe";
 
+import { getMonorepoRootFromThisFilePath } from "./monorepoRoot.js";
+
 const currentFilePath = fileURLToPath(import.meta.url);
-const currentDirPath = path.dirname(currentFilePath);
-const workspaceRoot = path.resolve(currentDirPath, "../../../");
+const workspaceRoot = getMonorepoRootFromThisFilePath(currentFilePath);
 
 dotenvSafe.config({
   allowEmptyValues: false,
