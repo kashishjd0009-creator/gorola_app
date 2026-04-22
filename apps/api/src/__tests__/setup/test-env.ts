@@ -44,3 +44,4 @@ if (!testUrl) {
 
 process.env.DATABASE_URL = testUrl;
 process.env.DIRECT_URL = testUrl;
+

@@ -1,3 +1,5 @@
+import type { Writable } from "node:stream";
+
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -8,6 +10,7 @@ import fastify from "fastify";
 import fp from "fastify-plugin";
 import { v4 as uuidV4 } from "uuid";
 
+import { createAppLoggerToStream, getLogger } from "./lib/logger.js";
 import { getPrismaClient } from "./lib/prisma.js";
 import { getRedisClient } from "./lib/redis.js";
 
@@ -24,6 +27,8 @@ type RouteRegistrar = (app: FastifyInstance) => void | Promise<void>;
 export type CreateServerOptions = {
   registerRoutes?: RouteRegistrar;
   disableRedis?: boolean;
+  /** When set, Fastify uses this pino instance target so tests can assert JSON log lines. */
+  pinoTestStream?: Writable;
 };
 
 type SuccessEnvelope<T> = {
@@ -61,10 +66,13 @@ function success<T>(request: FastifyRequest, reply: FastifyReply, data: T): Succ
 }
 
 export function createServer(options: CreateServerOptions = {}): FastifyInstance {
+  const appLogger = options.pinoTestStream
+    ? createAppLoggerToStream(options.pinoTestStream)
+    : getLogger();
+
   const app = fastify({
-    logger: {
-      level: process.env.LOG_LEVEL ?? "info"
-    }
+    loggerInstance: appLogger,
+    disableRequestLogging: true
   });
 
   const corsOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
@@ -110,6 +118,22 @@ export function createServer(options: CreateServerOptions = {}): FastifyInstance
   });
   void app.register(requestIdPlugin);
 
+  app.addHook("onResponse", (request, reply, done) => {
+    const requestId = reply.getHeader("x-request-id")?.toString() ?? request.id;
+    request.log.info(
+      {
+        event: "request",
+        requestId,
+        method: request.method,
+        url: request.url,
+        statusCode: reply.statusCode,
+        responseTimeMs: reply.elapsedTime
+      },
+      "request completed"
+    );
+    done();
+  });
+
   app.decorate("prisma", getPrismaClient());
   app.decorate("redis", redisClient);
 
@@ -146,5 +170,5 @@ export function createServer(options: CreateServerOptions = {}): FastifyInstance
     void app.register(async (registeredApp) => options.registerRoutes?.(registeredApp));
   }
 
-  return app;
+  return app as unknown as FastifyInstance;
 }
