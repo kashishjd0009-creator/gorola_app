@@ -1,0 +1,5 @@
+# Nixpacks (Railway with builder NIXPACKS). Major 22 matches CI; local dev may use newer Node if package.json engines allows it.
+# https://nixpacks.com/docs/providers/node
+
+[variables]
+NODE_VERSION = "22"

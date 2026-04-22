@@ -10,6 +10,9 @@ const apiRoot = path.join(thisDir, "..", "..", "..", "..");
 const repoRoot = path.join(thisDir, "..", "..", "..", "..", "..", "..");
 
 const railwayToml = path.join(repoRoot, "railway.toml");
+const nixpacksToml = path.join(repoRoot, "nixpacks.toml");
+const nvmrc = path.join(repoRoot, ".nvmrc");
+const rootPackageJson = path.join(repoRoot, "package.json");
 const procfile = path.join(repoRoot, "Procfile");
 
 describe("Phase 1.9 — Railway / Procfile (repo as code)", () => {
@@ -49,5 +52,18 @@ describe("Phase 1.9 — Railway / Procfile (repo as code)", () => {
     const deps = apiPackage.dependencies;
     expect(deps).toBeDefined();
     expect(Object.keys(deps ?? {})).toContain("prisma");
+  });
+
+  it("pins Node 22 for Nixpacks and matches GitHub Actions (ci.yml node-version: 22)", async () => {
+    const nvm = (await readFile(nvmrc, "utf8")).trim();
+    expect(nvm).toBe("22");
+
+    const np = await readFile(nixpacksToml, "utf8");
+    expect(np).toMatch(/^\[variables\]/m);
+    expect(np).toMatch(/NODE_VERSION\s*=\s*["']?22["']?/);
+
+    const text = await readFile(rootPackageJson, "utf8");
+    const root: { engines?: { node?: string } } = JSON.parse(text);
+    expect(root.engines?.node).toMatch(/22/);
   });
 });
