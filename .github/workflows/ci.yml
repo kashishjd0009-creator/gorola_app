@@ -72,6 +72,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # @gorola/shared "types" point at dist/ — must exist before api/app typecheck
+      - name: Build @gorola/shared
+        run: pnpm --filter @gorola/shared build
+
       - name: Wait for service ports (host-published)
         shell: bash
         run: |
