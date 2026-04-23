@@ -1,0 +1,337 @@
+# =============================================================================
+# CI and CD (GoRola monorepo)
+# =============================================================================
+#
+# BIG PICTURE
+#   1) ci          — same checks you want locally: install, lint, typecheck, tests, full pnpm build,
+#                    against a real Postgres 15 + Redis 7 in the runner (so Prisma and integration tests work).
+#   2) paths        — looks at the git diff and sets two flags: "did Vercel-related files change?" and
+#                    "did Railway-related files change?" (like "watch paths" on each platform, but in YAML).
+#   3) deploy-vercel / deploy-railway — only run *after* `ci` succeeds, *in parallel with each other*,
+#                    and only on branch `main`, and only if that platform's path group matched
+#                    (or you used "Run workflow" manually — then both can deploy, path check skipped).
+#   Pull requests: only `ci` (and `paths`) run — no deploy. Branch `develop`: CI runs, no deploy
+#   (the deploy jobs are gated to `main` only; change the `if:` on deploy jobs to add staging branches).
+#
+# GITHUB REPOSITORY SECRETS (add these in: Repo → Settings → Secrets and variables → Actions)
+#   The deploy steps below read these names exactly. They are *not* optional if you want that deploy to work.
+#
+#   VERCEL_TOKEN
+#     - What: Vercel account token for non-interactive CLI.
+#     - Where: vercel.com → Account → Tokens → Create.
+#
+#   VERCEL_ORG_ID
+#     - What: Team / scope id (same value the CLI calls orgId) — identifies *which team* owns the project.
+#     - Where: Vercel → switch to the right team → Team Settings → General → **Team ID** (copy that),
+#              or run `vercel link` at monorepo root and read `.vercel/project.json` → "orgId".
+#
+#   VERCEL_PROJECT_ID
+#     - What: The Vite buyer-web project id on Vercel.
+#     - Where: Vercel project → Settings → General → Project id, or `.vercel/project.json` → "projectId".
+#
+#   RAILWAY_TOKEN
+#     - What: Railway API token to call their GraphQL API.
+#     - Where: railway.app → Account / User → Tokens.
+#
+#   RAILWAY_SERVICE_ID
+#     - What: UUID of the *API* service only (the Node service that runs your app). **Not** the Project ID:
+#              a Project can hold several services (API, Postgres, Redis) and each has its own Service ID.
+#     - Where (if Settings has no "Service ID" line — common in newer UIs):
+#         (1) **Browser address bar** — with the `gorola_app` (or API) service selected, the URL is like
+#             railway.app/project/.../service/<THIS-UUID-HERE>/...  → copy that middle UUID.
+#         (2) **CLI** — from monorepo root: `npx @railway/cli@latest link` (pick project + this service), then
+#             read `RAILWAY_SERVICE_ID` in the generated `.railway/` config (or use `railway link --json` if your CLI supports it).
+#
+#   More detail: GoRola_app/README.md → "GitHub Actions CD (repository secrets)".
+#
+# Local prep (before push, optional mirror of CI):
+#   Ensure DATABASE_URL* in .env, then: pnpm ci:prisma && pnpm ci:quality
+#
+# =============================================================================
+name: CI and CD
+
+# When this file runs. PRs and pushes to main/develop, plus manual "Run workflow" from the Actions tab.
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# If you push again while a run is in progress on the same branch, cancel the old run (saves minutes).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Default token permissions. pull-requests: read is for dorny/paths-filter to see what files changed on PRs.
+permissions:
+  contents: read
+  pull-requests: read
+
+# Environment for the *ci* job only: tests talk to service containers on 127.0.0.1.
+# (GitHub's `postgres` hostname does not work from job steps; use 127.0.0.1 and published ports.)
+# NOTE: the `postgres` service hostname in options is for the *container network*; job steps are on the VM host.
+env:
+  DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
+  DATABASE_URL_TEST: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
+  DIRECT_URL: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
+  REDIS_URL: "redis://127.0.0.1:6379"
+  NODE_ENV: test
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Job: ci — quality gate (runs on every trigger: push, PR, manual)
+  # -------------------------------------------------------------------------
+  # Fails the workflow if lint / tests / build fail. Deploy jobs *depend* on this
+  # (needs: [ci, ...]) so nothing deploys to prod without a green CI.
+  ci:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Service containers: Postgres and Redis on localhost ports, same major versions as prod intent.
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gorola_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm version comes from root package.json "packageManager" (do not set `version:` here)
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # @gorola/shared compiles to dist/; api + web typecheck need that output
+      - name: Build @gorola/shared
+        run: pnpm --filter @gorola/shared build
+
+      # Small wait so Prisma does not connect before TCP is listening on 127.0.0.1:5432 / :6379
+      - name: Wait for service ports (host-published)
+        shell: bash
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            (echo >/dev/tcp/127.0.0.1/5432) 2>/dev/null && { echo "Postgres ready on 127.0.0.1:5432"; break; }
+            echo "Waiting for 127.0.0.1:5432... ($i/30)"
+            sleep 1
+            if [ "$i" -eq 30 ]; then echo "Postgres not ready"; exit 1; fi
+          done
+          for i in $(seq 1 15); do
+            (echo >/dev/tcp/127.0.0.1/6379) 2>/dev/null && { echo "Redis ready on 127.0.0.1:6379"; break; }
+            echo "Waiting for 127.0.0.1:6379... ($i/15)"
+            sleep 1
+            if [ "$i" -eq 15 ]; then echo "Redis not ready"; exit 1; fi
+          done
+
+      # Prisma: client + migrations against the test Postgres service above
+      - name: Prisma — generate
+        run: pnpm --filter @gorola/api exec prisma generate
+
+      - name: Prisma — migrate (test DB)
+        run: pnpm --filter @gorola/api exec prisma migrate deploy
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  # -------------------------------------------------------------------------
+  # Job: paths — "what changed?" for CD (runs in parallel with `ci`, cheap)
+  # -------------------------------------------------------------------------
+  # Uses dorny/paths-filter: for each group below, *any* matching file in the
+  # commit range sets that output to the string "true" (OR logic inside a group).
+  # Deploy jobs read needs.paths.outputs.vercel / .railway to decide whether to run.
+  # Edit the lists to match your monorepo layout (align with Railway watch paths + Vercel app tree).
+  paths:
+    name: path filters (for CD)
+    runs-on: ubuntu-latest
+    outputs:
+      # Exposed to other jobs: jobs.deploy-vercel.if can use needs.paths.outputs.vercel
+      vercel: ${{ steps.filter.outputs.vercel }}
+      railway: ${{ steps.filter.outputs.railway }}
+    steps:
+      # full history so the action can diff against the right base on merge/push
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Which paths changed?
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          # In each group (vercel / railway), one match → that output is "true". Several root files
+          # are listed in BOTH groups so a lockfile/tsconfig change can trigger either or both deploys.
+          filters: |
+            vercel:
+              - 'apps/web/**'
+              - 'packages/ui/**'
+              - 'packages/shared/**'
+              - 'vercel.json'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+              - 'tsconfig.base.json'
+            railway:
+              - 'apps/api/**'
+              - 'packages/shared/**'
+              - 'railway.toml'
+              - 'nixpacks.toml'
+              - 'Procfile'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+              - 'tsconfig.base.json'
+
+  # -------------------------------------------------------------------------
+  # Job: deploy-vercel — production deploy of buyer web (Vercel CLI)
+  # -------------------------------------------------------------------------
+  # needs: [ci, paths]  →  waits for CI to pass and for the paths job to finish.
+  # if-  three parts:
+  #   (1) success()           — ci (and paths) did not fail
+  #   (2) main branch only, push or manual workflow_dispatch
+  #   (3) on manual run, always deploy; on push, only if paths.outputs.vercel == 'true'
+  # See secrets block at the top of this file (VERCEL_*).
+  deploy-vercel:
+    name: deploy · Vercel (buyer web)
+    needs: [ci, paths]
+    if: >
+      success() &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'workflow_dispatch' || needs.paths.outputs.vercel == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Need a checkout so `vercel deploy` uploads the repo; uses root vercel.json
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Fail early with a clear message if a secret is missing (otherwise npx vercel errors obscurely)
+      - name: Require Vercel secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            echo "Set these repository secrets: ${missing[*]}"
+            echo "Vercel → Project → Settings: ORG_ID and PROJECT_ID; Account → Tokens for VERCEL_TOKEN."
+            exit 1
+          fi
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # ORG_ID + PROJECT_ID tell the CLI which Vercel project; TOKEN authenticates. --prod = production.
+      - name: Deploy to Vercel (production)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+
+  # -------------------------------------------------------------------------
+  # Job: deploy-railway — ask Railway to build & deploy the API service (no checkout needed)
+  # -------------------------------------------------------------------------
+  # Third condition on `if` is the same idea as Vercel but using needs.paths.outputs.railway.
+  # Does not push code: triggers the same "Deploy" their dashboard would, via GraphQL `deploymentTrigger`.
+  # The API service must have Git disconnected or you may get double deploys with native Git hooks.
+  deploy-railway:
+    name: deploy · Railway (API)
+    needs: [ci, paths]
+    if: >
+      success() &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'workflow_dispatch' || needs.paths.outputs.railway == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # No checkout: we only need to call the API. Same fail-fast idea as the Vercel "Require secrets" step.
+      - name: Require Railway secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${RAILWAY_TOKEN:-}" ] || [ -z "${RAILWAY_SERVICE_ID:-}" ]; then
+            echo "Set RAILWAY_TOKEN and RAILWAY_SERVICE_ID in repository secrets."
+            echo "Railway → service → Settings → service ID; Account → tokens for RAILWAY_TOKEN."
+            exit 1
+          fi
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+
+      # HTTP POST to Railway's GraphQL API; RAILWAY_SERVICE_ID is the Node API *service* UUID
+      - name: Trigger Railway deployment
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        # mutation deploymentTrigger → starts a new deploy on Railway (same as clicking Deploy in the UI for that service)
+        run: |
+          python3 << 'PY'
+          import json, os, urllib.error, urllib.request
+          service_id = os.environ["RAILWAY_SERVICE_ID"]
+          token = os.environ["RAILWAY_TOKEN"]
+          q = f'mutation {{ deploymentTrigger(input: {{ serviceId: "{service_id}" }}) {{ id }} }}'
+          body = json.dumps({"query": q}).encode()
+          req = urllib.request.Request(
+              "https://backboard.railway.app/graphql/v2",
+              data=body,
+              headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  r = json.loads(resp.read().decode())
+          except urllib.error.HTTPError as e:
+              raise SystemExit(e.read().decode() or str(e)) from e
+          err = r.get("errors")
+          if err:
+              raise SystemExit(f"Railway GraphQL error: {err}")
+          dep = (r.get("data") or {}).get("deploymentTrigger", {}).get("id")
+          if not dep:
+              raise SystemExit(f"Missing deployment id: {r}")
+          print("Railway deployment triggered:", dep)
+          PY
