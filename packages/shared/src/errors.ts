@@ -82,6 +82,19 @@ export class ConflictError extends AppError {
   }
 }
 
+/** HTTP 422 — valid syntax but business rules prevent processing (e.g. not enough stock). */
+export class UnprocessableEntityError extends AppError {
+  public constructor(message = "Unprocessable entity", details?: ErrorDetails, cause?: unknown) {
+    super(message, {
+      code: "UNPROCESSABLE_ENTITY",
+      statusCode: 422,
+      details,
+      cause
+    });
+    this.name = "UnprocessableEntityError";
+  }
+}
+
 export class RateLimitError extends AppError {
   public constructor(message = "Too many requests", details?: ErrorDetails, cause?: unknown) {
     super(message, {

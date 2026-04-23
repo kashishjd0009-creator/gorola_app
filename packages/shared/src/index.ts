@@ -7,5 +7,6 @@ export {
   NotImplementedError,
   RateLimitError,
   UnauthorizedError,
+  UnprocessableEntityError,
   ValidationError
 } from "./errors.js";

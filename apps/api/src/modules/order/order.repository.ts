@@ -47,7 +47,9 @@ function toDecimal(value: string | number): Prisma.Decimal {
   return new Prisma.Decimal(typeof value === "number" ? String(value) : value);
 }
 
-async function getOrderWithRelations(db: PrismaClient, id: string): Promise<OrderWithRelations> {
+type DbLike = PrismaClient | Prisma.TransactionClient;
+
+async function getOrderWithRelations(db: DbLike, id: string): Promise<OrderWithRelations> {
   return db.order.findUniqueOrThrow({
     where: { id },
     include: {
@@ -60,13 +62,18 @@ async function getOrderWithRelations(db: PrismaClient, id: string): Promise<Orde
 export class OrderRepository {
   public constructor(private readonly db: PrismaClient) {}
 
-  public async create(input: CreateOrderInput): Promise<OrderWithRelations> {
+  public async create(
+    input: CreateOrderInput,
+    tx?: Prisma.TransactionClient
+  ): Promise<OrderWithRelations> {
     if (input.items.length === 0) {
       throw new ValidationError("Order must contain at least one item");
     }
 
+    const db: DbLike = tx ?? this.db;
+
     try {
-      const order = await this.db.order.create({
+      const order = await db.order.create({
         data: {
           userId: input.userId,
           storeId: input.storeId,
@@ -96,7 +103,7 @@ export class OrderRepository {
         }
       });
 
-      return getOrderWithRelations(this.db, order.id);
+      return getOrderWithRelations(db, order.id);
     } catch (error: unknown) {
       if (isPrismaError(error, "P2003")) {
         throw new NotFoundError(
@@ -148,24 +155,32 @@ export class OrderRepository {
     orderId: string,
     status: OrderStatus,
     changedBy: string,
-    note?: string
+    note?: string,
+    tx?: Prisma.TransactionClient
   ): Promise<OrderWithRelations> {
-    try {
-      await this.db.$transaction([
-        this.db.order.update({
-          where: { id: orderId },
-          data: { status }
-        }),
-        this.db.orderStatusHistory.create({
-          data: {
-            orderId,
-            status,
-            note: note ?? null,
-            changedBy
-          }
-        })
-      ]);
+    const apply = async (db: DbLike): Promise<void> => {
+      await db.order.update({
+        where: { id: orderId },
+        data: { status }
+      });
+      await db.orderStatusHistory.create({
+        data: {
+          orderId,
+          status,
+          note: note ?? null,
+          changedBy
+        }
+      });
+    };
 
+    try {
+      if (tx) {
+        await apply(tx);
+        return getOrderWithRelations(tx, orderId);
+      }
+      await this.db.$transaction(async (inner) => {
+        await apply(inner);
+      });
       return getOrderWithRelations(this.db, orderId);
     } catch (error: unknown) {
       if (isPrismaError(error, "P2025") || isPrismaError(error, "P2003")) {

@@ -1,4 +1,4 @@
-import { NotFoundError } from "@gorola/shared";
+import { ForbiddenError, NotFoundError, UnprocessableEntityError, ValidationError } from "@gorola/shared";
 import { Prisma, type PrismaClient, type ProductVariant } from "@prisma/client";
 
 export type CreateProductVariantInput = {
@@ -33,6 +33,88 @@ function toDecimal(value: string | number): Prisma.Decimal {
 
 export class ProductVariantRepository {
   public constructor(private readonly db: PrismaClient) {}
+
+  /**
+   * Atomic deduction; fails when stock would go below zero (e.g. concurrent last-unit).
+   * `storeId` must match the product's store (defense in depth for cross-tenant use).
+   */
+  public async decrementStock(
+    variantId: string,
+    quantity: number,
+    storeId: string,
+    tx: Prisma.TransactionClient
+  ): Promise<{ stockQtyBefore: number; stockQtyAfter: number }> {
+    if (quantity <= 0) {
+      throw new ValidationError("Stock decrement quantity must be positive", { quantity });
+    }
+
+    const beforeRow = await tx.productVariant.findUnique({
+      where: { id: variantId },
+      include: { product: { select: { storeId: true } } }
+    });
+    if (beforeRow === null) {
+      throw new NotFoundError("Product variant not found", { id: variantId });
+    }
+    if (beforeRow.product.storeId !== storeId) {
+      throw new ForbiddenError("Product variant is not in this store", { variantId, storeId });
+    }
+    if (beforeRow.stockQty < quantity) {
+      throw new UnprocessableEntityError("Not enough stock for this variant", {
+        productVariantId: variantId,
+        requested: quantity,
+        available: beforeRow.stockQty
+      });
+    }
+
+    const result = await tx.productVariant.updateMany({
+      where: { id: variantId, stockQty: { gte: quantity } },
+      data: { stockQty: { decrement: quantity } }
+    });
+    if (result.count === 0) {
+      const latest = await tx.productVariant.findUniqueOrThrow({ where: { id: variantId } });
+      throw new UnprocessableEntityError("Not enough stock for this variant (concurrent change)", {
+        productVariantId: variantId,
+        requested: quantity,
+        available: latest.stockQty
+      });
+    }
+
+    return {
+      stockQtyBefore: beforeRow.stockQty,
+      stockQtyAfter: beforeRow.stockQty - quantity
+    };
+  }
+
+  public async incrementStock(
+    variantId: string,
+    quantity: number,
+    storeId: string,
+    tx: Prisma.TransactionClient
+  ): Promise<{ stockQtyBefore: number; stockQtyAfter: number }> {
+    if (quantity <= 0) {
+      throw new ValidationError("Stock increment quantity must be positive", { quantity });
+    }
+
+    const beforeRow = await tx.productVariant.findUnique({
+      where: { id: variantId },
+      include: { product: { select: { storeId: true } } }
+    });
+    if (beforeRow === null) {
+      throw new NotFoundError("Product variant not found", { id: variantId });
+    }
+    if (beforeRow.product.storeId !== storeId) {
+      throw new ForbiddenError("Product variant is not in this store", { variantId, storeId });
+    }
+
+    const updated = await tx.productVariant.update({
+      where: { id: variantId },
+      data: { stockQty: { increment: quantity } }
+    });
+    return {
+      stockQtyBefore: beforeRow.stockQty,
+      stockQtyAfter: updated.stockQty
+    };
+  }
 
   public async findById(
     id: string,

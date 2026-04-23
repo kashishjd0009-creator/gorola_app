@@ -34,6 +34,11 @@ enum ActorRole {
   SYSTEM
 }
 
+enum StockMovementType {
+  SALE
+  CANCELLATION_RESTORE
+}
+
 model User {
   id         String    @id @default(cuid())
   phone      String    @unique
@@ -149,8 +154,26 @@ model ProductVariant {
   product    Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
   cartItems  CartItem[]
   orderItems OrderItem[]
+  stockMovements StockMovement[]
 
   @@index([productId, isActive])
+}
+
+model StockMovement {
+  id               String            @id @default(cuid())
+  productVariantId String
+  orderId          String
+  type             StockMovementType
+  /// Units moved; always positive. Interpret with `type` (SALE = deduction, CANCELLATION_RESTORE = restock).
+  quantity         Int
+  stockQtyBefore   Int
+  stockQtyAfter    Int
+  createdAt        DateTime          @default(now())
+  productVariant   ProductVariant    @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([productVariantId, createdAt])
+  @@index([orderId, createdAt])
 }
 
 model Cart {
@@ -198,6 +221,7 @@ model Order {
   store               Store                @relation(fields: [storeId], references: [id], onDelete: Restrict)
   items               OrderItem[]
   statusHistory       OrderStatusHistory[]
+  stockMovements      StockMovement[]
 
   @@index([userId, createdAt])
   @@index([storeId, status, createdAt])

@@ -16,7 +16,8 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "start": "prisma migrate deploy && node dist/app.js",
-    "prisma:migrate:deploy": "prisma migrate deploy"
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:migrate:test-db": "node ./scripts/migrate-test-db.cjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -20,6 +20,7 @@ import { UserRepository } from "../../../modules/user/user.repository.js";
 async function cleanOrderIntegrationGraph(db: PrismaClient): Promise<void> {
   await db.riderLocation.deleteMany();
   await db.deliveryRider.deleteMany();
+  await db.stockMovement.deleteMany();
   await db.orderStatusHistory.deleteMany();
   await db.orderItem.deleteMany();
   await db.order.deleteMany();

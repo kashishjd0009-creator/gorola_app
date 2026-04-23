@@ -1,4 +1,4 @@
-import { NotFoundError } from "@gorola/shared";
+import { ForbiddenError, NotFoundError, UnprocessableEntityError, ValidationError } from "@gorola/shared";
 import type { Category, PrismaClient, Product, Store } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -11,6 +11,7 @@ import { StoreRepository } from "../../../modules/store/store.repository.js";
 async function cleanCatalogIntegrationGraph(db: PrismaClient): Promise<void> {
   await db.riderLocation.deleteMany();
   await db.deliveryRider.deleteMany();
+  await db.stockMovement.deleteMany();
   await db.orderStatusHistory.deleteMany();
   await db.orderItem.deleteMany();
   await db.order.deleteMany();
@@ -207,6 +208,85 @@ describe("ProductVariantRepository", () => {
       await expect(
         repo.update("nonexistent_cuid_xyz", { label: "x" })
       ).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("decrementStock and incrementStock", () => {
+    it("decrements within a transaction and returns before/after", async () => {
+      const v = await repo.create({
+        productId: product.id,
+        label: "d1",
+        price: "1",
+        stockQty: 20,
+        unit: "u"
+      });
+      await db.$transaction(async (tx) => {
+        const r = await repo.decrementStock(v.id, 4, store.id, tx);
+        expect(r.stockQtyBefore).toBe(20);
+        expect(r.stockQtyAfter).toBe(16);
+      });
+      const v2 = await db.productVariant.findUniqueOrThrow({ where: { id: v.id } });
+      expect(v2.stockQty).toBe(16);
+    });
+
+    it("rejects non-positive quantity", async () => {
+      const v = await repo.create({
+        productId: product.id,
+        label: "d2",
+        price: "1",
+        stockQty: 5,
+        unit: "u"
+      });
+      await expect(
+        db.$transaction((tx) => repo.decrementStock(v.id, 0, store.id, tx))
+      ).rejects.toBeInstanceOf(ValidationError);
+    });
+
+    it("throws when variant is not in the given store", async () => {
+      const v = await repo.create({
+        productId: product.id,
+        label: "d3",
+        price: "1",
+        stockQty: 5,
+        unit: "u"
+      });
+      const other = await storeRepo.create({
+        name: "Other",
+        description: "d",
+        phone: "+911199999999",
+        address: "A"
+      });
+      await expect(
+        db.$transaction((tx) => repo.decrementStock(v.id, 1, other.id, tx))
+      ).rejects.toBeInstanceOf(ForbiddenError);
+    });
+
+    it("throws UnprocessableEntityError when not enough stock", async () => {
+      const v = await repo.create({
+        productId: product.id,
+        label: "d4",
+        price: "1",
+        stockQty: 2,
+        unit: "u"
+      });
+      await expect(
+        db.$transaction((tx) => repo.decrementStock(v.id, 5, store.id, tx))
+      ).rejects.toBeInstanceOf(UnprocessableEntityError);
+    });
+
+    it("increments stock in a transaction", async () => {
+      const v = await repo.create({
+        productId: product.id,
+        label: "d5",
+        price: "1",
+        stockQty: 3,
+        unit: "u"
+      });
+      await db.$transaction(async (tx) => {
+        const r = await repo.incrementStock(v.id, 2, store.id, tx);
+        expect(r.stockQtyBefore).toBe(3);
+        expect(r.stockQtyAfter).toBe(5);
+      });
     });
   });
 
