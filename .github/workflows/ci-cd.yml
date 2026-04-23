@@ -42,11 +42,6 @@
 #         (2) **CLI** — from monorepo root: `npx @railway/cli@latest link` (pick project + this service), then
 #             read `RAILWAY_SERVICE_ID` in the generated `.railway/` config (or use `railway link --json` if your CLI supports it).
 #
-#   RAILWAY_PROJECT_ID (optional) + RAILWAY_ENVIRONMENT (optional; e.g. production or the env id)
-#     - When: Some tokens / `railway up` need `--project` and `--environment` (required together; see Railway CLI docs).
-#     - If both are unset, we run `railway up` with only `--service` (enough for many project-scoped tokens).
-#     - If one is set, you must set both.
-#
 #   More detail: GoRola_app/README.md → "GitHub Actions CD (repository secrets)".
 #
 # Local prep (before push, optional mirror of CI):
@@ -272,7 +267,7 @@ jobs:
   # Job: deploy-railway (CLI uploads repo; build runs on Railway)
   # -------------------------------------------------------------------------
   # Use a **Project** token: Project → Settings → Tokens. Regenerate if you see "Invalid RAILWAY_TOKEN".
-  # Optional: set both RAILWAY_PROJECT_ID and RAILWAY_ENVIRONMENT, or leave both empty (see README).
+  # Deployments get `--message` from `git log -1` (short SHA + subject) so the dashboard is not a bare "railway up".
   deploy-railway:
     name: deploy · Railway (API)
     needs: [ci, paths]
@@ -286,8 +281,6 @@ jobs:
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
-      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-      RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -296,10 +289,12 @@ jobs:
         run: npm install --global @railway/cli@latest
 
       - name: Deploy
+        shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${RAILWAY_PROJECT_ID:-}" ] && [ -n "${RAILWAY_ENVIRONMENT:-}" ]; then
-            railway up --ci --service "$RAILWAY_SERVICE_ID" --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT"
-          else
-            railway up --ci --service "$RAILWAY_SERVICE_ID"
+          # Label shown in Railway (replaces the generic "railway up")
+          MSG=$(git -c "core.quotepath=false" log -1 --oneline 2>/dev/null | tr '"' "'" | tr '\n' ' ' | head -c 200 || true)
+          if [ -z "${MSG// }" ]; then
+            MSG="ci ${GITHUB_REF_NAME} ${GITHUB_SHA:0:7}"
           fi
+          railway up --ci --message "$MSG" --service "$RAILWAY_SERVICE_ID"

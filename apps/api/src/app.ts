@@ -31,5 +31,3 @@ export async function startApp(): Promise<void> {
 if (isNodeMainModule(import.meta.url, process.argv[1])) {
   void startApp();
 }
-
-//changing comment to test again!!!

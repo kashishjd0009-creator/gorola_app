@@ -244,14 +244,12 @@ Add these as **Settings → Secrets and variables → Actions → Repository sec
 | `VERCEL_PROJECT_ID` | Vercel job | *Project* → *Settings* → *General* → **Project ID**, or `projectId` in `.vercel/project.json`. |
 | `RAILWAY_TOKEN` | Railway job | Prefer a **Project token** (Project → *Settings* → *Tokens*) for `railway up` in CI; an **account** token from [Account → Tokens](https://railway.com/account/tokens) can work but may need extra flags. |
 | `RAILWAY_SERVICE_ID` | Railway job | The **Node API** service UUID (**not** the project id). From the **URL** with that service open: `.../service/<serviceId>/...`, or `npx @railway/cli@latest link` → `.railway/`. |
-| `RAILWAY_PROJECT_ID` | Railway job | **Optional.** Project UUID (URL `.../project/<id>/...`) if the CLI needs `--project` (see below). |
-| `RAILWAY_ENVIRONMENT` | Railway job | **Optional.** Environment name (e.g. `production`) or id; required **together** with `RAILWAY_PROJECT_ID` when you use that pair. The workflow runs `npx @railway/cli@latest up --ci --service …` and adds `--project` / `--environment` only when *both* optional secrets are set. |
 
-`VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` (with `VERCEL_TOKEN`) are what the Vercel CLI uses for `vercel pull` / `vercel build` / `vercel deploy --prebuilt` in CI (no interactive link).
+`VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` (with `VERCEL_TOKEN`) are what the Vercel CLI uses for `vercel pull` / `vercel build` / `vercel deploy --prebuilt` in CI (no interactive link). **Railway** only needs `RAILWAY_TOKEN` and `RAILWAY_SERVICE_ID` (project token implies the target environment; `railway up` uses `--service` only).
 
 **Invalid `RAILWAY_TOKEN` in Actions:** Regenerate a token from **the same Railway project** you deploy to — use **Project → Settings → Tokens** (project-scoped) when possible, not an expired or wrong-workspace key.
 
-**Railway vs raw GraphQL:** The workflow uses the **Railway CLI** (`railway up --ci` after `npm install -g @railway/cli`); the old public GraphQL `deploymentTrigger` mutation is not on the current schema. Build runs on Railway’s side after the repo upload.
+**Railway vs raw GraphQL:** The workflow uses the **Railway CLI** (`railway up --ci` after `npm install -g @railway/cli`); the old public GraphQL `deploymentTrigger` mutation is not on the current schema. Build runs on Railway’s side after the repo upload. Each run passes `--message` built from `git log -1 --oneline` (short SHA + first line of the commit message) so the deployment list is not only the generic “railway up” label. Removing the Git source in Railway is fine; the message still reflects the **checkout in Actions** (the commit you just pushed or the ref you run manually).
 
 ## Quality Gate
 
