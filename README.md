@@ -173,7 +173,7 @@ Production layout: **React/Vite apps** are served from **Vercel**; the **Fastify
 ### Vercel (buyer web, static)
 
 - **Config:** Root `vercel.json` is the authority for `installCommand`, `buildCommand`, and `outputDirectory` for the buyer app, and for `git.deploymentEnabled` (autodeploy off).
-- **Monorepo:** The Vercel project’s **root directory** should stay the **repository root** (not `apps/web` only) so `pnpm` workspaces and filters work. The Git repo can stay **connected** for PR metadata; with **Ignored build step** and `git.deploymentEnabled`, pushes do not run a production build until **GitHub Actions** runs `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod` (or you deploy manually from the Vercel UI).
+- **Monorepo:** The Vercel project’s **root directory** should stay the **repository root** (not `apps/web` only) so `pnpm` workspaces and filters work. The Git repo can stay **connected** for PR metadata; with **Ignored build step** and `git.deploymentEnabled`, pushes do not run a production build until **GitHub Actions** runs `npx vercel deploy --prod` (build happens on Vercel using `vercel.json`), or you deploy manually.
 - **Node:** The repo targets **Node 22** (`.nvmrc`, root `engines`); the Vercel build uses the same install/build as in `vercel.json`.
 - **Dashboard (still required):** set **public** env vars such as `VITE_API_BASE_URL` (no secrets in git), domains, and (if used) the **Ignored build step** as above.
 
@@ -192,7 +192,7 @@ Production layout: **React/Vite apps** are served from **Vercel**; the **Fastify
 ### Railway (API)
 
 - **Config:** `railway.toml` defines the Nixpacks **builder**, **buildCommand**, **startCommand**, and **restart** policy. `nixpacks.toml` pins **Node 22** for the Nixpacks image. `Procfile` sets the `web` process to match the start command.
-- **Monorepo:** The Railway service **root directory** must be the **Git repo root** (`GoRola_app`) — not `apps/api` alone — so `pnpm-workspace.yaml` and `--filter` work. With **Git disconnected**, GitHub Actions runs **`npx @railway/cli@latest up --ci`** (uploads the checked-out monorepo; Nixpacks build runs on Railway) after CI passes.
+- **Monorepo:** The Railway service **root directory** must be the **Git repo root** (`GoRola_app`) — not `apps/api` alone — so `pnpm-workspace.yaml` and `--filter` work. With **Git disconnected**, GitHub Actions runs **`npx @railway/cli@latest up --ci --message "…" --service …`** (uploads the checked-out monorepo; Nixpacks build on Railway) after CI passes.
 - **Start behavior:** `pnpm --filter @gorola/api start` runs Prisma migrate deploy, then the compiled server. The API listens on the port the platform provides (e.g. `PORT` in `.env.example`).
 
 `railway.toml` (repository root):
@@ -245,11 +245,11 @@ Add these as **Settings → Secrets and variables → Actions → Repository sec
 | `RAILWAY_TOKEN` | Railway job | Prefer a **Project token** (Project → *Settings* → *Tokens*) for `railway up` in CI; an **account** token from [Account → Tokens](https://railway.com/account/tokens) can work but may need extra flags. |
 | `RAILWAY_SERVICE_ID` | Railway job | The **Node API** service UUID (**not** the project id). From the **URL** with that service open: `.../service/<serviceId>/...`, or `npx @railway/cli@latest link` → `.railway/`. |
 
-`VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` (with `VERCEL_TOKEN`) are what the Vercel CLI uses for `vercel pull` / `vercel build` / `vercel deploy --prebuilt` in CI (no interactive link). **Railway** only needs `RAILWAY_TOKEN` and `RAILWAY_SERVICE_ID` (project token implies the target environment; `railway up` uses `--service` only).
+`VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` (with `VERCEL_TOKEN`) are what the Vercel CLI needs for `npx vercel deploy --prod` in CI. **Railway** only needs `RAILWAY_TOKEN` and `RAILWAY_SERVICE_ID` (`--message` is set to `branch` + short SHA for a readable deploy label).
 
 **Invalid `RAILWAY_TOKEN` in Actions:** Regenerate a token from **the same Railway project** you deploy to — use **Project → Settings → Tokens** (project-scoped) when possible, not an expired or wrong-workspace key.
 
-**Railway vs raw GraphQL:** The workflow uses the **Railway CLI** (`railway up --ci` after `npm install -g @railway/cli`); the old public GraphQL `deploymentTrigger` mutation is not on the current schema. Build runs on Railway’s side after the repo upload. Each run passes `--message` built from `git log -1 --oneline` (short SHA + first line of the commit message) so the deployment list is not only the generic “railway up” label. Removing the Git source in Railway is fine; the message still reflects the **checkout in Actions** (the commit you just pushed or the ref you run manually).
+**Railway vs raw GraphQL:** The workflow uses **`npx @railway/cli@latest up --ci`**, not the old public GraphQL `deploymentTrigger` mutation. Build runs on Railway after the upload. `--message` is `GITHUB_REF_NAME` + short `GITHUB_SHA` (no `git log` parsing). Removing the Git source in Railway is fine; the ref/sha still identify the run.
 
 ## Quality Gate
 

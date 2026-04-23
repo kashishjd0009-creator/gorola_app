@@ -110,5 +110,3 @@ export function App(): ReactElement {
     </div>
   );
 }
-
-//Just checking for frontend CD.

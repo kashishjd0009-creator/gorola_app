@@ -8,7 +8,7 @@
 #   2) paths        — looks at the git diff and sets two flags: "did Vercel-related files change?" and
 #                    "did Railway-related files change?" (like "watch paths" on each platform, but in YAML).
 #   3) deploy-vercel / deploy-railway — after `ci`, in parallel, on `main` if paths matched
-#        (Vercel: vercel pull → build → deploy --prebuilt; Railway: `railway up --ci` with job env).
+#        (Vercel: install Vercel CLI, then `vercel deploy --prod`; Railway: install Railway CLI, then `railway up --ci` + label).
 #   Pull requests: only `ci` (and `paths`) run — no deploy. Branch `develop`: CI runs, no deploy
 #   (the deploy jobs are gated to `main` only; change the `if:` on deploy jobs to add staging branches).
 #
@@ -218,7 +218,7 @@ jobs:
               - 'tsconfig.base.json'
 
   # -------------------------------------------------------------------------
-  # Job: deploy-vercel (pull → build in runner → prebuilt deploy to Vercel)
+  # Job: deploy-vercel (official Vercel CLI: remote build using root vercel.json)
   # -------------------------------------------------------------------------
   deploy-vercel:
     name: deploy · Vercel (buyer web)
@@ -238,36 +238,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Install Vercel CLI
-        run: npm install --global vercel
+        run: npm install --global vercel@latest
 
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=production
-
-      - name: Build
-        run: vercel build --prod
-
-      - name: Deploy
-        run: vercel deploy --prebuilt --prod
+      - name: Deploy to production
+        run: vercel deploy --prod --yes
 
   # -------------------------------------------------------------------------
-  # Job: deploy-railway (CLI uploads repo; build runs on Railway)
+  # Job: deploy-railway (official Railway CLI: upload + build; label = branch + short SHA)
   # -------------------------------------------------------------------------
   # Use a **Project** token: Project → Settings → Tokens. Regenerate if you see "Invalid RAILWAY_TOKEN".
-  # Deployments get `--message` from `git log -1` (short SHA + subject) so the dashboard is not a bare "railway up".
   deploy-railway:
     name: deploy · Railway (API)
     needs: [ci, paths]
@@ -288,13 +268,9 @@ jobs:
       - name: Install Railway CLI
         run: npm install --global @railway/cli@latest
 
-      - name: Deploy
+      - name: Deploy to production
         shell: bash
         run: |
           set -euo pipefail
-          # Label shown in Railway (replaces the generic "railway up")
-          MSG=$(git -c "core.quotepath=false" log -1 --oneline 2>/dev/null | tr '"' "'" | tr '\n' ' ' | head -c 200 || true)
-          if [ -z "${MSG// }" ]; then
-            MSG="ci ${GITHUB_REF_NAME} ${GITHUB_SHA:0:7}"
-          fi
+          MSG="${GITHUB_REF_NAME} ${GITHUB_SHA:0:7}"
           railway up --ci --message "$MSG" --service "$RAILWAY_SERVICE_ID"
