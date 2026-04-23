@@ -7,9 +7,8 @@
 #                    against a real Postgres 15 + Redis 7 in the runner (so Prisma and integration tests work).
 #   2) paths        — looks at the git diff and sets two flags: "did Vercel-related files change?" and
 #                    "did Railway-related files change?" (like "watch paths" on each platform, but in YAML).
-#   3) deploy-vercel / deploy-railway — only run *after* `ci` succeeds, *in parallel with each other*,
-#                    and only on branch `main`, and only if that platform's path group matched
-#                    (or you used "Run workflow" manually — then both can deploy, path check skipped).
+#   3) deploy-vercel / deploy-railway — after `ci`, in parallel, on `main` if paths matched
+#        (Vercel: vercel pull → build → deploy --prebuilt; Railway: `railway up --ci` with job env).
 #   Pull requests: only `ci` (and `paths`) run — no deploy. Branch `develop`: CI runs, no deploy
 #   (the deploy jobs are gated to `main` only; change the `if:` on deploy jobs to add staging branches).
 #
@@ -224,14 +223,8 @@ jobs:
               - 'tsconfig.base.json'
 
   # -------------------------------------------------------------------------
-  # Job: deploy-vercel — production deploy of buyer web (Vercel CLI)
+  # Job: deploy-vercel (pull → build in runner → prebuilt deploy to Vercel)
   # -------------------------------------------------------------------------
-  # needs: [ci, paths]  →  waits for CI to pass and for the paths job to finish.
-  # if-  three parts:
-  #   (1) success()           — ci (and paths) did not fail
-  #   (2) main branch only, push or manual workflow_dispatch
-  #   (3) on manual run, always deploy; on push, only if paths.outputs.vercel == 'true'
-  # See secrets block at the top of this file (VERCEL_*).
   deploy-vercel:
     name: deploy · Vercel (buyer web)
     needs: [ci, paths]
@@ -241,49 +234,45 @@ jobs:
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       (github.event_name == 'workflow_dispatch' || needs.paths.outputs.vercel == 'true')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      # Need a checkout so `vercel deploy` uploads the repo; uses root vercel.json
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Fail early with a clear message if a secret is missing (otherwise npx vercel errors obscurely)
-      - name: Require Vercel secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          missing=()
-          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
-            if [ -z "${!name:-}" ]; then
-              missing+=("$name")
-            fi
-          done
-          if [ "${#missing[@]}" -ne 0 ]; then
-            echo "Set these repository secrets: ${missing[*]}"
-            echo "Vercel → Project → Settings: ORG_ID and PROJECT_ID; Account → Tokens for VERCEL_TOKEN."
-            exit 1
-          fi
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
-      # Vercel runs install + build on *their* servers (see vercel.json). This one-liner is the usual "remote build".
-      # Alternative (build in GitHub, upload artifact): `vercel pull` → `vercel build` → `vercel deploy --prebuilt --prod` with the same env.
-      - name: Deploy to Vercel (production)
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production
+
+      - name: Build
+        run: vercel build --prod
+
+      - name: Deploy
+        run: vercel deploy --prebuilt --prod
 
   # -------------------------------------------------------------------------
-  # Job: deploy-railway — Railway CLI: upload monorepo + build on Railway (Vercel-like "remote build")
+  # Job: deploy-railway (CLI uploads repo; build runs on Railway)
   # -------------------------------------------------------------------------
-  # Third condition on `if` is the same idea as Vercel but using needs.paths.outputs.railway.
-  # Public GraphQL `deploymentTrigger` is not on the v2 schema anymore. Official path is: `railway up --ci` (see Railway CLI docs).
-  # `up` zips the checked-out repo (same layout as a Git deploy) and Nixpacks/railway.toml build runs on Railway.
-  # If the API service is *also* connected to Git, you can get two deploys — prefer Git disconnected for CD-from-Actions only.
+  # Use a **Project** token: Project → Settings → Tokens. Regenerate if you see "Invalid RAILWAY_TOKEN".
+  # Optional: set both RAILWAY_PROJECT_ID and RAILWAY_ENVIRONMENT, or leave both empty (see README).
   deploy-railway:
     name: deploy · Railway (API)
     needs: [ci, paths]
@@ -294,40 +283,23 @@ jobs:
       (github.event_name == 'workflow_dispatch' || needs.paths.outputs.railway == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+      RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Require Railway secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "${RAILWAY_TOKEN:-}" ] || [ -z "${RAILWAY_SERVICE_ID:-}" ]; then
-            echo "Set RAILWAY_TOKEN and RAILWAY_SERVICE_ID in repository secrets."
-            exit 1
-          fi
-          p="${RAILWAY_PROJECT_ID:-}"
-          e="${RAILWAY_ENVIRONMENT:-}"
-          if { [ -n "$p" ] && [ -z "$e" ]; } || { [ -z "$p" ] && [ -n "$e" ]; }; then
-            echo "Set *both* RAILWAY_PROJECT_ID and RAILWAY_ENVIRONMENT, or leave both empty."
-            exit 1
-          fi
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli@latest
 
-      - name: Railway CLI — up (upload + build on Railway)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
+      - name: Deploy
         run: |
           set -euo pipefail
           if [ -n "${RAILWAY_PROJECT_ID:-}" ] && [ -n "${RAILWAY_ENVIRONMENT:-}" ]; then
-            npx --yes @railway/cli@latest up --ci --service "$RAILWAY_SERVICE_ID" --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT"
+            railway up --ci --service "$RAILWAY_SERVICE_ID" --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT"
           else
-            npx --yes @railway/cli@latest up --ci --service "$RAILWAY_SERVICE_ID"
+            railway up --ci --service "$RAILWAY_SERVICE_ID"
           fi

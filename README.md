@@ -173,7 +173,7 @@ Production layout: **React/Vite apps** are served from **Vercel**; the **Fastify
 ### Vercel (buyer web, static)
 
 - **Config:** Root `vercel.json` is the authority for `installCommand`, `buildCommand`, and `outputDirectory` for the buyer app, and for `git.deploymentEnabled` (autodeploy off).
-- **Monorepo:** The Vercel project’s **root directory** should stay the **repository root** (not `apps/web` only) so `pnpm` workspaces and filters work. The Git repo can stay **connected** for PR metadata; with **Ignored build step** and `git.deploymentEnabled`, pushes do not run a production build until **GitHub Actions** runs `npx vercel deploy --prod` (or you deploy manually from the Vercel UI).
+- **Monorepo:** The Vercel project’s **root directory** should stay the **repository root** (not `apps/web` only) so `pnpm` workspaces and filters work. The Git repo can stay **connected** for PR metadata; with **Ignored build step** and `git.deploymentEnabled`, pushes do not run a production build until **GitHub Actions** runs `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod` (or you deploy manually from the Vercel UI).
 - **Node:** The repo targets **Node 22** (`.nvmrc`, root `engines`); the Vercel build uses the same install/build as in `vercel.json`.
 - **Dashboard (still required):** set **public** env vars such as `VITE_API_BASE_URL` (no secrets in git), domains, and (if used) the **Ignored build step** as above.
 
@@ -247,9 +247,11 @@ Add these as **Settings → Secrets and variables → Actions → Repository sec
 | `RAILWAY_PROJECT_ID` | Railway job | **Optional.** Project UUID (URL `.../project/<id>/...`) if the CLI needs `--project` (see below). |
 | `RAILWAY_ENVIRONMENT` | Railway job | **Optional.** Environment name (e.g. `production`) or id; required **together** with `RAILWAY_PROJECT_ID` when you use that pair. The workflow runs `npx @railway/cli@latest up --ci --service …` and adds `--project` / `--environment` only when *both* optional secrets are set. |
 
-`VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` are the same values the Vercel CLI needs for non-interactive `vercel deploy --prod` (as if the project were linked in CI).
+`VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` (with `VERCEL_TOKEN`) are what the Vercel CLI uses for `vercel pull` / `vercel build` / `vercel deploy --prebuilt` in CI (no interactive link).
 
-**Railway vs raw GraphQL:** The old `deploymentTrigger` field is not on the public GraphQL `Mutation` type anymore. The workflow uses the **official CLI** (`railway up --ci`), which uploads the repo and builds on Railway — similar in spirit to `vercel deploy` building on Vercel.
+**Invalid `RAILWAY_TOKEN` in Actions:** Regenerate a token from **the same Railway project** you deploy to — use **Project → Settings → Tokens** (project-scoped) when possible, not an expired or wrong-workspace key.
+
+**Railway vs raw GraphQL:** The workflow uses the **Railway CLI** (`railway up --ci` after `npm install -g @railway/cli`); the old public GraphQL `deploymentTrigger` mutation is not on the current schema. Build runs on Railway’s side after the repo upload.
 
 ## Quality Gate
 
