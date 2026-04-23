@@ -30,8 +30,9 @@
 #     - Where: Vercel project → Settings → General → Project id, or `.vercel/project.json` → "projectId".
 #
 #   RAILWAY_TOKEN
-#     - What: Railway API token to call their GraphQL API.
-#     - Where: railway.app → Account / User → Tokens.
+#     - What: **Project token** (recommended) or account token; used by the Railway CLI in CI.
+#     - Where: Project → Settings → *Tokens* (project-scoped) **or** railway.com/account/tokens (account).
+#       For `railway up` in docs, a **Project token** is the usual choice.
 #
 #   RAILWAY_SERVICE_ID
 #     - What: UUID of the *API* service only (the Node service that runs your app). **Not** the Project ID:
@@ -41,6 +42,11 @@
 #             railway.app/project/.../service/<THIS-UUID-HERE>/...  → copy that middle UUID.
 #         (2) **CLI** — from monorepo root: `npx @railway/cli@latest link` (pick project + this service), then
 #             read `RAILWAY_SERVICE_ID` in the generated `.railway/` config (or use `railway link --json` if your CLI supports it).
+#
+#   RAILWAY_PROJECT_ID (optional) + RAILWAY_ENVIRONMENT (optional; e.g. production or the env id)
+#     - When: Some tokens / `railway up` need `--project` and `--environment` (required together; see Railway CLI docs).
+#     - If both are unset, we run `railway up` with only `--service` (enough for many project-scoped tokens).
+#     - If one is set, you must set both.
 #
 #   More detail: GoRola_app/README.md → "GitHub Actions CD (repository secrets)".
 #
@@ -262,7 +268,8 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      # ORG_ID + PROJECT_ID tell the CLI which Vercel project; TOKEN authenticates. --prod = production.
+      # Vercel runs install + build on *their* servers (see vercel.json). This one-liner is the usual "remote build".
+      # Alternative (build in GitHub, upload artifact): `vercel pull` → `vercel build` → `vercel deploy --prebuilt --prod` with the same env.
       - name: Deploy to Vercel (production)
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -271,11 +278,12 @@ jobs:
         run: npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
 
   # -------------------------------------------------------------------------
-  # Job: deploy-railway — ask Railway to build & deploy the API service (no checkout needed)
+  # Job: deploy-railway — Railway CLI: upload monorepo + build on Railway (Vercel-like "remote build")
   # -------------------------------------------------------------------------
   # Third condition on `if` is the same idea as Vercel but using needs.paths.outputs.railway.
-  # Does not push code: triggers the same "Deploy" their dashboard would, via GraphQL `deploymentTrigger`.
-  # The API service must have Git disconnected or you may get double deploys with native Git hooks.
+  # Public GraphQL `deploymentTrigger` is not on the v2 schema anymore. Official path is: `railway up --ci` (see Railway CLI docs).
+  # `up` zips the checked-out repo (same layout as a Git deploy) and Nixpacks/railway.toml build runs on Railway.
+  # If the API service is *also* connected to Git, you can get two deploys — prefer Git disconnected for CD-from-Actions only.
   deploy-railway:
     name: deploy · Railway (API)
     needs: [ci, paths]
@@ -285,70 +293,41 @@ jobs:
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       (github.event_name == 'workflow_dispatch' || needs.paths.outputs.railway == 'true')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
-      # No checkout: we only need to call the API. Same fail-fast idea as the Vercel "Require secrets" step.
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Require Railway secrets
         shell: bash
         run: |
           set -euo pipefail
           if [ -z "${RAILWAY_TOKEN:-}" ] || [ -z "${RAILWAY_SERVICE_ID:-}" ]; then
             echo "Set RAILWAY_TOKEN and RAILWAY_SERVICE_ID in repository secrets."
-            echo "Railway → service → Settings → service ID; Account → tokens for RAILWAY_TOKEN."
+            exit 1
+          fi
+          p="${RAILWAY_PROJECT_ID:-}"
+          e="${RAILWAY_ENVIRONMENT:-}"
+          if { [ -n "$p" ] && [ -z "$e" ]; } || { [ -z "$p" ] && [ -n "$e" ]; }; then
+            echo "Set *both* RAILWAY_PROJECT_ID and RAILWAY_ENVIRONMENT, or leave both empty."
             exit 1
           fi
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
 
-      # GraphQL: deploymentTrigger. Endpoint + headers per Railway (docs use backboard.railway.com).
-      # If you see "error code: 1010", that is often Cloudflare blocking Python's default User-Agent
-      # (Python-urllib/...). We send a normal client User-Agent + Accept; see RAILWAY_GRAPHQL_URL below.
-      - name: Trigger Railway deployment
+      - name: Railway CLI — up (upload + build on Railway)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
-          RAILWAY_GRAPHQL_URL: "https://backboard.railway.com/graphql/v2"
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
         run: |
-          python3 << 'PY'
-          import json, os, urllib.error, urllib.request
-          service_id = os.environ["RAILWAY_SERVICE_ID"]
-          token = os.environ["RAILWAY_TOKEN"]
-          url = os.environ.get("RAILWAY_GRAPHQL_URL", "https://backboard.railway.com/graphql/v2")
-          q = f'mutation {{ deploymentTrigger(input: {{ serviceId: "{service_id}" }}) {{ id }} }}'
-          body = json.dumps({"query": q}).encode()
-          # Cloudflare (in front of Railway) often returns error 1010 for urllib's default User-Agent
-          req = urllib.request.Request(
-              url,
-              data=body,
-              method="POST",
-              headers={
-                  "Authorization": f"Bearer {token}",
-                  "Content-Type": "application/json",
-                  "Accept": "application/json",
-                  "User-Agent": "GoRola-GitHub-Actions-CD/1.0 (curl-like; not Python-urllib)",
-              },
-          )
-          try:
-              with urllib.request.urlopen(req) as resp:
-                  raw = resp.read().decode()
-                  status = resp.status
-          except urllib.error.HTTPError as e:
-              err_body = e.read().decode(errors="replace") or str(e)
-              print("HTTP", e.code, "from Railway GraphQL. Body (first 4k):")
-              print(err_body[:4096])
-              raise SystemExit(1) from e
-          try:
-              r = json.loads(raw)
-          except json.JSONDecodeError:
-              print("Non-JSON response (status", status, "). Body (first 2k):")
-              print(raw[:2000])
-              raise SystemExit(1)
-          err = r.get("errors")
-          if err:
-              raise SystemExit(f"Railway GraphQL error: {err}; full: {r}")
-          dep = (r.get("data") or {}).get("deploymentTrigger", {}).get("id")
-          if not dep:
-              raise SystemExit(f"Missing deployment id: {r}")
-          print("Railway deployment triggered:", dep)
-          PY
+          set -euo pipefail
+          if [ -n "${RAILWAY_PROJECT_ID:-}" ] && [ -n "${RAILWAY_ENVIRONMENT:-}" ]; then
+            npx --yes @railway/cli@latest up --ci --service "$RAILWAY_SERVICE_ID" --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT"
+          else
+            npx --yes @railway/cli@latest up --ci --service "$RAILWAY_SERVICE_ID"
+          fi

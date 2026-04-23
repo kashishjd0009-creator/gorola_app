@@ -168,7 +168,7 @@ Production layout: **React/Vite apps** are served from **Vercel**; the **Fastify
 | **Vercel** | Project → **Settings** → *Build and Deployment* → **Ignored build step** → **Behavior: Don’t build anything** (command is `exit 0` — no build on Git-driven deploy attempts). | Root `vercel.json` includes `"git": { "deploymentEnabled": false }` so the repo records the same policy. |
 | **Railway** | API service → **Settings** → **Source** (or **Git**): **Disconnect** the GitHub repository. New commits no longer auto-deploy; you trigger a deploy from Railway (CLI, dashboard, or API) or from GitHub Actions. | Not available in `railway.toml` (autodeploy is a connection/setting, not a build key). |
 
-**Continuous delivery in this repo:** After the `ci` job passes on **push to `main`** (or a manual **Run workflow** on `main`), two jobs run **in parallel**: **deploy · Vercel** and **deploy · Railway** (see `.github/workflows/ci.yml`). A **`paths` job** uses git diff (via [`dorny/paths-filter`](https://github.com/dorny/paths-filter)) with **watch-style globs** so **Vercel** deploys only when buyer-web–related files change, and **Railway** only when API-related paths change (aligned with the Railway dashboard `apps/**` + `packages/shared` idea). Root **workspace/lock** files are included under **both** filters so dependency or `tsconfig` changes can redeploy either side. **Manual** `workflow_dispatch` on `main` **skips** the path check and runs both deploys. Deploy jobs are skipped on **pull requests** and on **non-`main`** branches unless you change the `if:` conditions. Ensure the [GitHub Actions CD secrets](#github-actions-cd-repository-secrets) below are set, or those jobs will fail with a clear message.
+**Continuous delivery in this repo:** After the `ci` job passes on **push to `main`** (or a manual **Run workflow** on `main`), two jobs run **in parallel**: **deploy · Vercel** and **deploy · Railway** (see `.github/workflows/ci-cd.yml`). A **`paths` job** uses git diff (via [`dorny/paths-filter`](https://github.com/dorny/paths-filter)) with **watch-style globs** so **Vercel** deploys only when buyer-web–related files change, and **Railway** only when API-related paths change (aligned with the Railway dashboard `apps/**` + `packages/shared` idea). Root **workspace/lock** files are included under **both** filters so dependency or `tsconfig` changes can redeploy either side. **Manual** `workflow_dispatch` on `main` **skips** the path check and runs both deploys. Deploy jobs are skipped on **pull requests** and on **non-`main`** branches unless you change the `if:` conditions. Ensure the [GitHub Actions CD secrets](#github-actions-cd-repository-secrets) below are set, or those jobs will fail with a clear message.
 
 ### Vercel (buyer web, static)
 
@@ -192,7 +192,7 @@ Production layout: **React/Vite apps** are served from **Vercel**; the **Fastify
 ### Railway (API)
 
 - **Config:** `railway.toml` defines the Nixpacks **builder**, **buildCommand**, **startCommand**, and **restart** policy. `nixpacks.toml` pins **Node 22** for the Nixpacks image. `Procfile` sets the `web` process to match the start command.
-- **Monorepo:** The Railway service **root directory** must be the **Git repo root** (`GoRola_app`) — not `apps/api` alone — so `pnpm-workspace.yaml` and `--filter` work. With **Git disconnected**, deployments are triggered by the Railway dashboard/CLI, or by **GitHub Actions** (GraphQL `deploymentTrigger` after CI passes).
+- **Monorepo:** The Railway service **root directory** must be the **Git repo root** (`GoRola_app`) — not `apps/api` alone — so `pnpm-workspace.yaml` and `--filter` work. With **Git disconnected**, GitHub Actions runs **`npx @railway/cli@latest up --ci`** (uploads the checked-out monorepo; Nixpacks build runs on Railway) after CI passes.
 - **Start behavior:** `pnpm --filter @gorola/api start` runs Prisma migrate deploy, then the compiled server. The API listens on the port the platform provides (e.g. `PORT` in `.env.example`).
 
 `railway.toml` (repository root):
@@ -242,12 +242,14 @@ Add these as **Settings → Secrets and variables → Actions → Repository sec
 | `VERCEL_TOKEN` | Vercel job | [Vercel](https://vercel.com/account/tokens) → *Create Token* (scope: account/team that owns the project). |
 | `VERCEL_ORG_ID` | Vercel job | Your team’s **Team ID**: Vercel → team **Settings** → **General** → **Team ID** (same value as `"orgId"` in `.vercel/project.json` after `vercel link` at the monorepo root). |
 | `VERCEL_PROJECT_ID` | Vercel job | *Project* → *Settings* → *General* → **Project ID**, or `projectId` in `.vercel/project.json`. |
-| `RAILWAY_TOKEN` | Railway job | [Railway](https://railway.app) → *Account* → *Tokens* (or **User settings** → **Tokens**). |
-| `RAILWAY_SERVICE_ID` | Railway job | **Not** the Project ID. A project can have many services (API, Postgres, Redis); the deploy API needs the **Node API** service’s UUID. If **Settings** does not show a “Service ID” row (often true in the current UI), get it from the **browser URL** with that service open: `.../service/<serviceId>/...`. Or run `npx @railway/cli@latest link` in the monorepo and read the service id from `.railway/` (gitignored). |
+| `RAILWAY_TOKEN` | Railway job | Prefer a **Project token** (Project → *Settings* → *Tokens*) for `railway up` in CI; an **account** token from [Account → Tokens](https://railway.com/account/tokens) can work but may need extra flags. |
+| `RAILWAY_SERVICE_ID` | Railway job | The **Node API** service UUID (**not** the project id). From the **URL** with that service open: `.../service/<serviceId>/...`, or `npx @railway/cli@latest link` → `.railway/`. |
+| `RAILWAY_PROJECT_ID` | Railway job | **Optional.** Project UUID (URL `.../project/<id>/...`) if the CLI needs `--project` (see below). |
+| `RAILWAY_ENVIRONMENT` | Railway job | **Optional.** Environment name (e.g. `production`) or id; required **together** with `RAILWAY_PROJECT_ID` when you use that pair. The workflow runs `npx @railway/cli@latest up --ci --service …` and adds `--project` / `--environment` only when *both* optional secrets are set. |
 
 `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` are the same values the Vercel CLI needs for non-interactive `vercel deploy --prod` (as if the project were linked in CI).
 
-**Railway deploy: “error code: 1010” in Actions:** Railway’s API sits behind Cloudflare. The default `User-Agent` from Python’s HTTP client is often blocked (browser-integrity / bot heuristics). The workflow uses a custom `User-Agent` and the endpoint `https://backboard.railway.com/graphql/v2` for that reason. If it still fails, check the log body for a Ray ID and Railway status.
+**Railway vs raw GraphQL:** The old `deploymentTrigger` field is not on the public GraphQL `Mutation` type anymore. The workflow uses the **official CLI** (`railway up --ci`), which uploads the repo and builds on Railway — similar in spirit to `vercel deploy` building on Vercel.
 
 ## Quality Gate
 
