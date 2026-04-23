@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  /* AGENT_ENTRY / design system — used as Tailwind v4 theme tokens & CSS vars */
+  --color-gorola-pine: #1d3d2f;
+  --color-gorola-saffron: #e8833a;
+  --color-gorola-fog: #f4f1ec;
+  --color-gorola-charcoal: #1c1c1e;
+  --color-gorola-amber: #f5a623;
+  --color-gorola-slate: #3a4a5c;
+  --color-gorola-slate-mist: #e8ecf0;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+}
+
+@layer base {
+  body {
+    @apply m-0 min-h-dvh font-sans text-gorola-charcoal antialiased;
+    background-color: var(--color-gorola-fog);
+  }
+}
+
+@layer components {
+  .app-root {
+    @apply min-h-dvh flex items-center justify-center px-4 py-12;
+  }
+
+  .app-panel {
+    @apply w-full max-w-md rounded-2xl border p-8 shadow-sm;
+    border-color: color-mix(in srgb, var(--color-gorola-pine) 25%, transparent);
+    background: color-mix(in srgb, #fff 40%, var(--color-gorola-fog));
+  }
+
+  .app-kicker {
+    @apply mb-1 text-sm font-semibold tracking-wide;
+    color: var(--color-gorola-saffron);
+  }
+
+  .app-title {
+    @apply mb-3 font-serif text-2xl sm:text-3xl;
+    color: var(--color-gorola-pine);
+  }
+
+  .app-copy {
+    @apply text-sm leading-relaxed;
+  }
+
+  .app-code {
+    @apply break-all rounded px-1.5 py-0.5 text-xs;
+    background: var(--color-gorola-slate-mist);
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter @gorola/shared build && pnpm --filter @gorola/web build",
+  "outputDirectory": "apps/web/dist"
+}
