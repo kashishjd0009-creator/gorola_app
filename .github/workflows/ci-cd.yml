@@ -68,16 +68,6 @@ permissions:
   contents: read
   pull-requests: read
 
-# Environment for the *ci* job only: tests talk to service containers on 127.0.0.1.
-# (GitHub's `postgres` hostname does not work from job steps; use 127.0.0.1 and published ports.)
-# NOTE: the `postgres` service hostname in options is for the *container network*; job steps are on the VM host.
-env:
-  DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
-  DATABASE_URL_TEST: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
-  DIRECT_URL: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
-  REDIS_URL: "redis://127.0.0.1:6379"
-  NODE_ENV: test
-
 jobs:
   # -------------------------------------------------------------------------
   # Job: ci — quality gate (runs on every trigger: push, PR, manual)
@@ -88,6 +78,14 @@ jobs:
     name: lint · typecheck · test · build
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Scoped to this job only (do *not* use workflow-level env: — deploy jobs would inherit test DB vars in logs / env)
+    # Tests talk to service containers on 127.0.0.1 (not hostname `postgres`; job steps are on the VM host).
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
+      DATABASE_URL_TEST: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
+      DIRECT_URL: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
+      REDIS_URL: "redis://127.0.0.1:6379"
+      NODE_ENV: test
     # Service containers: Postgres and Redis on localhost ports, same major versions as prod intent.
     services:
       postgres:
@@ -303,33 +301,52 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
 
-      # HTTP POST to Railway's GraphQL API; RAILWAY_SERVICE_ID is the Node API *service* UUID
+      # GraphQL: deploymentTrigger. Endpoint + headers per Railway (docs use backboard.railway.com).
+      # If you see "error code: 1010", that is often Cloudflare blocking Python's default User-Agent
+      # (Python-urllib/...). We send a normal client User-Agent + Accept; see RAILWAY_GRAPHQL_URL below.
       - name: Trigger Railway deployment
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
-        # mutation deploymentTrigger → starts a new deploy on Railway (same as clicking Deploy in the UI for that service)
+          RAILWAY_GRAPHQL_URL: "https://backboard.railway.com/graphql/v2"
         run: |
           python3 << 'PY'
           import json, os, urllib.error, urllib.request
           service_id = os.environ["RAILWAY_SERVICE_ID"]
           token = os.environ["RAILWAY_TOKEN"]
+          url = os.environ.get("RAILWAY_GRAPHQL_URL", "https://backboard.railway.com/graphql/v2")
           q = f'mutation {{ deploymentTrigger(input: {{ serviceId: "{service_id}" }}) {{ id }} }}'
           body = json.dumps({"query": q}).encode()
+          # Cloudflare (in front of Railway) often returns error 1010 for urllib's default User-Agent
           req = urllib.request.Request(
-              "https://backboard.railway.app/graphql/v2",
+              url,
               data=body,
-              headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
               method="POST",
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "User-Agent": "GoRola-GitHub-Actions-CD/1.0 (curl-like; not Python-urllib)",
+              },
           )
           try:
               with urllib.request.urlopen(req) as resp:
-                  r = json.loads(resp.read().decode())
+                  raw = resp.read().decode()
+                  status = resp.status
           except urllib.error.HTTPError as e:
-              raise SystemExit(e.read().decode() or str(e)) from e
+              err_body = e.read().decode(errors="replace") or str(e)
+              print("HTTP", e.code, "from Railway GraphQL. Body (first 4k):")
+              print(err_body[:4096])
+              raise SystemExit(1) from e
+          try:
+              r = json.loads(raw)
+          except json.JSONDecodeError:
+              print("Non-JSON response (status", status, "). Body (first 2k):")
+              print(raw[:2000])
+              raise SystemExit(1)
           err = r.get("errors")
           if err:
-              raise SystemExit(f"Railway GraphQL error: {err}")
+              raise SystemExit(f"Railway GraphQL error: {err}; full: {r}")
           dep = (r.get("data") or {}).get("deploymentTrigger", {}).get("id")
           if not dep:
               raise SystemExit(f"Missing deployment id: {r}")

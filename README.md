@@ -247,6 +247,8 @@ Add these as **Settings → Secrets and variables → Actions → Repository sec
 
 `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` are the same values the Vercel CLI needs for non-interactive `vercel deploy --prod` (as if the project were linked in CI).
 
+**Railway deploy: “error code: 1010” in Actions:** Railway’s API sits behind Cloudflare. The default `User-Agent` from Python’s HTTP client is often blocked (browser-integrity / bot heuristics). The workflow uses a custom `User-Agent` and the endpoint `https://backboard.railway.com/graphql/v2` for that reason. If it still fails, check the log body for a Ray ID and Railway status.
+
 ## Quality Gate
 
 Before committing:
