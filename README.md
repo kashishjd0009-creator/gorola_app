@@ -163,10 +163,10 @@ Production layout: **React/Vite apps** are served from **Vercel**; the **Fastify
 
 **Disabling platform Git autodeploy (so only CI/CD or manual release ships code):**
 
-| Platform | How we turn off push-to-deploy from Git | Optional “as code” |
-|----------|----------------------------------------|--------------------|
-| **Vercel** | Project → **Settings** → *Build and Deployment* → **Ignored build step** → **Behavior: Don’t build anything** (command is `exit 0` — no build on Git-driven deploy attempts). | Root `vercel.json` includes `"git": { "deploymentEnabled": false }` so the repo records the same policy. |
-| **Railway** | API service → **Settings** → **Source** (or **Git**): **Disconnect** the GitHub repository. New commits no longer auto-deploy; you trigger a deploy from Railway (CLI, dashboard, or API) or from GitHub Actions. | Not available in `railway.toml` (autodeploy is a connection/setting, not a build key). |
+| Platform    | How we turn off push-to-deploy from Git                                                                                                                                                                           | Optional “as code”                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Vercel**  | Project → **Settings** → _Build and Deployment_ → **Ignored build step** → **Behavior: Don’t build anything** (command is `exit 0` — no build on Git-driven deploy attempts).                                     | Root `vercel.json` includes `"git": { "deploymentEnabled": false }` so the repo records the same policy. |
+| **Railway** | API service → **Settings** → **Source** (or **Git**): **Disconnect** the GitHub repository. New commits no longer auto-deploy; you trigger a deploy from Railway (CLI, dashboard, or API) or from GitHub Actions. | Not available in `railway.toml` (autodeploy is a connection/setting, not a build key).                   |
 
 **Continuous delivery in this repo:** After the `ci` job passes on **push to `main`** (or a manual **Run workflow** on `main`), two jobs run **in parallel**: **deploy · Vercel** and **deploy · Railway** (see `.github/workflows/ci-cd.yml`). A **`paths` job** uses git diff (via [`dorny/paths-filter`](https://github.com/dorny/paths-filter)) with **watch-style globs** so **Vercel** deploys only when buyer-web–related files change, and **Railway** only when API-related paths change (aligned with the Railway dashboard `apps/**` + `packages/shared` idea). Root **workspace/lock** files are included under **both** filters so dependency or `tsconfig` changes can redeploy either side. **Manual** `workflow_dispatch` on `main` **skips** the path check and runs both deploys. Deploy jobs are skipped on **pull requests** and on **non-`main`** branches unless you change the `if:` conditions. Ensure the [GitHub Actions CD secrets](#github-actions-cd-repository-secrets) below are set, or those jobs will fail with a clear message.
 
@@ -237,13 +237,13 @@ web: pnpm --filter @gorola/api start
 
 Add these as **Settings → Secrets and variables → Actions → Repository secrets** in GitHub. They are only used by the `deploy-vercel` and `deploy-railway` jobs on `main`.
 
-| Secret | Used by | Where to get it |
-|--------|---------|-----------------|
-| `VERCEL_TOKEN` | Vercel job | [Vercel](https://vercel.com/account/tokens) → *Create Token* (scope: account/team that owns the project). |
-| `VERCEL_ORG_ID` | Vercel job | Your team’s **Team ID**: Vercel → team **Settings** → **General** → **Team ID** (same value as `"orgId"` in `.vercel/project.json` after `vercel link` at the monorepo root). |
-| `VERCEL_PROJECT_ID` | Vercel job | *Project* → *Settings* → *General* → **Project ID**, or `projectId` in `.vercel/project.json`. |
-| `RAILWAY_TOKEN` | Railway job | Prefer a **Project token** (Project → *Settings* → *Tokens*) for `railway up` in CI; an **account** token from [Account → Tokens](https://railway.com/account/tokens) can work but may need extra flags. |
-| `RAILWAY_SERVICE_ID` | Railway job | The **Node API** service UUID (**not** the project id). From the **URL** with that service open: `.../service/<serviceId>/...`, or `npx @railway/cli@latest link` → `.railway/`. |
+| Secret               | Used by     | Where to get it                                                                                                                                                                                          |
+| -------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VERCEL_TOKEN`       | Vercel job  | [Vercel](https://vercel.com/account/tokens) → _Create Token_ (scope: account/team that owns the project).                                                                                                |
+| `VERCEL_ORG_ID`      | Vercel job  | Your team’s **Team ID**: Vercel → team **Settings** → **General** → **Team ID** (same value as `"orgId"` in `.vercel/project.json` after `vercel link` at the monorepo root).                            |
+| `VERCEL_PROJECT_ID`  | Vercel job  | _Project_ → _Settings_ → _General_ → **Project ID**, or `projectId` in `.vercel/project.json`.                                                                                                           |
+| `RAILWAY_TOKEN`      | Railway job | Prefer a **Project token** (Project → _Settings_ → _Tokens_) for `railway up` in CI; an **account** token from [Account → Tokens](https://railway.com/account/tokens) can work but may need extra flags. |
+| `RAILWAY_SERVICE_ID` | Railway job | The **Node API** service UUID (**not** the project id). From the **URL** with that service open: `.../service/<serviceId>/...`, or `npx @railway/cli@latest link` → `.railway/`.                         |
 
 `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` (with `VERCEL_TOKEN`) are what the Vercel CLI needs for `npx vercel deploy --prod` in CI. **Railway** only needs `RAILWAY_TOKEN` and `RAILWAY_SERVICE_ID` (`--message` is set to `branch` + short SHA for a readable deploy label).
 
