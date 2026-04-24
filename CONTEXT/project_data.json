@@ -1,0 +1,295 @@
+{
+  "project": {
+    "name": "GoRola",
+    "tagline": "Mussoorie, delivered.",
+    "type": "Quick Commerce Platform — Hills Edition",
+    "version": "0.1.0",
+    "status": "In Development",
+    "region": "Mussoorie, Uttarakhand, India",
+    "locale": "en-IN",
+    "currencies": ["INR"],
+    "language_support": ["en", "hi"]
+  },
+
+  "architecture": {
+    "pattern": "Modular Monolith",
+    "layer_pattern": "Controller → Service → Repository",
+    "language": "TypeScript (strict mode, no any)",
+    "runtime": "Node.js 20 LTS",
+    "framework": "Fastify v4 (backend) + React 18 + Vite (frontend)",
+    "orm": "Prisma v5 with PostgreSQL 15",
+    "database": "PostgreSQL 15 (primary) + Redis 7 (cache, sessions, queues)",
+    "queue": "BullMQ (Redis-backed)",
+    "realtime": "Socket.IO v4 (WebSocket for live tracking, order status)",
+    "testing": "Vitest (unit + integration) + Supertest (API) + Playwright (E2E)",
+    "tdd": "STRICT — tests written FIRST, always. Red → Green → Refactor.",
+    "deployment": "Railway.app (free tier, supports PostgreSQL + Redis + Node)",
+    "ci_cd": "GitHub Actions",
+    "monorepo": "pnpm workspaces",
+    "repo_structure": "apps/web, apps/api, packages/shared, packages/ui"
+  },
+
+  "domain_actors": {
+    "buyer": {
+      "description": "Customer placing orders via web browser",
+      "platforms": ["web (responsive, 1440px + 768px + 390px)"],
+      "note": "Web ONLY for v1. No native mobile app."
+    },
+    "store_owner": {
+      "description": "Shop owner who receives and manages orders, adds products, sets discounts/offers/advertisements",
+      "platforms": ["web (store panel dashboard)"]
+    },
+    "admin": {
+      "description": "GoRola super-admin who can see all store sales, manage users, categories, feature flags, weather mode",
+      "platforms": ["web (admin dashboard)"]
+    },
+    "delivery_rider": {
+      "description": "NOT in v1. Store owners use own delivery staff. Rider interface is a FUTURE MODULE. Code must be modular enough to plug in with zero rewrites.",
+      "platforms": ["future: progressive web app or native"],
+      "status": "DEFERRED — stub interfaces only in v1"
+    }
+  },
+
+  "categories_v1": ["Groceries", "Medical"],
+  "categories_future": ["Water & Drinks", "Snacks", "Gas & Essentials", "Other"],
+
+  "stores_v1": {
+    "count": 2,
+    "note": "Only two partner stores in v1. Store management panel must support N stores without code changes."
+  },
+
+  "design_system": {
+    "source": "Figma export — Design_Pahadi_UI_UX_System.zip",
+    "colors": {
+      "pine": "#1D3D2F",
+      "pine_dark": "#162E23",
+      "pine_light": "#2D5A40",
+      "saffron": "#E8833A",
+      "fog_white": "#F4F1EC",
+      "charcoal": "#1C1C1E",
+      "amber": "#F5A623",
+      "slate": "#3A4A5C",
+      "slate_mist": "#E8ECF0"
+    },
+    "typography": {
+      "display": "Playfair Display (serif) — hero, section titles",
+      "body": "DM Sans — all UI, labels, body text",
+      "hindi": "Noto Sans Devanagari — Hindi fallback text"
+    },
+    "fonts_cdn": "Google Fonts — Playfair Display, DM Sans, Noto Sans Devanagari",
+    "animations": "GSAP v3 (ScrollTrigger, Timeline) — all scroll animations and page transitions",
+    "ui_library": "shadcn/ui components (Radix UI primitives) + Tailwind CSS v4",
+    "scroll": "Lenis smooth scroll + GSAP ScrollTrigger",
+    "premium_feel": "Topographic SVG backgrounds, noise texture overlays, fog drift animations, amber pulse ETA banners"
+  },
+
+  "weather_mode": {
+    "description": "System-wide UI state toggle when weather is bad (fog, rain, snow)",
+    "controlled_by": "admin panel toggle",
+    "effects": {
+      "background": "#F4F1EC → #E8ECF0",
+      "nav_color": "#1D3D2F → #3A4A5C",
+      "eta_banner": "amber pulse → deep blue slate",
+      "copy": "Honest and calm — never alarming",
+      "delivery_mode": "Instant → Scheduled time windows"
+    }
+  },
+
+  "feature_flags": {
+    "provider": "Simple DB-backed feature flags (no external service for v1)",
+    "flags": [
+      "WEATHER_MODE_ACTIVE",
+      "RIDER_INTERFACE_ENABLED",
+      "REAL_TIME_LOCATION_ENABLED",
+      "SCHEDULED_DELIVERY_ENABLED",
+      "ADVERTISEMENTS_ENABLED",
+      "OFFERS_ENABLED",
+      "DISCOUNTS_ENABLED",
+      "UPI_PAYMENT_ENABLED",
+      "CARD_PAYMENT_ENABLED",
+      "LOW_STOCK_ALERTS_ENABLED"
+    ]
+  },
+
+  "payment_methods": {
+    "v1": ["COD (default, pre-selected)", "UPI (flag-gated)", "Card (flag-gated)"],
+    "payment_gateway": "Razorpay (UPI + Card when enabled)",
+    "cod_default": true
+  },
+
+  "delivery": {
+    "v1_model": "Store owner dispatches own delivery staff",
+    "tracking": "Manual status updates by store owner (Order Placed → Preparing → Out for Delivery → Delivered)",
+    "real_time_location": "FUTURE — Socket.IO infrastructure ready, rider location tracking stubbed",
+    "eta": "Manually configured per store + distance estimate (no live GPS in v1)"
+  },
+
+  "observability": {
+    "logging": "Pino (structured JSON logs, log levels: trace/debug/info/warn/error/fatal)",
+    "tracing": "OpenTelemetry SDK → Jaeger (self-hosted on Railway) OR console exporter for dev",
+    "metrics": "Prometheus metrics endpoint (/metrics) → Grafana (future)",
+    "health_check": "GET /health → { status, db, redis, timestamp, version }",
+    "request_id": "UUID v4 per request, propagated through all service calls"
+  },
+
+  "authentication": {
+    "buyer": "Phone OTP (SMS via Fast2SMS — India, free tier) + JWT access/refresh tokens",
+    "store_owner": "Email/Password + TOTP 2FA (otplib) + JWT",
+    "admin": "Email/Password + TOTP 2FA (mandatory) + JWT",
+    "jwt": {
+      "access_token_ttl": "15m",
+      "refresh_token_ttl": "7d",
+      "algorithm": "RS256",
+      "storage": "HttpOnly Secure SameSite=Strict cookie (no localStorage)"
+    },
+    "rate_limiting": "Fastify rate-limit plugin — 5 OTP requests/15min per phone, 10 login attempts/15min per IP"
+  },
+
+  "security": {
+    "cors": "Strict origin whitelist — env-configured",
+    "helmet": "fastify-helmet — all security headers",
+    "input_validation": "Zod schemas — ALL inputs validated at controller boundary",
+    "sql_injection": "Prisma parameterized queries only — no raw SQL unless absolutely necessary (and reviewed)",
+    "xss": "DOMPurify on frontend for any user-generated content rendered as HTML",
+    "csrf": "Double-submit cookie pattern for state-changing requests",
+    "secrets": "Environment variables only — never in source. dotenv-safe enforces all required vars.",
+    "uploads": "Multer + file type validation + virus scan stub (ClamAV future)"
+  },
+
+  "database_schema_entities": [
+    "User (buyer)",
+    "Store",
+    "StoreOwner",
+    "Admin",
+    "Category",
+    "Product",
+    "ProductVariant",
+    "Cart",
+    "CartItem",
+    "Order",
+    "OrderItem",
+    "OrderStatusHistory",
+    "Address",
+    "Advertisement",
+    "Offer",
+    "Discount",
+    "FeatureFlag",
+    "OTPLog",
+    "AuditLog",
+    "DeliveryRider (stub — empty table, ready for future)",
+    "RiderLocation (stub — empty table, ready for future)",
+    "StockMovement (append-only inventory ledger — every stock change recorded)",
+    "ProductVariant fields to add: lowStockThreshold (Int default 5), isLowStock (Boolean default false), isInStock (Boolean default true)"
+  ],
+
+  "api_versioning": "URL prefix — /api/v1/...",
+
+  "test_strategy": {
+    "philosophy": "TDD is NON-NEGOTIABLE. Write failing test → make it pass → refactor.",
+    "unit_tests": "Service layer — pure business logic. Mock all dependencies.",
+    "integration_tests": "Repository layer — real DB (test schema). Controller layer — real HTTP with Supertest.",
+    "e2e_tests": "Playwright — critical buyer journeys (browse → cart → checkout → confirmation)",
+    "test_database": "Separate 'gorola_test' database — migrated fresh before test suite",
+    "coverage_threshold": "80% lines minimum. 100% on auth and payment flows.",
+    "test_categories_per_feature": [
+      "Happy path (normal flow)",
+      "Edge cases (empty state, boundary values, race conditions)",
+      "Error cases (invalid input, network failure, DB error)",
+      "Security cases (SQL injection attempts, unauthorized access, token tampering)"
+    ]
+  },
+
+  "environment_variables_required": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "JWT_PRIVATE_KEY",
+    "JWT_PUBLIC_KEY",
+    "FAST2SMS_API_KEY",
+    "RAZORPAY_KEY_ID",
+    "RAZORPAY_KEY_SECRET",
+    "CORS_ALLOWED_ORIGINS",
+    "APP_ENV (development|test|production)",
+    "LOG_LEVEL",
+    "PORT",
+    "FRONTEND_URL",
+    "OTEL_EXPORTER_ENDPOINT"
+  ],
+
+  "free_deployment_services": {
+    "primary": "Railway.app",
+    "services_on_railway": [
+      "Node.js API (Fastify)",
+      "PostgreSQL 15",
+      "Redis 7"
+    ],
+    "frontend": "Vercel (free tier — React/Vite static build)",
+    "ci_cd": "GitHub Actions (free for public repos)"
+  },
+
+  "build_sequence": {
+    "phase_1_nfr": {
+      "name": "NFR Foundation",
+      "steps": [
+        "1.1 Monorepo setup (pnpm workspaces, tsconfig, eslint, prettier)",
+        "1.2 Database schema design + Prisma migrations",
+        "1.3 Repository layer (all entities) + unit tests",
+        "1.4 Fastify server bootstrap + plugins (helmet, cors, rate-limit, request-id)",
+        "1.5 Authentication system (OTP, JWT, refresh) + full TDD",
+        "1.6 Pino logging + OpenTelemetry tracing setup",
+        "1.7 Health check API (/health)",
+        "1.8 GitHub Actions CI (lint + test + build on every PR)",
+        "1.9 Railway deployment + environment setup",
+        "1.10 Smoke test — deploy to Railway, hit /health from the internet"
+      ]
+    },
+    "phase_2_buyer_web": {
+      "name": "Buyer Web Experience",
+      "steps": [
+        "2.1 Vite + React + Tailwind + shadcn/ui setup",
+        "2.2 Design tokens + global CSS (GoRola theme)",
+        "2.3 Lenis smooth scroll + GSAP setup",
+        "2.4 Hero section (GSAP ScrollTrigger animations)",
+        "2.5 Category browsing (Groceries, Medical)",
+        "2.6 Product listing + search",
+        "2.7 Product detail page",
+        "2.8 Cart (sidebar on desktop, drawer on mobile)",
+        "2.9 Address entry (landmark-based, no pin code)",
+        "2.10 OTP login flow",
+        "2.11 Checkout + COD flow",
+        "2.12 Order confirmation page",
+        "2.13 Order status tracking page",
+        "2.14 Weather Mode toggle (system-wide UI state)"
+      ]
+    },
+    "phase_3_store_panel": {
+      "name": "Store Owner Panel",
+      "steps": [
+        "3.1 Store auth (email + TOTP 2FA)",
+        "3.2 Store dashboard (pending orders, today's revenue)",
+        "3.3 Incoming order management (Accept / Prepare / Dispatch)",
+        "3.4 Product management (CRUD, variants, stock)",
+        "3.5 Advertisement management (banner upload, schedule)",
+        "3.6 Offer & discount management (percentage, flat, coupon codes)",
+        "3.7 Order history + basic analytics"
+      ]
+    },
+    "phase_4_admin": {
+      "name": "Admin Panel",
+      "steps": [
+        "4.1 Admin auth (email + mandatory TOTP 2FA)",
+        "4.2 All-stores sales dashboard (revenue, orders, by store)",
+        "4.3 User management (buyers, store owners)",
+        "4.4 Store management (add, suspend, configure)",
+        "4.5 Category management",
+        "4.6 Feature flag management (UI toggle for all flags)",
+        "4.7 Weather Mode control toggle",
+        "4.8 Audit log viewer",
+        "4.9 Advertisement approval"
+      ]
+    },
+    "phase_5_future": {
+      "name": "Rider Interface (Future Module — Do Not Build Yet)",
+      "note": "All DB tables (DeliveryRider, RiderLocation), API routes (/api/v1/rider/...), and Socket.IO events are STUBBED with TODO comments. Zero implementation. Plug-in ready."
+    }
+  }
+}
