@@ -8,9 +8,9 @@
 
 ## 📍 Last Updated
 
-- **Date:** 2026-04-25
-- **Session Summary:** **Vercel buyer web is live** — production build uses `vercel.json`; **`VITE_API_BASE_URL`** points at Railway API (`https://gorolaapp-production.up.railway.app`). **Browser `GET /api/health` from the Vercel UI shows `data.status: "ok"` (HTTP 200)** — CORS + connectivity verified end-to-end. **Phase 1.10 is complete** (checklist: production health, CI green, no secrets in git — all [x]). **CI+CD** is a **single** workflow, **`GoRola_app/.github/workflows/ci-cd.yml`**: `ci` (lint, typecheck, test, build on Postgres 15 + Redis 7) → on **`main`**, after green CI, **path-filtered** `deploy-vercel` and `deploy-railway` in parallel (PRs / `develop`: CI only, no deploy). **Working** with repo `VERCEL_*` and `RAILWAY_*` Action secrets.
-- **Next Session Must Start With:** **Phase 2** buyer web: shadcn, routing, product UX — and/or **HTTP** for orders (`POST /api/v1/orders` → `OrderService`) if you prioritize API wiring first. Optional **1.8** follow-ups: PR **coverage** comment, **branch protection** in GitHub (not blocking). Local: `pnpm ci:quality` in `GoRola_app/`.
+- **Date:** 2026-04-28
+- **Session Summary:** **Phase 2.1 complete** — **React Router v6** + **TanStack Query** (`createAppQueryClient`, `staleTime: 60s`, `retry: 2`) + **Zustand** stores (`auth`, `cart`, `weather`, `feature-flags`) + **Axios** `src/lib/api.ts` (`createApiClient`, singleton `api` wired to `useAuthStore`, 401 → `POST /api/v1/auth/buyer/refresh` + one retry, `withCredentials: true`) + **RHF / resolvers / Zod**. **Vitest + RTL** in `apps/web` (`vitest.config.ts` merges `vite.config`, `src/test/setup.ts`), **22** web unit tests (TDD RED → GREEN per area). **Main** uses relative `./lib/query-client` import to satisfy ESLint import groups. **`pnpm ci:quality`** green (API 277 + web 22 tests).
+- **Next Session Must Start With:** **Phase 2.2** design tokens / `globals.css` split, or **2.4** buyer layout + nav — or **API** `POST /api/v1/orders` → `OrderService`. Optional: `ThemeProvider` + `<Toaster />` for shadcn toasts.
 
 ---
 
@@ -19,7 +19,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                |
 | ------- | -------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub |
-| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | 2.1: Vite + React + Tailwind + prod shell done; shadcn + full UX still open                                                                          |
+| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1 complete** (router, query, stores, api, RHF+Zod, Vitest); next **2.2** / **2.4** or full product UX                                                                 |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                               |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                               |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                |
@@ -57,14 +57,16 @@
 - **Session 28 (1.9 Vercel live + API smoke from browser):** Vercel project deploys `apps/web` per `vercel.json`; production **`VITE_API_BASE_URL`** → Railway API; frontend calls **`GET /api/health`** — **`data.status: "ok"`**, HTTP 200 — confirms **CORS** and connectivity. `current_state` Important URLs updated.
 - **Session 29 (Phase 1.10 + status text sync):** **1.10** was already complete in the checklist (all items [x]); **Overall Phase Status** and **In Progress** updated so Phase 1 reads **complete** and focus moves to **Phase 2**.
 - **Session 30 (1.8 + monorepo doc — unified CI+CD):** `current_state` updated to match **`.github/workflows/ci-cd.yml`**: one workflow for **CI** + **path filters** + **Vercel** + **Railway** deploys; removed stale **`ci.yml` / `deploy.yml`** references in this file.
+- **Session 31 (Phase 2.1 shadcn):** `pnpm dlx shadcn@latest init -t vite -y -b radix -p nova` in `apps/web` + add component set; lockfile updated (removed unused `@fontsource-variable/geist`); strict TS/ESLint fixes in generated `ui` files.
+- **Session 32 (Phase 2.1 stack, TDD):** Router, Query, Zustand, `api.ts`, RHF+Zod, Vitest/RTL, `HomePage` + `App` routes; colocated `*.test.ts` / `*.test.tsx`.
 
 ---
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2** buyer web — e.g. **shadcn/ui**, app shell, routes, catalog/browse UX — and/or **order HTTP** on the API when you pick it up.
+**Current Task:** **Phase 2.2+** — design tokens, buyer shell, catalog UX — or **order HTTP** on the API.
 
-**Exact stopping point:** **Phase 1** foundation + **1.10** smoke/audit (checklist) are done. **Vercel ↔ Railway** works in production. **Next:** deepen **2.1+** and product flows, or wire **`POST /api/v1/orders`** to `OrderService`.
+**Exact stopping point:** **2.1** checklist is [x] (incl. Vitest TDD for stores, `api`, query client, router smoke, RHF+Zod wiring). **`App`** renders **`/`** → `HomePage` (health `fetch` unchanged). **Next:** **2.2** (`tokens.css`, `fonts`, `globals`) or **2.4** `BuyerLayout` / nav.
 
 ---
 
@@ -288,20 +290,21 @@
 
 ## 📋 Phase 2 — Buyer Web Experience Checklist
 
-_(Phase 1 is complete. Track Phase 2 items below; 2.1 is partially done.)_
+_(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.1 — Vite + React Setup
 
 - [x] `apps/web/` initialized: Vite + React + TypeScript (minimal shell; `pnpm --filter @gorola/web dev` / `build`)
 - [x] Tailwind CSS v4 installed and configured (`@tailwindcss/vite` plugin)
-- [ ] shadcn/ui initialized (`pnpm dlx shadcn@latest init`)
-- [ ] shadcn components installed: button, card, input, dialog, drawer, sheet, skeleton, badge, sonner, scroll-area, separator, tabs, avatar, dropdown-menu
-- [ ] React Router v6 installed and configured in `src/main.tsx`
-- [ ] TanStack Query configured: `QueryClient` with defaults (staleTime: 60s, retry: 2)
-- [ ] Zustand installed, store files created: `src/store/auth.store.ts`, `cart.store.ts`, `weather.store.ts`, `feature-flags.store.ts`
-- [ ] React Hook Form + `@hookform/resolvers` + Zod installed
-- [ ] Axios installed, API client created: `src/lib/api.ts` (base URL from env, auth interceptor attaches token, response interceptor handles 401 → refresh flow)
-- [ ] `@gorola/shared` package linked as workspace dependency (for shared Zod schemas and types)
+- [x] shadcn/ui initialized (CLI: `init -t vite -y -b radix -p nova` — `components.json`, `src/components/ui/*`, `src/lib/utils.ts`, CSS vars + `shadcn/tailwind.css`)
+- [x] shadcn components installed: button, card, input, dialog, drawer, sheet, skeleton, badge, sonner, scroll-area, separator, tabs, avatar, dropdown-menu
+- [x] React Router v6 — `BrowserRouter` + `Routes` in `src/main.tsx` / `App.tsx` (`vitest` + `router.test.tsx`)
+- [x] TanStack Query — `src/lib/query-client.ts` (`staleTime: 60_000`, `retry: 2`); `QueryClientProvider` in `main.tsx`
+- [x] Zustand — `src/store/*.store.ts` + `*.store.test.ts` (auth, cart, weather, feature-flags)
+- [x] React Hook Form + `@hookform/resolvers` + Zod — `form-wiring.test.tsx` (smoke)
+- [x] Axios — `src/lib/api.ts` (`createApiClient`, `api` singleton from `VITE_API_BASE_URL`; bearer + 401 → buyer refresh + `clearSession` on failure) + `api.test.ts` (axios-mock-adapter)
+- [x] `@gorola/shared` package linked as workspace dependency (for shared Zod schemas and types)
+- [x] **Vitest** in `apps/web` — `pnpm --filter @gorola/web test` = `vitest run --config vitest.config.ts`
 
 ### 2.2 — Design Tokens + CSS
 
@@ -943,6 +946,7 @@ gorola/
 | user              | ❌         | ✅                | integration: `user.repository.test.ts`                                                                                                                            |
 | store-owner       | ❌         | ✅                | integration: `store-owner.repository.test.ts`                                                                                                                     |
 | admin             | ❌         | ✅                | integration: `admin.repository.test.ts`                                                                                                                           |
+| **web (buyer)**   | **✅**     | ⏳                | **unit:** `apps/web` Vitest — stores, `api`, `query-client`, `form-wiring`, `router` (`HomePage`); E2E Playwright = Phase 2.18                                                                                          |
 | catalog           | ❌         | ✅                | integration: `category`, `product`, `variant` `*.repository.test.ts`                                                                                              |
 | cart              | ❌         | ✅                | integration: `cart.repository.test.ts`                                                                                                                            |
 | order             | ✅         | ✅                | unit: `order.service.test.ts`; integration: `order.repository.test.ts`, `order.service.stock.integration.test.ts`                                                 |
@@ -1094,3 +1098,17 @@ _(Append new entries — never delete old ones)_
   - `POST /api/v1/auth/admin/verify-2fa`
 - Extended `apps/api/src/modules/auth/auth.schema.ts` with payload validation parsers for store-owner/admin login and 2FA setup/verify flows.
 - Verification: `pnpm --filter @gorola/api test -- --run src/__tests__/integration/auth/auth.controller.test.ts`, `pnpm --filter @gorola/api lint`, `pnpm --filter @gorola/api typecheck`, and full `pnpm --filter @gorola/api test` (215 passing).
+
+**Session 31 (Phase 2.1 shadcn/ui):**
+
+- Initialized **shadcn** in `apps/web` with template **Vite** + **Radix** + **Nova** preset; added Phase 2.1 component bundle (`button`, `card`, `input`, `dialog`, `drawer`, `sheet`, `skeleton`, `badge`, `sonner`, `scroll-area`, `separator`, `tabs`, `avatar`, `dropdown-menu`), `src/lib/utils.ts` (`cn`), and merged **Tailwind v4** `index.css` with shadcn theme tokens. Removed unused **Geist** font in favor of existing GoRola **@theme** fonts. Small **TS/ESLint** fixes in generated `ui` files for `exactOptionalPropertyTypes` and `sonner` / `skeleton` / `dropdown-menu`.
+
+**Session 32 (Phase 2.1 router, data layer, TDD):**
+
+- **Vitest** + **@testing-library/react** + **jsdom** + **axios-mock-adapter**; `vitest.config.ts` uses `mergeConfig` + `defineConfig` from `vitest/config` on top of `vite.config.ts` (separate file avoids a Vite/TS `test` key typing conflict). `src/test/setup.ts`: `@testing-library/jest-dom/vitest` + `afterEach(cleanup)`.
+- **Zustand:** `useAuthStore` (access/refresh, `setTokens`, `clearSession`), `useCartStore` (merge lines, `totalItemCount`, `setQty(→0)` removes), `useWeatherStore`, `useFeatureFlagsStore` — each with colocated `*.store.test.ts` (`renderHook` + `act`).
+- **Axios** `src/lib/api.ts`: `createApiClient` + optional singleton `api` (null if `VITE_API_BASE_URL` is unset); request bearer from store; 401 → `instance.post` refresh with `_gorolaRefresh` (no bearer on that request) → parse `{ success, data: { accessToken, refreshToken } }` → `setTokens` → **one** retried request via `_gorolaRetry`; failed refresh or second 401 → `clearSession`. Tests cover `getNormalizedApiBaseUrl`, `Authorization` header, happy refresh path, and refresh 401.
+- **TanStack Query:** `createAppQueryClient()` (`staleTime: 60_000`, `retry: 2`); `QueryClientProvider` in `main.tsx`.
+- **React Router v6** — `BrowserRouter` in `main.tsx`, `Routes` / `Route path="/"` → `HomePage` in `App.tsx`. `src/app/router.test.tsx` smokes the home route. **`HomePage`** is the old health-check UI (unchanged look); **`main.tsx`** uses **relative** `./lib/query-client` (not `@/`) so ESLint `import/order` and `simple-import-sort` agree on a single relative-import group.
+- **RHF + Zod:** `src/lib/form-wiring.test.tsx` proves `zodResolver` + submit path (not production UI).
+- **Verification:** `pnpm --filter @gorola/web test` (22 tests), `pnpm --filter @gorola/web lint` + `typecheck`, full repo **`pnpm ci:quality`** (API 277 + web 22 tests, builds).
