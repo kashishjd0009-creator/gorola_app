@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-04-28
-- **Session Summary:** **Phase 2.2 complete** — **`src/styles/tokens.css`** (`:root` Gorola hex + pine dark/light), **`fonts.css`** (Google Fonts + `--font-family-*`), **`globals.css`** (Tailwind + shadcn + `@theme` color map + keyframes `etaPulse`, `riderPing`, `greenBloom`, `fadeInUp`, `fogDrift`, `shimmer` + utilities `.font-playfair` / `.font-dm-sans` / `.font-devanagari`, `.eta-pulse`, `.fade-in-up`, `.fog-drift`, `.skeleton`, `.noise-overlay`, app shell classes). **`index.css`** re-exports `./styles/globals.css` only. **Shared:** `TopographicBg`, `WeatherBanner` (Zustand weather), `ETABanner` — each with Vitest tests; **`HomePage`** includes a small “Phase 2.2 preview” block. **`pnpm ci:quality`** green (API 277 + web **30** tests). `WeatherBanner.test.tsx` uses `eslint-disable` for `import/order` vs `simple-import-sort` conflict (`@/` vs `./`).
-- **Next Session Must Start With:** **Phase 2.3** Lenis + GSAP, or **2.4** buyer layout / nav / route guards — or **API** `POST /api/v1/orders`. Optional: `ThemeProvider` + `<Toaster />`.
+- **Session Summary:** **Phase 2.3 complete** — **`gsap`**, **`@gsap/react`**, **`lenis`**; **`src/lib/gsap.ts`** — `registerPlugin(ScrollTrigger)`, `gsap.defaults({ ease: "power2.out", duration: 0.8 })`, **`linkLenisToGsapTicker`** (Lenis `on("scroll", ScrollTrigger.update)` + `gsap.ticker` → `lenis.raf(time*1000)` + `lagSmoothing(0)`, cleanup restores ticker + unsubscribes). **`src/lib/lenis.ts`** — `export let lenis`, **`createGorolaLenis`** / **`destroyGorolaLenis`** (singleton, `autoRaf: false`). **`src/hooks/useGorolaMotion.ts`** — `useEffect` init + full cleanup (`disconnect`, `lenis.destroy()`). **`App.tsx`** calls **`useGorolaMotion()`** once. **`main.tsx`**: `import "lenis/dist/lenis.css"`. **Tests:** `gsap-context-cleanup.test.tsx` (manual `gsap.context` + `revert`); `useGorolaMotion.test.tsx` (Lenis cleared after unmount); **`test/setup.ts`** — **`matchMedia`** + **`ResizeObserver`** for ScrollTrigger / Lenis in jsdom. **`pnpm ci:quality`** green (API 277 + web **33** tests).
+- **Next Session Must Start With:** **Phase 2.4** buyer layout / nav / route guards — or **API** `POST /api/v1/orders`, or **2.5** hero. Optional: `ThemeProvider` + `<Toaster />` (2.4 checklist still lists them on `App`).
 
 ---
 
@@ -19,7 +19,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                |
 | ------- | -------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub |
-| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1 + 2.2 done** (tokens, globals, shared banners + topo); next **2.3** / **2.4** or catalog UX                                                                 |
+| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.3 done** (stack + design tokens + Lenis/GSAP); next **2.4** shell/nav or catalog UX                                                                 |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                               |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                               |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                |
@@ -60,14 +60,15 @@
 - **Session 31 (Phase 2.1 shadcn):** `pnpm dlx shadcn@latest init -t vite -y -b radix -p nova` in `apps/web` + add component set; lockfile updated (removed unused `@fontsource-variable/geist`); strict TS/ESLint fixes in generated `ui` files.
 - **Session 32 (Phase 2.1 stack, TDD):** Router, Query, Zustand, `api.ts`, RHF+Zod, Vitest/RTL, `HomePage` + `App` routes; colocated `*.test.ts` / `*.test.tsx`.
 - **Session 33 (Phase 2.2 design tokens + shared UI):** Split CSS into `tokens` / `fonts` / `globals`; keyframes + utility classes; `TopographicBg`, `WeatherBanner`, `ETABanner` + tests; `HomePage` preview strip.
+- **Session 34 (Phase 2.3 Lenis + GSAP):** `lib/gsap.ts`, `lib/lenis.ts`, `useGorolaMotion`, `App` init; `gsap-context-cleanup` + `useGorolaMotion` tests; jsdom `matchMedia` / `ResizeObserver` in `test/setup`.
 
 ---
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2.3** (Lenis + GSAP) and/or **2.4** (buyer shell, nav) — or **order HTTP** on the API.
+**Current Task:** **Phase 2.4** (buyer shell, nav, route guards) — or **order HTTP** on the API.
 
-**Exact stopping point:** **2.2** checklist [x] — token CSS files, `globals.css`, `TopographicBg` / `WeatherBanner` / `ETABanner`, TDD. **`HomePage`** has API health + **design preview** (topo + banners). **Next:** **2.3** or **2.4**.
+**Exact stopping point:** **2.3** checklist [x] — `gsap` / `@gsap/react` / `lenis`, `lib/gsap.ts` + `lib/lenis.ts` + `useGorolaMotion` from **`App`**, destroy on cleanup, GSAP `context` + Lenis mount tests. **`QueryClientProvider`** remains in `main.tsx` (2.4 still asks to consolidate `App` with Toaster). **Next:** **2.4** or **2.5** / API orders.
 
 ---
 
@@ -324,13 +325,13 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.3 — Lenis + GSAP Setup
 
-- [ ] `gsap` + `@gsap/react` installed. `ScrollTrigger` registered globally.
-- [ ] `lenis` installed
-- [ ] `src/lib/lenis.ts` — Lenis singleton, exported `lenis` instance
-- [ ] `src/lib/gsap.ts` — GSAP defaults set (`gsap.defaults({ ease: 'power2.out', duration: 0.8 }`), ScrollTrigger registered, Lenis RAF loop synced to GSAP ticker
-- [ ] Both initialized once in `src/App.tsx` via `useEffect` on mount
-- [ ] Lenis `destroy()` called in cleanup
-- [ ] TESTS: GSAP context cleanup doesn't leak between component mount/unmount cycles (Vitest + jsdom)
+- [x] `gsap` + `@gsap/react` installed. `ScrollTrigger` registered globally (`initGorolaGsapOnce` in `lib/gsap.ts`).
+- [x] `lenis` installed
+- [x] `src/lib/lenis.ts` — Lenis singleton, exported `lenis` (nullable) + `createGorolaLenis` / `destroyGorolaLenis`
+- [x] `src/lib/gsap.ts` — `gsap.defaults({ ease: 'power2.out', duration: 0.8 })`, `linkLenisToGsapTicker` (ticker + `ScrollTrigger.update` + `lagSmoothing` cleanup)
+- [x] `src/hooks/useGorolaMotion.ts` — `useEffect` init once, cleanup disconnects ticker + `destroyGorolaLenis`; **`App.tsx`** calls hook at top
+- [x] Lenis `destroy()` in effect cleanup
+- [x] TESTS: `gsap-context-cleanup.test.tsx` + `useGorolaMotion.test.tsx` (jsdom; `test/setup` polyfills for ScrollTrigger/Lenis)
 
 ### 2.4 — App Shell + Routing
 
@@ -905,7 +906,7 @@ gorola/
 │       │   │   ├── buyer/            # Buyer-specific components
 │       │   │   ├── store/            # Store panel components
 │       │   │   └── admin/            # Admin panel components
-│       │   ├── hooks/                # Custom React hooks
+│       │   ├── hooks/                # useGorolaMotion (Lenis + GSAP), …
 │       │   ├── store/                # Zustand stores
 │       │   ├── lib/
 │       │   │   ├── api.ts            # Axios/fetch client with interceptors
