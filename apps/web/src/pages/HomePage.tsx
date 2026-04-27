@@ -1,6 +1,11 @@
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
+import { ETABanner } from "@/components/shared/ETABanner";
+import { TopographicBg } from "@/components/shared/TopographicBg";
+import { WeatherBanner } from "@/components/shared/WeatherBanner";
+import { cn } from "@/lib/utils";
+
 type HealthJson = {
   success?: boolean;
   data?: { status?: string };
@@ -87,7 +92,7 @@ export function HomePage({ apiBaseForDisplay }: HomePageProps): ReactElement {
   }, [base]);
 
   return (
-    <div className="app-root">
+    <div className={cn("app-root", "flex-col gap-10")}>
       <div className="app-panel">
         <p className="app-kicker">GoRola</p>
         <h1 className="app-title">Mussoorie, delivered.</h1>
@@ -111,6 +116,15 @@ export function HomePage({ apiBaseForDisplay }: HomePageProps): ReactElement {
             <p className="app-health-line app-health-err">{healthState.message}</p>
           )}
         </div>
+      </div>
+
+      <div className="w-full max-w-md space-y-4">
+        <p className="text-center text-xs font-semibold uppercase tracking-wider text-gorola-slate">Design system — Phase 2.2 preview</p>
+        <div className="relative h-24 overflow-hidden rounded-xl bg-gorola-pine">
+          <TopographicBg opacity={0.15} />
+        </div>
+        <WeatherBanner />
+        <ETABanner etaLabel="~20 min" />
       </div>
     </div>
   );

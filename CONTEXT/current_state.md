@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-04-28
-- **Session Summary:** **Phase 2.1 complete** — **React Router v6** + **TanStack Query** (`createAppQueryClient`, `staleTime: 60s`, `retry: 2`) + **Zustand** stores (`auth`, `cart`, `weather`, `feature-flags`) + **Axios** `src/lib/api.ts` (`createApiClient`, singleton `api` wired to `useAuthStore`, 401 → `POST /api/v1/auth/buyer/refresh` + one retry, `withCredentials: true`) + **RHF / resolvers / Zod**. **Vitest + RTL** in `apps/web` (`vitest.config.ts` merges `vite.config`, `src/test/setup.ts`), **22** web unit tests (TDD RED → GREEN per area). **Main** uses relative `./lib/query-client` import to satisfy ESLint import groups. **`pnpm ci:quality`** green (API 277 + web 22 tests).
-- **Next Session Must Start With:** **Phase 2.2** design tokens / `globals.css` split, or **2.4** buyer layout + nav — or **API** `POST /api/v1/orders` → `OrderService`. Optional: `ThemeProvider` + `<Toaster />` for shadcn toasts.
+- **Session Summary:** **Phase 2.2 complete** — **`src/styles/tokens.css`** (`:root` Gorola hex + pine dark/light), **`fonts.css`** (Google Fonts + `--font-family-*`), **`globals.css`** (Tailwind + shadcn + `@theme` color map + keyframes `etaPulse`, `riderPing`, `greenBloom`, `fadeInUp`, `fogDrift`, `shimmer` + utilities `.font-playfair` / `.font-dm-sans` / `.font-devanagari`, `.eta-pulse`, `.fade-in-up`, `.fog-drift`, `.skeleton`, `.noise-overlay`, app shell classes). **`index.css`** re-exports `./styles/globals.css` only. **Shared:** `TopographicBg`, `WeatherBanner` (Zustand weather), `ETABanner` — each with Vitest tests; **`HomePage`** includes a small “Phase 2.2 preview” block. **`pnpm ci:quality`** green (API 277 + web **30** tests). `WeatherBanner.test.tsx` uses `eslint-disable` for `import/order` vs `simple-import-sort` conflict (`@/` vs `./`).
+- **Next Session Must Start With:** **Phase 2.3** Lenis + GSAP, or **2.4** buyer layout / nav / route guards — or **API** `POST /api/v1/orders`. Optional: `ThemeProvider` + `<Toaster />`.
 
 ---
 
@@ -19,7 +19,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                |
 | ------- | -------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub |
-| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1 complete** (router, query, stores, api, RHF+Zod, Vitest); next **2.2** / **2.4** or full product UX                                                                 |
+| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1 + 2.2 done** (tokens, globals, shared banners + topo); next **2.3** / **2.4** or catalog UX                                                                 |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                               |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                               |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                |
@@ -59,14 +59,15 @@
 - **Session 30 (1.8 + monorepo doc — unified CI+CD):** `current_state` updated to match **`.github/workflows/ci-cd.yml`**: one workflow for **CI** + **path filters** + **Vercel** + **Railway** deploys; removed stale **`ci.yml` / `deploy.yml`** references in this file.
 - **Session 31 (Phase 2.1 shadcn):** `pnpm dlx shadcn@latest init -t vite -y -b radix -p nova` in `apps/web` + add component set; lockfile updated (removed unused `@fontsource-variable/geist`); strict TS/ESLint fixes in generated `ui` files.
 - **Session 32 (Phase 2.1 stack, TDD):** Router, Query, Zustand, `api.ts`, RHF+Zod, Vitest/RTL, `HomePage` + `App` routes; colocated `*.test.ts` / `*.test.tsx`.
+- **Session 33 (Phase 2.2 design tokens + shared UI):** Split CSS into `tokens` / `fonts` / `globals`; keyframes + utility classes; `TopographicBg`, `WeatherBanner`, `ETABanner` + tests; `HomePage` preview strip.
 
 ---
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2.2+** — design tokens, buyer shell, catalog UX — or **order HTTP** on the API.
+**Current Task:** **Phase 2.3** (Lenis + GSAP) and/or **2.4** (buyer shell, nav) — or **order HTTP** on the API.
 
-**Exact stopping point:** **2.1** checklist is [x] (incl. Vitest TDD for stores, `api`, query client, router smoke, RHF+Zod wiring). **`App`** renders **`/`** → `HomePage` (health `fetch` unchanged). **Next:** **2.2** (`tokens.css`, `fonts`, `globals`) or **2.4** `BuyerLayout` / nav.
+**Exact stopping point:** **2.2** checklist [x] — token CSS files, `globals.css`, `TopographicBg` / `WeatherBanner` / `ETABanner`, TDD. **`HomePage`** has API health + **design preview** (topo + banners). **Next:** **2.3** or **2.4**.
 
 ---
 
@@ -308,18 +309,18 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.2 — Design Tokens + CSS
 
-- [ ] `src/styles/tokens.css` — all GoRola CSS custom properties:
-  - [ ] `--gorola-pine: #1D3D2F`, `--gorola-pine-dark: #162E23`, `--gorola-pine-light: #2D5A40`
-  - [ ] `--gorola-saffron: #E8833A`, `--gorola-fog: #F4F1EC`, `--gorola-charcoal: #1C1C1E`
-  - [ ] `--gorola-amber: #F5A623`, `--gorola-slate: #3A4A5C`, `--gorola-slate-mist: #E8ECF0`
-- [ ] `src/styles/fonts.css` — Google Fonts import: Playfair Display, DM Sans, Noto Sans Devanagari
-- [ ] Utility classes: `.font-playfair`, `.font-dm-sans`, `.font-devanagari`
-- [ ] Animation keyframes: `etaPulse`, `riderPing`, `greenBloom`, `fadeInUp`, `fogDrift`, `shimmer`
-- [ ] Utility classes: `.eta-pulse`, `.fade-in-up`, `.fog-drift`, `.skeleton`, `.noise-overlay`
-- [ ] `src/styles/globals.css` — Tailwind directives + import tokens + import fonts
-- [ ] `TopographicBg` shared component (`src/components/shared/TopographicBg.tsx`) — SVG topo lines, accepts opacity prop
-- [ ] `WeatherBanner` shared component — renders pine or slate banner depending on weather mode state
-- [ ] `ETABanner` shared component — amber pulse banner with live ETA from API
+- [x] `src/styles/tokens.css` — all GoRola CSS custom properties:
+  - [x] `--gorola-pine: #1D3D2F`, `--gorola-pine-dark: #162E23`, `--gorola-pine-light: #2D5A40`
+  - [x] `--gorola-saffron: #E8833A`, `--gorola-fog: #F4F1EC`, `--gorola-charcoal: #1C1C1E`
+  - [x] `--gorola-amber: #F5A623`, `--gorola-slate: #3A4A5C`, `--gorola-slate-mist: #E8ECF0`
+- [x] `src/styles/fonts.css` — Google Fonts import: Playfair Display, DM Sans, Noto Sans Devanagari
+- [x] Utility classes: `.font-playfair`, `.font-dm-sans`, `.font-devanagari`
+- [x] Animation keyframes: `etaPulse`, `riderPing`, `greenBloom`, `fadeInUp`, `fogDrift`, `shimmer`
+- [x] Utility classes: `.eta-pulse`, `.fade-in-up`, `.fog-drift`, `.skeleton`, `.noise-overlay`
+- [x] `src/styles/globals.css` — Tailwind + shadcn + `fonts` + `tokens` (import order: fonts → tokens → tailwind) + shadcn `:root` / dark + app component classes
+- [x] `TopographicBg` — `src/components/shared/TopographicBg.tsx` + `.test.tsx` — SVG curves, `opacity` prop, `aria-hidden`
+- [x] `WeatherBanner` — `useWeatherStore`, pine vs slate, `data-weather` + tests
+- [x] `ETABanner` — amber pulse dot + `ETA ~ {etaLabel}` (static until API; Phase 2.5+)
 
 ### 2.3 — Lenis + GSAP Setup
 
@@ -946,7 +947,7 @@ gorola/
 | user              | ❌         | ✅                | integration: `user.repository.test.ts`                                                                                                                            |
 | store-owner       | ❌         | ✅                | integration: `store-owner.repository.test.ts`                                                                                                                     |
 | admin             | ❌         | ✅                | integration: `admin.repository.test.ts`                                                                                                                           |
-| **web (buyer)**   | **✅**     | ⏳                | **unit:** `apps/web` Vitest — stores, `api`, `query-client`, `form-wiring`, `router` (`HomePage`); E2E Playwright = Phase 2.18                                                                                          |
+| **web (buyer)**   | **✅**     | ⏳                | **unit:** `apps/web` Vitest (30) — stores, `api`, `query-client`, `form-wiring`, `router`, `TopographicBg`, `WeatherBanner`, `ETABanner`; E2E = Phase 2.18                                                                                          |
 | catalog           | ❌         | ✅                | integration: `category`, `product`, `variant` `*.repository.test.ts`                                                                                              |
 | cart              | ❌         | ✅                | integration: `cart.repository.test.ts`                                                                                                                            |
 | order             | ✅         | ✅                | unit: `order.service.test.ts`; integration: `order.repository.test.ts`, `order.service.stock.integration.test.ts`                                                 |
@@ -1112,3 +1113,10 @@ _(Append new entries — never delete old ones)_
 - **React Router v6** — `BrowserRouter` in `main.tsx`, `Routes` / `Route path="/"` → `HomePage` in `App.tsx`. `src/app/router.test.tsx` smokes the home route. **`HomePage`** is the old health-check UI (unchanged look); **`main.tsx`** uses **relative** `./lib/query-client` (not `@/`) so ESLint `import/order` and `simple-import-sort` agree on a single relative-import group.
 - **RHF + Zod:** `src/lib/form-wiring.test.tsx` proves `zodResolver` + submit path (not production UI).
 - **Verification:** `pnpm --filter @gorola/web test` (22 tests), `pnpm --filter @gorola/web lint` + `typecheck`, full repo **`pnpm ci:quality`** (API 277 + web 22 tests, builds).
+
+**Session 33 (Phase 2.2 design tokens + shared components):**
+
+- **CSS split:** `index.css` → `@import "./styles/globals.css"` only. **`globals.css`:** `@import` order — `./fonts.css` (Google Fonts + `--font-family-*` on `:root`), `./tokens.css` (Gorola `--gorola-*` hex on `:root`), then `tailwindcss` / `tw-animate` / `shadcn/tailwind.css`; **@theme** maps `--color-gorola-*` → `var(--gorola-*)` and **font-sans / font-serif** to family vars; keyframes and utility classes in **@layer components**; existing shadcn **`@theme inline` + `:root` / `.dark`** blocks preserved at end of `globals.css`.
+- **Components (TDD):** `TopographicBg` (decorative SVG, `opacity` default `0.12`); `WeatherBanner` (pine vs slate from `useWeatherStore`, `data-weather` + `role="status"`); `ETABanner` (`.eta-pulse` on amber dot, static `etaLabel` prop for now). **`HomePage`:** “Design system — Phase 2.2 preview” section with the three for visual smoke-testing.
+- **Tooling:** `WeatherBanner.test.tsx` needs **`eslint-disable simple-import-sort/imports, import/order`** (conflict between `import/order` and `@/` + `./` ordering).
+- **Verify:** `pnpm ci:quality` (API 277, web 30, build).
