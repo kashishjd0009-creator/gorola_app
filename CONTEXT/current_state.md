@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-04-28
-- **Session Summary:** **Backend/frontend contract alignment fix complete (strict TDD, CORS + categories API)** — Added RED integration tests for credentialed CORS headers and `GET /api/v1/categories`, added controller stub, confirmed RED, then implemented GREEN by registering categories route and enabling `credentials: true` in Fastify CORS. Added runtime route registration in `app.ts` via `routes.ts` so deployed backend actually exposes categories. Verification: API lint + typecheck green, targeted new integration tests green, and full API suite green (**38 files, 279 tests**).
-- **Next Session Must Start With:** **Phase 2.7** product listing page (`CategoryPage` + `ProductGrid` + infinite query + tests) or **API** `POST /api/v1/orders`.
+- **Session Summary:** **Universal contract-gate docs update complete (2.17+, 3, 4, 5 included)** — Added a global **Universal Phase Completion Gate** to `rules_and_spec.md` so API contract requirements are now project-wide, including future Rider work. Expanded `current_state.md` with explicit **API Contract Gate (mandatory)** checkpoints at the start of Phase 3, Phase 4, and Phase 5 checklist sections in addition to existing Phase 2.7+ gates.
+- **Next Session Must Start With:** **Phase 2.61 implementation** (auth runtime wiring + integration test), then **Phase 2.7** vertical slice with universal API Contract Gate enforcement.
 
 ---
 
@@ -65,14 +65,17 @@
 - **Session 36 (Phase 2.5 hero section, strict TDD):** Added RED tests in `HeroSection.test.tsx`, then stubbed `HeroSection` and confirmed RED functional failures before GREEN implementation. Implemented `HeroSection` with `TopographicBg` + `.noise-overlay`, `gsap.context()` timeline for logo/wordmark/tagline/CTA/ETA, cleanup revert, weather-mode slate copy, and saffron pill CTA scrolling to categories. Added `pages/buyer/HomePage.tsx` and switched `App.tsx` to use it; retained compatibility re-export in `pages/HomePage.tsx`.
 - **Session 37 (Phase 2.6 category grid, strict TDD):** Added RED tests in `CategoryGrid.test.tsx` for loading, success, empty, error, and navigation behavior; created `CategoryGrid` stub and confirmed RED failures; then implemented GREEN with `useQuery` categories fetch, state UIs, and `/categories/:slug` navigation. Added GSAP stagger entry animation for cards with conditional ScrollTrigger (avoids test-env plugin warning), wired `CategoryGrid` into `pages/buyer/HomePage.tsx`, and updated `router.test.tsx` to wrap `HomePage` in `QueryClientProvider`.
 - **Session 38 (Backend/frontend API alignment, strict TDD):** Added RED integration tests: `server.cors-credentials.test.ts` (expects `Access-Control-Allow-Credentials: true`) and `category.controller.test.ts` (`GET /api/v1/categories` success envelope, active-only ordering). Added `modules/catalog/category.controller.ts` stub and confirmed RED failures, then implemented GREEN route handler using `CategoryRepository.findAll()`, enabled Fastify CORS `credentials: true` in `server.ts`, and added `src/routes.ts` with `registerAppRoutes` wired into `app.ts` `createServer({ registerRoutes })`. Verification: `pnpm --filter @gorola/api lint`, `typecheck`, targeted new tests, and full API tests all green (279 passing).
+- **Session 39 (Docs hardening: Phase 2.61 + API Contract Gates):** Added **Phase 2.61** to Phase 2 checklist for contract alignment and drift-prevention, including categories/CORS closure and explicit auth runtime wiring validation. Added **API Contract Gate** bullets to Phase 2.7+ sections so future work is tracked as vertical slices (UI + backend endpoint + backend tests + runtime route registration + frontend tests).
+- **Session 40 (Docs hardening: universal API Contract Gate):** Extended API Contract Gate policy beyond buyer phases by adding explicit gate blocks at the top of **Phase 3** and **Phase 4** checklists in `current_state.md`. Also added a global rule in `rules_and_spec.md` (“Universal Phase Completion Gate”) so all future phases must satisfy UI + backend endpoint + integration tests + runtime route registration + frontend test validation before being marked complete.
+- **Session 41 (Docs hardening: include Phase 5 in universal gate):** Updated global API Contract Gate language to explicitly include **rider/Phase 5** and added a Phase 5 checklist placeholder section with mandatory gate bullets for future rider implementation.
 
 ---
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2.7** (product listing page) — or **order HTTP** on the API.
+**Current Task:** **Phase 2.61** (contract alignment hardening) — then **Phase 2.7**.
 
-**Exact stopping point:** **2.6 frontend + backend alignment fixed** — category UI is done and backend now serves `GET /api/v1/categories` with credentialed CORS headers (`Access-Control-Allow-Credentials: true`) for allowed origins, resolving browser-blocked retries. Runtime API route registration now includes categories via `src/routes.ts` in `app.ts`. **Next:** **2.7** `CategoryPage` + `ProductGrid` (`useInfiniteQuery`, search, add-to-cart optimistic flow) or API `POST /api/v1/orders`.
+**Exact stopping point:** **2.61 docs prep complete** — checklist now includes explicit contract-alignment step between 2.6 and 2.7, and all 2.7+ buyer phases now include API Contract Gates. **Next:** implement 2.61 (auth runtime wiring + integration verification), then start 2.7 vertical slice.
 
 ---
 
@@ -385,7 +388,21 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
   - [x] Click → navigate to `/categories/:slug`
 - [x] TESTS: renders correct categories, loading/empty/error states, navigation on click
 
+### 2.61 — Contract Alignment Hardening (Post-2.6)
+
+- [x] Categories endpoint exposed in runtime app: `GET /api/v1/categories`
+- [x] Credentialed CORS contract fixed (`credentials: true`) and integration tested
+- [ ] Auth routes wired in runtime app registration (`/api/v1/auth/*`) so Phase 2.10 has live endpoints
+- [ ] TESTS: integration test proving auth endpoint reachable through runtime route registrar (not test-only registration)
+- [ ] Guardrail note added: every new UI phase must ship with backend route exposure + tests before marking checklist done
+
 ### 2.7 — Product Listing Page
+
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend endpoint implemented and reachable at runtime: `GET /api/v1/products?categoryId=&storeId=&search=&cursor=&limit=20`
+  - [ ] Backend integration tests cover list/pagination/filter/search contract
+  - [ ] Route is registered in runtime app route graph (not only module-level test harness)
+  - [ ] Frontend tests validated against expected API envelope and error states
 
 - [ ] `src/pages/buyer/CategoryPage.tsx` → route: `/categories/:slug`
 - [ ] `src/components/buyer/ProductGrid.tsx`:
@@ -403,6 +420,12 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.8 — Product Detail Page
 
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend endpoint implemented and reachable at runtime: `GET /api/v1/products/:id`
+  - [ ] Backend integration tests cover not-found and variant payload shape
+  - [ ] Route is registered in runtime app route graph
+  - [ ] Frontend tests validated against expected API envelope and error states
+
 - [ ] `src/pages/buyer/ProductDetailPage.tsx` → route: `/products/:id`
 - [ ] Fetches `GET /api/v1/products/:id` (includes variants)
 - [ ] Large product name (Playfair Display), shop name with phone number
@@ -415,6 +438,12 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 - [ ] TESTS: variant selection updates price, add to cart calls API with correct variantId + quantity
 
 ### 2.9 — Cart (Drawer on Mobile, Sidebar on Desktop)
+
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend endpoints implemented and reachable at runtime for cart read/mutate flows
+  - [ ] Backend integration tests cover add/update/remove/clear semantics
+  - [ ] Routes are registered in runtime app route graph
+  - [ ] Frontend tests validated against expected API envelope and cart edge states
 
 - [ ] `src/components/buyer/CartDrawer.tsx` (mobile: bottom drawer, desktop: right sidebar)
   - [ ] Triggered by cart icon in nav
@@ -431,6 +460,12 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 - [ ] TESTS: item removal, quantity update, discount code validation (valid/invalid/expired), payment method selection, empty state
 
 ### 2.10 — OTP Login Flow
+
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend auth endpoints reachable at runtime: `/api/v1/auth/buyer/send-otp`, `/verify-otp`, `/refresh`, `/logout`
+  - [ ] Backend integration tests cover endpoint reachability and envelope compatibility for frontend
+  - [ ] Routes are registered in runtime app route graph
+  - [ ] Frontend tests validated against expected API envelope and auth error states
 
 - [ ] `src/pages/buyer/LoginPage.tsx` → route: `/login`
 - [ ] Step 1: Phone number input (E.164 format validation, India +91 prefix)
@@ -451,6 +486,12 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.11 — Address Entry
 
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend endpoint implemented and reachable at runtime: `POST /api/v1/orders` (+ supporting address flows as needed)
+  - [ ] Backend integration tests cover checkout placement with saved/new address paths
+  - [ ] Routes are registered in runtime app route graph
+  - [ ] Frontend tests validated against expected API envelope and validation errors
+
 - [ ] `src/pages/buyer/CheckoutPage.tsx` → route: `/checkout`
 - [ ] Step 1 — Address:
   - [ ] If user has saved addresses: show list, allow select
@@ -467,6 +508,12 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.12 — Order Confirmation Page
 
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend endpoint reachable at runtime: `GET /api/v1/orders/:id`
+  - [ ] Backend integration tests cover order detail payload and permission boundaries
+  - [ ] Route is registered in runtime app route graph
+  - [ ] Frontend tests validated against expected API envelope and update behavior
+
 - [ ] `src/pages/buyer/OrderConfirmationPage.tsx` → route: `/orders/:id`
 - [ ] On load: fetch `GET /api/v1/orders/:id`
 - [ ] GSAP: `greenBloom` animation — full screen warm green flash → fades to white → content appears
@@ -480,6 +527,12 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.13 — Order Status Page (for post-confirmation tracking)
 
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend order status read/update event contract validated for buyer timeline
+  - [ ] Backend integration tests cover status progression payloads
+  - [ ] Required runtime routes/events are wired and documented
+  - [ ] Frontend tests validated against expected API/socket contract
+
 - [ ] Status timeline: PLACED → PREPARING → OUT_FOR_DELIVERY → DELIVERED (visual stepper)
 - [ ] Current status highlighted, timestamps for completed steps
 - [ ] Store contact info visible at all times
@@ -490,12 +543,24 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.14 — Saved Addresses Page
 
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend address list/update/delete/default endpoints reachable at runtime
+  - [ ] Backend integration tests cover saved address CRUD/default behavior
+  - [ ] Routes are registered in runtime app route graph
+  - [ ] Frontend tests validated against expected API envelope and edge states
+
 - [ ] `src/pages/buyer/SavedAddressesPage.tsx` → route: `/account/addresses`
 - [ ] Lists all saved addresses with landmark description
 - [ ] Edit, delete (soft), set as default
 - [ ] TESTS: renders addresses, edit/delete/default flows
 
 ### 2.15 — Order History + Reorder
+
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend endpoints reachable at runtime: order history, reorder, and rating endpoints
+  - [ ] Backend integration tests cover reorder/rating behavior and constraints
+  - [ ] Routes are registered in runtime app route graph
+  - [ ] Frontend tests validated against expected API envelope and edge states
 
 - [ ] `src/pages/buyer/OrderHistoryPage.tsx` → route: `/account/orders`
 - [ ] Lists past orders: store name, items summary, total, date, status
@@ -504,6 +569,12 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 - [ ] TESTS: reorder adds items to cart, rating submission
 
 ### 2.16 — Weather Mode (System-Wide Toggle)
+
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend feature-flag endpoint reachable at runtime: `GET /api/v1/feature-flags/WEATHER_MODE_ACTIVE`
+  - [ ] Backend integration tests cover flag retrieval and cache behavior as applicable
+  - [ ] Route is registered in runtime app route graph
+  - [ ] Frontend tests validated against expected API envelope and state transitions
 
 - [ ] `weatherMode` boolean in Zustand weather store
 - [ ] Fetched from `GET /api/v1/feature-flags/WEATHER_MODE_ACTIVE` on app load (refetched every 60s)
@@ -517,6 +588,12 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 - [ ] TESTS: weather mode state changes CSS variables, all affected components re-render correctly
 
 ### 2.17 — Advertisements Display
+
+- [ ] API Contract Gate (mandatory for phase completion):
+  - [ ] Backend ads endpoint reachable at runtime: `GET /api/v1/promotions/advertisements`
+  - [ ] Backend integration tests cover approved/active/date-window filtering
+  - [ ] Route is registered in runtime app route graph
+  - [ ] Frontend tests validated against expected API envelope and carousel states
 
 - [ ] `src/components/buyer/AdvertisementBanner.tsx`
   - [ ] Fetches `GET /api/v1/promotions/advertisements` (only approved, active, within date range)
@@ -544,6 +621,12 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 ## 📋 Phase 3 — Store Owner Panel Checklist
 
 _(Detailed checklist to be filled in when Phase 2 is 100% complete)_
+
+- [ ] API Contract Gate (mandatory for phase completion of every Phase 3 item):
+  - [ ] Required backend endpoint(s) for the item are implemented
+  - [ ] Backend integration tests verify endpoint contract and access control
+  - [ ] Endpoint routes are registered in runtime app route graph
+  - [ ] Frontend tests verify expected API envelope + loading/empty/error states
 
 ### 3.1 — Store Auth (Email + TOTP 2FA)
 
@@ -719,6 +802,12 @@ _(Detailed checklist to be filled in when Phase 2 is 100% complete)_
 
 _(Detailed checklist to be filled in when Phase 3 is 100% complete)_
 
+- [ ] API Contract Gate (mandatory for phase completion of every Phase 4 item):
+  - [ ] Required backend endpoint(s) for the item are implemented
+  - [ ] Backend integration tests verify endpoint contract, permissions, and audit behavior
+  - [ ] Endpoint routes are registered in runtime app route graph
+  - [ ] Frontend tests verify expected API envelope + loading/empty/error states
+
 ### 4.1 — Admin Auth (Email + Mandatory TOTP 2FA)
 
 - [ ] `src/pages/admin/AdminLoginPage.tsx` → route: `/admin/login`
@@ -837,6 +926,18 @@ _(Detailed checklist to be filled in when Phase 3 is 100% complete)_
   - [ ] Approve advertisement → appears on buyer home page
   - [ ] Add new store → store owner can login with provided credentials
   - [ ] Audit log shows all above actions
+
+---
+
+## 📋 Phase 5 — Rider Interface (Deferred)
+
+_(Implementation deferred; keep this gate in place for when Phase 5 starts.)_
+
+- [ ] API Contract Gate (mandatory for phase completion of every Phase 5 item):
+  - [ ] Required backend endpoint(s) for rider flows are implemented
+  - [ ] Backend integration tests verify rider endpoint contract and permissions
+  - [ ] Endpoint routes/events are registered in runtime app route graph
+  - [ ] Frontend/client tests verify expected API/socket envelope + loading/error states
 
 ---
 

@@ -67,6 +67,19 @@ MOCKING RULES:
   - Use vi.useFakeTimers() for time-sensitive tests (OTP expiry, JWT expiry)
 ```
 
+### 2.1 Universal Phase Completion Gate (API Contract Gate)
+
+This gate applies to **every product phase** (buyer, store, admin, rider) whenever the phase depends on API data.
+
+**A checklist item is NOT complete until all are true:**
+1. Frontend/UI behavior for that item is implemented.
+2. Required backend endpoint(s) are implemented.
+3. Backend integration tests verify endpoint contract (success + error/edge/security where relevant).
+4. Endpoints are registered in **runtime app wiring** (not only invoked in module-local test registration).
+5. Frontend tests validate expected API envelope and loading/empty/error behavior.
+
+**Non-negotiable rule:** never mark a phase done with UI-only progress when API contract work is part of that item.
+
 ---
 
 ## 3. Architecture Rules

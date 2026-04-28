@@ -465,3 +465,71 @@ Leave `simple-import-sort/imports` as the authority for import order and groupin
 1. Remove `newlines-between: "always"` from `import/order` globally — broader change, affects every package; deferred until a dedicated lint pass.
 2. Drop `simple-import-sort` and use only `import/order` — rejected: the repo has standardized on `simple-import-sort` for sort order; larger churn.
 3. Re-export catalog/inventory from a single `order`-local barrel to reduce import paths — overkill to fix lint only.
+
+---
+
+## [DECISION-016] Phase-Level API Contract Gates (Vertical Slice Rule)
+
+**Date:** 2026-04-28
+**Status:** Accepted
+
+**Context:**
+During Phase 2.6, the buyer categories UI was completed and tested on the frontend, but runtime backend exposure drifted (`GET /api/v1/categories` initially not wired in app route registration; credentialed CORS mismatch blocked browser calls). The issue was eventually fixed, but the gap showed that phase checklist items did not explicitly enforce backend endpoint exposure and runtime wiring in the same phase.
+
+**Decision:**
+Adopt a mandatory **API Contract Gate** for each buyer phase section (2.7+). A phase is not complete until:
+- UI is implemented
+- required backend endpoint(s) are implemented
+- backend integration tests pass for those endpoint contracts
+- routes are registered in runtime app wiring (not only tested through module-local registration)
+- frontend tests validate expected API envelope and error/empty/loading behavior
+
+Add an intermediate **Phase 2.61** checklist step for post-2.6 hardening (categories/CORS closure + auth runtime wiring verification) before proceeding deeper into catalog/checkout phases.
+
+**Rationale:**
+- Prevents repeating frontend/backend drift discovered in 2.6.
+- Forces vertical-slice delivery (UI + API + tests + runtime wiring) instead of partial horizontal progress.
+- Makes checklist completion criteria explicit for future sessions/agents.
+- Improves deploy confidence since CI green better reflects real runtime behavior.
+
+**Tradeoffs:**
+- Slightly higher per-phase scope and sequencing discipline required.
+- More integration tests per phase increases short-term implementation time.
+- Checklist grows longer, but becomes clearer and safer.
+
+**Alternatives Considered:**
+1. Keep current checklist style and rely on agent memory — rejected: too error-prone.
+2. Build all future APIs upfront in a dedicated backend phase — rejected: increases speculative work and disconnects API delivery from UI needs.
+3. Add only a global note once — rejected: less enforceable than per-phase gates.
+
+---
+
+## [DECISION-017] Universal API Contract Gate Across Phases 2, 3, 4, and 5
+
+**Date:** 2026-04-28
+**Status:** Accepted
+
+**Context:**
+After adding API Contract Gates to buyer phases (2.7+), a follow-up concern identified the same drift risk for later areas: Phase 2.17+, Store Owner (Phase 3), Admin (Phase 4), and future Rider work (Phase 5). Keeping gates only in buyer sections would make enforcement inconsistent and agent-dependent.
+
+**Decision:**
+Make API Contract Gate policy universal:
+- Add a global rule in `rules_and_spec.md` under TDD rules as a mandatory phase completion gate.
+- Add explicit gate checklists at the beginning of Phase 3 and Phase 4 sections in `current_state.md`.
+- Add explicit gate checklist placeholder for Phase 5 (deferred rider implementation) in `current_state.md`.
+- Continue phase-level gate bullets in feature sections where practical (already done for Phase 2.7+).
+
+**Rationale:**
+- Ensures the same “UI + API + tests + runtime wiring” standard across buyer, store, admin, and rider work.
+- Reduces chance of route-registration drift in later phases.
+- Gives future sessions a single enforceable source of truth, not implied conventions.
+
+**Tradeoffs:**
+- Checklists become longer and more repetitive.
+- Slightly more process overhead before marking tasks complete.
+- Requires discipline to keep gate bullets updated as phases evolve.
+
+**Alternatives Considered:**
+1. Keep gates only in Phase 2 — rejected: inconsistent enforcement.
+2. Keep only decision-log guidance without checklist updates — rejected: too implicit.
+3. Enforce only through CI without checklist language — rejected: CI can pass while runtime wiring still drifts.
