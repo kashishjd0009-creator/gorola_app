@@ -7,7 +7,7 @@ import { BuyerLayout } from "@/components/buyer/BuyerLayout";
 import { Toaster } from "@/components/ui/sonner";
 import { useGorolaMotion } from "@/hooks/useGorolaMotion";
 import { createAppQueryClient } from "@/lib/query-client";
-import { HomePage } from "@/pages/HomePage";
+import { HomePage } from "@/pages/buyer/HomePage";
 
 const queryClient = createAppQueryClient();
 

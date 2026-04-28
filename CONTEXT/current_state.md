@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-04-28
-- **Session Summary:** **Phase 2.4 complete (shell + guards, TDD)** — Added reusable **`GorolaMountainMark`** SVG component and buyer shell components: **`BuyerNav`**, **`BuyerLayout`**, **`BuyerFooter`**. Added route guards in **`src/app/routes/guards.tsx`** (`ProtectedRoute`, `StoreRoute`, `AdminRoute`) and expanded auth store with `role` for RBAC checks. Updated **`App.tsx`** to host QueryClientProvider + Toaster and route structure (`/`, `/search`, `/cart`, `/login`, `/profile`, `/store`, `/admin`) while `main.tsx` now only wraps BrowserRouter. New RED→GREEN tests: `route-guards.test.tsx`, `BuyerNav.test.tsx`, `BuyerLayout.test.tsx`; full `pnpm ci:quality` green (API 277 + web **41** tests).
-- **Next Session Must Start With:** **Phase 2.5** hero section (GSAP timeline + topo/noise composition) or **API** `POST /api/v1/orders`.
+- **Session Summary:** **Phase 2.5 complete (hero section, strict TDD)** — Added RED tests first in `components/buyer/HeroSection.test.tsx`, then created a stub `HeroSection`, confirmed failing behavior, and implemented GREEN with `gsap.context()` timeline + cleanup (`ctx.revert()`), weather/normal ETA variants, saffron CTA scroll, and topo/noise hero composition. Created `pages/buyer/HomePage.tsx` using `HeroSection` plus a categories anchor placeholder, updated `App.tsx` import path, and kept compatibility export in `pages/HomePage.tsx` for existing route tests. Verification: `pnpm --filter @gorola/web lint`, `typecheck`, and focused route/hero tests all green.
+- **Next Session Must Start With:** **Phase 2.6** category section (`CategoryGrid` + query states + navigation + tests) or **API** `POST /api/v1/orders`.
 
 ---
 
@@ -62,14 +62,15 @@
 - **Session 33 (Phase 2.2 design tokens + shared UI):** Split CSS into `tokens` / `fonts` / `globals`; keyframes + utility classes; `TopographicBg`, `WeatherBanner`, `ETABanner` + tests; `HomePage` preview strip.
 - **Session 34 (Phase 2.3 Lenis + GSAP):** `lib/gsap.ts`, `lib/lenis.ts`, `useGorolaMotion`, `App` init; `gsap-context-cleanup` + `useGorolaMotion` tests; jsdom `matchMedia` / `ResizeObserver` in `test/setup`.
 - **Session 35 (Phase 2.4 shell + routing, strict TDD):** RED tests first for guards/nav/layout; added `GorolaMountainMark` (separate SVG component), `BuyerNav`, `BuyerLayout`, `BuyerFooter`, and `app/routes/guards.tsx`; moved QueryClientProvider + Toaster into `App`; added route stubs and RBAC role in `auth.store`; GREEN with `ci:quality`.
+- **Session 36 (Phase 2.5 hero section, strict TDD):** Added RED tests in `HeroSection.test.tsx`, then stubbed `HeroSection` and confirmed RED functional failures before GREEN implementation. Implemented `HeroSection` with `TopographicBg` + `.noise-overlay`, `gsap.context()` timeline for logo/wordmark/tagline/CTA/ETA, cleanup revert, weather-mode slate copy, and saffron pill CTA scrolling to categories. Added `pages/buyer/HomePage.tsx` and switched `App.tsx` to use it; retained compatibility re-export in `pages/HomePage.tsx`.
 
 ---
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2.5** (hero section with GSAP timeline) — or **order HTTP** on the API.
+**Current Task:** **Phase 2.6** (category section) — or **order HTTP** on the API.
 
-**Exact stopping point:** **2.4** checklist [x] — buyer shell + nav/footer + route guards complete, tests added for guard redirects and nav interactions. `App` now owns QueryClientProvider + Toaster + shell routes; `main.tsx` wraps BrowserRouter only. **Next:** **2.5** hero section (`HeroSection`, animations, cleanup tests) or API `POST /api/v1/orders`.
+**Exact stopping point:** **2.5** checklist [x] — `HeroSection` completed with GSAP timeline + cleanup, weather/normal variants, and CTA scroll-to-categories behavior. `pages/buyer/HomePage.tsx` now hosts hero + categories anchor placeholder, and `App.tsx` routes `/` to buyer home directly. **Next:** **2.6** category grid/query states/tests or API `POST /api/v1/orders`.
 
 ---
 
@@ -351,22 +352,22 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.5 — Hero Section
 
-- [ ] `src/pages/buyer/HomePage.tsx` created
-- [ ] `src/components/buyer/HeroSection.tsx`:
-  - [ ] Full-viewport height section
-  - [ ] Background: `--gorola-pine` with `TopographicBg` overlay (opacity 0.12)
-  - [ ] Noise texture overlay (`.noise-overlay`)
-  - [ ] GSAP timeline on mount (use `gsap.context()` + ref):
-    - [ ] Logo SVG: scale from 0.8 + opacity 0 → 1 (0.6s)
-    - [ ] "GoRola" wordmark (Playfair Display): `y: 30` → 0 + opacity (0.5s, delay 0.3s)
-    - [ ] Tagline "Mussoorie, delivered." (DM Sans): `y: 20` → 0 + opacity (0.4s, delay 0.6s)
-    - [ ] CTA button: `y: 15` → 0 + opacity (0.3s, delay 0.8s)
-    - [ ] ETA banner: slide in from bottom (0.4s, delay 1.0s)
-  - [ ] GSAP cleanup: `return () => ctx.revert()` in useEffect
-  - [ ] Normal mode: amber ETA banner with pulse animation
-  - [ ] Weather mode: slate banner, calm copy ("Fog tonight — we're still coming")
-  - [ ] CTA button: pill shape, `--gorola-saffron` background, "Shop Now" → scrolls to categories
-- [ ] TESTS: hero renders in both normal and weather mode, GSAP cleanup runs on unmount
+- [x] `src/pages/buyer/HomePage.tsx` created
+- [x] `src/components/buyer/HeroSection.tsx`:
+  - [x] Full-viewport height section
+  - [x] Background: `--gorola-pine` with `TopographicBg` overlay (opacity 0.12)
+  - [x] Noise texture overlay (`.noise-overlay`)
+  - [x] GSAP timeline on mount (use `gsap.context()` + ref):
+    - [x] Logo SVG: scale from 0.8 + opacity 0 → 1 (0.6s)
+    - [x] "GoRola" wordmark (Playfair Display): `y: 30` → 0 + opacity (0.5s, delay 0.3s)
+    - [x] Tagline "Mussoorie, delivered." (DM Sans): `y: 20` → 0 + opacity (0.4s, delay 0.6s)
+    - [x] CTA button: `y: 15` → 0 + opacity (0.3s, delay 0.8s)
+    - [x] ETA banner: slide in from bottom (0.4s, delay 1.0s)
+  - [x] GSAP cleanup: `return () => ctx.revert()` in useEffect
+  - [x] Normal mode: amber ETA banner with pulse animation
+  - [x] Weather mode: slate banner, calm copy ("Fog tonight — we're still coming")
+  - [x] CTA button: pill shape, `--gorola-saffron` background, "Shop Now" → scrolls to categories
+- [x] TESTS: hero renders in both normal and weather mode, GSAP cleanup runs on unmount
 
 ### 2.6 — Category Section
 
@@ -949,7 +950,7 @@ gorola/
 | user              | ❌         | ✅                | integration: `user.repository.test.ts`                                                                                                                            |
 | store-owner       | ❌         | ✅                | integration: `store-owner.repository.test.ts`                                                                                                                     |
 | admin             | ❌         | ✅                | integration: `admin.repository.test.ts`                                                                                                                           |
-| **web (buyer)**   | **✅**     | ⏳                | **unit:** `apps/web` Vitest (41) — stores, `api`, `query-client`, `form-wiring`, `router`, `TopographicBg`, `WeatherBanner`, `ETABanner`, `useGorolaMotion`, `gsap-context-cleanup`, `route-guards`, `BuyerNav`, `BuyerLayout`; E2E = Phase 2.18                                                                                          |
+| **web (buyer)**   | **✅**     | ⏳                | **unit:** `apps/web` Vitest (44) — stores, `api`, `query-client`, `form-wiring`, `router`, `TopographicBg`, `WeatherBanner`, `ETABanner`, `useGorolaMotion`, `gsap-context-cleanup`, `route-guards`, `BuyerNav`, `BuyerLayout`, `HeroSection`; E2E = Phase 2.18                                                                                          |
 | catalog           | ❌         | ✅                | integration: `category`, `product`, `variant` `*.repository.test.ts`                                                                                              |
 | cart              | ❌         | ✅                | integration: `cart.repository.test.ts`                                                                                                                            |
 | order             | ✅         | ✅                | unit: `order.service.test.ts`; integration: `order.repository.test.ts`, `order.service.stock.integration.test.ts`                                                 |
