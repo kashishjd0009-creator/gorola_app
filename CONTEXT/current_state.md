@@ -9,7 +9,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-04-28
-- **Session Summary:** **Phase 2.6 complete (category grid, strict TDD)** — Added RED tests first in `components/buyer/CategoryGrid.test.tsx`, created a `CategoryGrid` stub, confirmed functional RED failures, then implemented GREEN with TanStack Query fetch (`GET /api/v1/categories`), loading/empty/error states, card layout, hover behavior, click navigation to `/categories/:slug`, and conditional GSAP ScrollTrigger animation. Wired `CategoryGrid` into `pages/buyer/HomePage.tsx` and updated route test to provide QueryClient context. Verification: `pnpm --filter @gorola/web lint`, `typecheck`, and full web test suite green (**18 files, 48 tests**).
+- **Session Summary:** **Backend/frontend contract alignment fix complete (strict TDD, CORS + categories API)** — Added RED integration tests for credentialed CORS headers and `GET /api/v1/categories`, added controller stub, confirmed RED, then implemented GREEN by registering categories route and enabling `credentials: true` in Fastify CORS. Added runtime route registration in `app.ts` via `routes.ts` so deployed backend actually exposes categories. Verification: API lint + typecheck green, targeted new integration tests green, and full API suite green (**38 files, 279 tests**).
 - **Next Session Must Start With:** **Phase 2.7** product listing page (`CategoryPage` + `ProductGrid` + infinite query + tests) or **API** `POST /api/v1/orders`.
 
 ---
@@ -64,6 +64,7 @@
 - **Session 35 (Phase 2.4 shell + routing, strict TDD):** RED tests first for guards/nav/layout; added `GorolaMountainMark` (separate SVG component), `BuyerNav`, `BuyerLayout`, `BuyerFooter`, and `app/routes/guards.tsx`; moved QueryClientProvider + Toaster into `App`; added route stubs and RBAC role in `auth.store`; GREEN with `ci:quality`.
 - **Session 36 (Phase 2.5 hero section, strict TDD):** Added RED tests in `HeroSection.test.tsx`, then stubbed `HeroSection` and confirmed RED functional failures before GREEN implementation. Implemented `HeroSection` with `TopographicBg` + `.noise-overlay`, `gsap.context()` timeline for logo/wordmark/tagline/CTA/ETA, cleanup revert, weather-mode slate copy, and saffron pill CTA scrolling to categories. Added `pages/buyer/HomePage.tsx` and switched `App.tsx` to use it; retained compatibility re-export in `pages/HomePage.tsx`.
 - **Session 37 (Phase 2.6 category grid, strict TDD):** Added RED tests in `CategoryGrid.test.tsx` for loading, success, empty, error, and navigation behavior; created `CategoryGrid` stub and confirmed RED failures; then implemented GREEN with `useQuery` categories fetch, state UIs, and `/categories/:slug` navigation. Added GSAP stagger entry animation for cards with conditional ScrollTrigger (avoids test-env plugin warning), wired `CategoryGrid` into `pages/buyer/HomePage.tsx`, and updated `router.test.tsx` to wrap `HomePage` in `QueryClientProvider`.
+- **Session 38 (Backend/frontend API alignment, strict TDD):** Added RED integration tests: `server.cors-credentials.test.ts` (expects `Access-Control-Allow-Credentials: true`) and `category.controller.test.ts` (`GET /api/v1/categories` success envelope, active-only ordering). Added `modules/catalog/category.controller.ts` stub and confirmed RED failures, then implemented GREEN route handler using `CategoryRepository.findAll()`, enabled Fastify CORS `credentials: true` in `server.ts`, and added `src/routes.ts` with `registerAppRoutes` wired into `app.ts` `createServer({ registerRoutes })`. Verification: `pnpm --filter @gorola/api lint`, `typecheck`, targeted new tests, and full API tests all green (279 passing).
 
 ---
 
@@ -71,7 +72,7 @@
 
 **Current Task:** **Phase 2.7** (product listing page) — or **order HTTP** on the API.
 
-**Exact stopping point:** **2.6** checklist [x] — `CategoryGrid` added and wired on buyer home with query-backed fetch, loading/empty/error states, hover style, GSAP stagger reveal, and click navigation to category routes. `router.test.tsx` now provides QueryClient context because `HomePage` includes query-driven components. **Next:** **2.7** `CategoryPage` + `ProductGrid` (`useInfiniteQuery`, search, add-to-cart optimistic flow) or API `POST /api/v1/orders`.
+**Exact stopping point:** **2.6 frontend + backend alignment fixed** — category UI is done and backend now serves `GET /api/v1/categories` with credentialed CORS headers (`Access-Control-Allow-Credentials: true`) for allowed origins, resolving browser-blocked retries. Runtime API route registration now includes categories via `src/routes.ts` in `app.ts`. **Next:** **2.7** `CategoryPage` + `ProductGrid` (`useInfiniteQuery`, search, add-to-cart optimistic flow) or API `POST /api/v1/orders`.
 
 ---
 

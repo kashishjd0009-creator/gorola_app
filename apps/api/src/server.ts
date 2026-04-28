@@ -107,7 +107,8 @@ export function createServer(options: CreateServerOptions = {}): FastifyInstance
     }
   });
   void app.register(cors, {
-    origin: corsOrigins.length === 0 ? true : corsOrigins
+    origin: corsOrigins.length === 0 ? true : corsOrigins,
+    credentials: true
   });
 
   const redisClient =

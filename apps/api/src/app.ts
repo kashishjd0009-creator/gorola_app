@@ -2,6 +2,7 @@ import "./config/env.js";
 
 import { isNodeMainModule } from "./lib/entrypoint.js";
 import { shutdownTelemetry, startTelemetry } from "./lib/telemetry.js";
+import { registerAppRoutes } from "./routes.js";
 
 export async function startApp(): Promise<void> {
   const port = Number(process.env.PORT ?? "3001");
@@ -9,7 +10,9 @@ export async function startApp(): Promise<void> {
 
   await startTelemetry();
   const { createServer } = await import("./server.js");
-  const app = createServer();
+  const app = createServer({
+    registerRoutes: registerAppRoutes
+  });
   const closeWithTelemetry = async (): Promise<void> => {
     try {
       if (typeof app.close === "function") {
