@@ -1,0 +1,337 @@
+import type { ReactElement } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import gsap from "gsap";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+
+import { initGorolaGsapOnce } from "@/lib/gsap";
+import { api } from "@/lib/api";
+import { useCartStore } from "@/store/cart.store";
+
+type ProductGridProps = {
+  categoryId?: string;
+  storeId?: string;
+};
+
+type ProductListItem = {
+  id: string;
+  name: string;
+  imageUrl: string;
+  storeId: string;
+  storeName: string;
+  categoryId: string;
+  highestPricedVariantId: string;
+  price: string;
+  unit: string;
+};
+
+type ProductPageEnvelope = {
+  success?: boolean;
+  data?: {
+    items?: ProductListItem[];
+    nextCursor?: string | null;
+  };
+};
+
+type ProductPage = {
+  items: ProductListItem[];
+  nextCursor: string | null;
+};
+
+async function fetchProducts({
+  categoryId,
+  storeId,
+  search,
+  cursor
+}: {
+  categoryId?: string;
+  storeId?: string;
+  search?: string;
+  cursor?: string;
+}): Promise<ProductPage> {
+  if (api === null) {
+    throw new Error("API client is not configured");
+  }
+
+  const response = await api.get<ProductPageEnvelope>("/api/v1/products", {
+    params: {
+      categoryId,
+      storeId,
+      search,
+      cursor,
+      limit: 20
+    }
+  });
+  const payload = response.data;
+  if (payload.success !== true || payload.data?.items === undefined) {
+    throw new Error("Invalid product response");
+  }
+
+  return {
+    items: payload.data.items,
+    nextCursor: payload.data.nextCursor ?? null
+  };
+}
+
+export function ProductGrid(props: ProductGridProps): ReactElement {
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const addOrMergeLine = useCartStore((state) => state.addOrMergeLine);
+  const setQty = useCartStore((state) => state.setQty);
+  const lines = useCartStore((state) => state.lines);
+  const nextPageSentinelRef = useRef<HTMLDivElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [searchInput]);
+
+  const query = useInfiniteQuery({
+    queryKey: ["buyer-products", props.categoryId ?? null, props.storeId ?? null, debouncedSearch],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
+      const search = debouncedSearch.length > 0 ? debouncedSearch : undefined;
+      return fetchProducts({
+        ...(props.categoryId !== undefined ? { categoryId: props.categoryId } : {}),
+        ...(props.storeId !== undefined ? { storeId: props.storeId } : {}),
+        ...(search !== undefined ? { search } : {}),
+        ...(pageParam !== undefined ? { cursor: pageParam } : {})
+      });
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined
+  });
+
+  const items = useMemo(
+    () => query.data?.pages.flatMap((page) => page.items) ?? [],
+    [query.data?.pages]
+  );
+
+  useEffect(() => {
+    if (query.hasNextPage !== true || query.isFetchingNextPage) {
+      return;
+    }
+    const sentinel = nextPageSentinelRef.current;
+    if (sentinel === null) {
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      const first = entries[0];
+      if (first?.isIntersecting === true) {
+        void query.fetchNextPage();
+      }
+    });
+    observer.observe(sentinel);
+    return () => {
+      observer.disconnect();
+    };
+  }, [query.fetchNextPage, query.hasNextPage, query.isFetchingNextPage]);
+
+  useEffect(() => {
+    if (items.length === 0 || gridRef.current === null) {
+      return;
+    }
+    if (import.meta.env.MODE === "test") {
+      return;
+    }
+    initGorolaGsapOnce();
+    const grid = gridRef.current;
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>("[data-product-card='true']"));
+    const pending = cards.filter((card) => card.dataset.gsapAnimated !== "true");
+    if (pending.length === 0) {
+      return;
+    }
+
+    pending.forEach((card) => {
+      card.dataset.gsapAnimated = "true";
+    });
+
+    const context = gsap.context(() => {
+      pending.forEach((card, index) => {
+        gsap.fromTo(
+          card,
+          { y: 12, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            delay: index * 0.06,
+            duration: 0.45,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: card,
+              start: "top 92%",
+              once: true
+            }
+          }
+        );
+      });
+    }, grid);
+
+    return () => {
+      context.revert();
+    };
+  }, [items]);
+
+  function queueCartSync(productVariantId: string, quantity: number): void {
+    if (api === null) {
+      return;
+    }
+    void api.post("/api/v1/cart/items", {
+      productVariantId,
+      quantity
+    });
+  }
+
+  if (query.isLoading) {
+    const skeletonCards = Array.from({ length: 12 }, (_, index) => (
+      <article
+        key={`skeleton-${index}`}
+        data-testid="product-skeleton-card"
+        className="h-36 rounded-2xl border border-gorola-pine/10 bg-white p-4 skeleton"
+      />
+    ));
+
+    return (
+      <section className="space-y-3" aria-label="Product grid">
+        <input
+          value={searchInput}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setSearchInput(event.target.value);
+          }}
+          placeholder="Search products"
+          className="w-full rounded-xl border border-gorola-slate-mist bg-white px-4 py-2 font-dm-sans text-sm"
+        />
+        <p className="font-dm-sans text-sm text-gorola-slate">Loading products...</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{skeletonCards}</div>
+      </section>
+    );
+  }
+
+  if (query.isError) {
+    return (
+      <section className="space-y-3" aria-label="Product grid">
+        <input
+          value={searchInput}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setSearchInput(event.target.value);
+          }}
+          placeholder="Search products"
+          className="w-full rounded-xl border border-gorola-slate-mist bg-white px-4 py-2 font-dm-sans text-sm"
+        />
+        <p className="font-dm-sans text-sm text-gorola-charcoal">Couldn't load products</p>
+        <button
+          type="button"
+          onClick={() => {
+            void query.refetch();
+          }}
+          className="rounded-full bg-gorola-saffron px-4 py-2 text-sm font-semibold text-gorola-charcoal"
+        >
+          Retry
+        </button>
+      </section>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <section className="space-y-3" aria-label="Product grid">
+        <input
+          value={searchInput}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setSearchInput(event.target.value);
+          }}
+          placeholder="Search products"
+          className="w-full rounded-xl border border-gorola-slate-mist bg-white px-4 py-2 font-dm-sans text-sm"
+        />
+        <p className="font-dm-sans text-sm text-gorola-slate">Nothing here yet - check back soon</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-4" aria-label="Product grid">
+      <input
+        value={searchInput}
+        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+          setSearchInput(event.target.value);
+        }}
+        placeholder="Search products"
+        className="w-full rounded-xl border border-gorola-slate-mist bg-white px-4 py-2 font-dm-sans text-sm"
+      />
+      <div ref={gridRef} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {items.map((item) => (
+          <article
+            key={item.id}
+            data-product-card="true"
+            className="rounded-2xl border border-gorola-pine/10 bg-white p-4 shadow-sm"
+          >
+            <p className="font-dm-sans text-base font-semibold text-gorola-charcoal">{item.name}</p>
+            <p className="mt-1 font-dm-sans text-sm text-gorola-slate">{item.storeName}</p>
+            <p className="mt-2 font-dm-sans text-sm text-gorola-charcoal">Rs {item.price}</p>
+            <p className="mt-1 font-dm-sans text-xs text-gorola-slate">Unit: {item.unit}</p>
+            {(() => {
+              const line = lines.find(
+                (candidate) => candidate.productVariantId === item.highestPricedVariantId
+              );
+              const quantity = line?.quantity ?? 0;
+              if (quantity > 0) {
+                return (
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label={`Decrease ${item.name} quantity`}
+                      onClick={() => {
+                        const next = quantity - 1;
+                        setQty(item.highestPricedVariantId, next);
+                        queueCartSync(item.highestPricedVariantId, Math.max(next, 0));
+                      }}
+                      className="h-8 w-8 rounded-full border border-gorola-pine/20 text-sm font-semibold text-gorola-charcoal"
+                    >
+                      -
+                    </button>
+                    <span className="min-w-4 text-center font-dm-sans text-sm text-gorola-charcoal">{quantity}</span>
+                    <button
+                      type="button"
+                      aria-label={`Increase ${item.name} quantity`}
+                      onClick={() => {
+                        const next = quantity + 1;
+                        setQty(item.highestPricedVariantId, next);
+                        queueCartSync(item.highestPricedVariantId, next);
+                      }}
+                      className="h-8 w-8 rounded-full border border-gorola-pine/20 text-sm font-semibold text-gorola-charcoal"
+                    >
+                      +
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  type="button"
+                  aria-label={`Add ${item.name} to cart`}
+                  onClick={() => {
+                    addOrMergeLine({
+                      productVariantId: item.highestPricedVariantId,
+                      quantity: 1,
+                      productName: item.name
+                    });
+                    queueCartSync(item.highestPricedVariantId, 1);
+                  }}
+                  className="mt-3 rounded-full bg-gorola-saffron px-4 py-2 text-sm font-semibold text-gorola-charcoal"
+                >
+                  Add
+                </button>
+              );
+            })()}
+          </article>
+        ))}
+      </div>
+      {query.hasNextPage === true ? <div ref={nextPageSentinelRef} aria-hidden="true" className="h-4 w-full" /> : null}
+    </section>
+  );
+}

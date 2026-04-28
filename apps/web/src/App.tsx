@@ -7,6 +7,7 @@ import { BuyerLayout } from "@/components/buyer/BuyerLayout";
 import { Toaster } from "@/components/ui/sonner";
 import { useGorolaMotion } from "@/hooks/useGorolaMotion";
 import { createAppQueryClient } from "@/lib/query-client";
+import { CategoryPage } from "@/pages/buyer/CategoryPage";
 import { HomePage } from "@/pages/buyer/HomePage";
 
 const queryClient = createAppQueryClient();
@@ -33,6 +34,14 @@ export function App(): ReactElement {
           element={
             <BuyerLayout>
               <PlaceholderPage title="Search" />
+            </BuyerLayout>
+          }
+        />
+        <Route
+          path="/categories/:slug"
+          element={
+            <BuyerLayout>
+              <CategoryPage />
             </BuyerLayout>
           }
         />

@@ -8,9 +8,9 @@
 
 ## 📍 Last Updated
 
-- **Date:** 2026-04-28
-- **Session Summary:** **Phase 2.61 hardening complete (auth runtime + local dummy-data bootstrap)** — Added local DB bootstrap/verification scripts (`db:local:bootstrap`, `db:local:verify-seed`) that run Prisma migrate+seed and validate required category/product fixtures for buyer flows. Ran locally against Postgres (`gorola_dev`) and confirmed seeded slugs (`groceries`, `medical`) and active products are present. Auth runtime route wiring and integration test coverage from 2.61 remain green; buyer OTP/token runtime path is explicitly marked as a **temporary stub** in `src/routes.ts`.
-- **Next Session Must Start With:** **Phase 2.7 implementation** (product listing vertical slice) with API Contract Gate enforcement.
+- **Date:** 2026-04-29
+- **Session Summary:** **Phase 2.7 completed (strict TDD)** — Added RED tests for loading skeleton grid and variant-id cart contract, plus backend RED tests for product payload variant-id exposure; then implemented GREEN with `highestPricedVariantId` in `GET /api/v1/products`, optimistic cart sync using real variant IDs, 12-card loading skeletons, and GSAP+ScrollTrigger card-entry animation for newly loaded items.
+- **Next Session Must Start With:** **Phase 2.8 start (strict TDD)** — begin `ProductDetailPage` vertical slice (`GET /api/v1/products/:id` contract + frontend route/component/tests).
 
 ---
 
@@ -70,14 +70,18 @@
 - **Session 41 (Docs hardening: include Phase 5 in universal gate):** Updated global API Contract Gate language to explicitly include **rider/Phase 5** and added a Phase 5 checklist placeholder section with mandatory gate bullets for future rider implementation.
 - **Session 42 (Phase 2.61 auth runtime wiring, strict TDD):** Added RED integration test `auth.runtime-routes.test.ts` asserting `/api/v1/auth/buyer/send-otp` is reachable via runtime `registerAppRoutes`; confirmed RED (404). Then wired `registerAuthRoutes` in `src/routes.ts` with runtime auth deps (buyer flow operational for route reachability) and confirmed GREEN. Verification: `pnpm --filter @gorola/api lint`, `typecheck`, and integration runs for `auth.runtime-routes`, `auth.controller`, and `category.controller`.
 - **Session 43 (Phase 2.61 local dummy-data bootstrap):** Added `apps/api/scripts/bootstrap-local-db.cjs` to load root `.env` and run `prisma migrate deploy && prisma db seed`; added `apps/api/scripts/verify-local-seed.cjs` to assert required active category slugs (`groceries`, `medical`) and active product count for buyer pages. Added workspace scripts: `db:local:bootstrap`, `db:local:seed`, `db:local:verify-seed`. Local verification run succeeded on `gorola_dev` with expected seeded categories/products.
+- **Session 44 (Phase 2.7 product listing slice, strict TDD):** Added RED integration tests for `GET /api/v1/products` in `product.controller.test.ts`, added stub product route, then implemented GREEN via `product.controller.ts` + `ProductRepository.listForBuyer()` and runtime registration in `routes.ts`. Added frontend RED tests for product grid envelope/loading/empty/error/debounce, stubbed `ProductGrid`, then implemented GREEN baseline `ProductGrid` and `CategoryPage` route with passing web tests.
+- **Session 45 (Phase 2.7 frontend continuation, strict TDD):** Added RED tests for `CategoryPage` slug->categoryId resolution and `ProductGrid` retry/pagination behavior, then implemented GREEN by resolving category IDs via `/api/v1/categories`, passing `categoryId` to product fetches, adding retry button refetch in error state, and adding next-page loading (`Load more`) wired to cursor pagination.
+- **Session 46 (Phase 2.7 frontend continuation, strict TDD):** Added RED tests in `ProductGrid.test.tsx` for intersection-observer pagination trigger and optimistic cart controls (`Add` then `+/-`), confirmed RED, then implemented GREEN by replacing manual load-more interaction with a sentinel observer and adding optimistic cart mutations with background `POST /api/v1/cart/items` sync.
+- **Session 47 (Phase 2.7 completion, strict TDD):** Added RED tests for `ProductGrid` loading skeleton count and variant-id cart payload plus backend `product.controller` variant-id response contract; implemented GREEN by exposing `highestPricedVariantId` from catalog API, wiring `ProductGrid` cart actions to that variant id, adding 12-card skeleton loading grid, and adding GSAP + ScrollTrigger entry animation for new cards. Verified with API/web targeted tests and package typechecks.
 
 ---
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2.7** (Product Listing Page vertical slice with API Contract Gate).
+**Current Task:** **Phase 2.8** (Product Detail Page vertical slice with API Contract Gate).
 
-**Exact stopping point:** **2.61 implementation complete** — auth runtime route registration is wired and integration-tested via app runtime registrar. **Next:** start 2.7 with tests-first backend products endpoint contract and runtime registration.
+**Exact stopping point:** **2.7 complete** — product listing now has slug->categoryId wiring, debounced search, error retry, intersection-observer pagination, real variant-id optimistic add-to-cart controls, loading skeleton grid, and GSAP card-entry animation. **Next:** start Phase 2.8 product detail API + page tests-first.
 
 ---
 
@@ -404,25 +408,25 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.7 — Product Listing Page
 
-- [ ] API Contract Gate (mandatory for phase completion):
-  - [ ] Backend endpoint implemented and reachable at runtime: `GET /api/v1/products?categoryId=&storeId=&search=&cursor=&limit=20`
-  - [ ] Backend integration tests cover list/pagination/filter/search contract
-  - [ ] Route is registered in runtime app route graph (not only module-level test harness)
-  - [ ] Frontend tests validated against expected API envelope and error states
+- [x] API Contract Gate (mandatory for phase completion):
+  - [x] Backend endpoint implemented and reachable at runtime: `GET /api/v1/products?categoryId=&storeId=&search=&cursor=&limit=20`
+  - [x] Backend integration tests cover list/pagination/filter/search contract
+  - [x] Route is registered in runtime app route graph (not only module-level test harness)
+  - [x] Frontend tests validated against expected API envelope and error states
 
-- [ ] `src/pages/buyer/CategoryPage.tsx` → route: `/categories/:slug`
-- [ ] `src/components/buyer/ProductGrid.tsx`:
-  - [ ] Fetches `GET /api/v1/products?categoryId=&storeId=&search=&cursor=&limit=20`
-  - [ ] Product card: product name, shop name, price (largest variant), weight/unit, "Add" button
-  - [ ] Infinite scroll: `useInfiniteQuery` + intersection observer on last card
-  - [ ] Loading: skeleton cards (3 rows of 4)
-  - [ ] Empty state: "Nothing here yet — check back soon"
-  - [ ] Error state: retry button
-  - [ ] Search bar at top: debounced 300ms, updates query param
-  - [ ] "Add" button: optimistic update — immediately increments cart count, POST to API in background
-  - [ ] If item already in cart: show quantity +/- controls instead of "Add"
-  - [ ] GSAP ScrollTrigger: new cards fade-up as they enter viewport on infinite load
-- [ ] TESTS: renders product list, pagination loads next page, add-to-cart optimistic update, search debounce
+- [x] `src/pages/buyer/CategoryPage.tsx` → route: `/categories/:slug`
+- [x] `src/components/buyer/ProductGrid.tsx`:
+  - [x] Fetches `GET /api/v1/products?categoryId=&storeId=&search=&cursor=&limit=20`
+  - [x] Product card: product name, shop name, price (largest variant), weight/unit, "Add" button
+  - [x] Infinite scroll: `useInfiniteQuery` + intersection observer on last card
+  - [x] Loading: skeleton cards (3 rows of 4)
+  - [x] Empty state: "Nothing here yet — check back soon"
+  - [x] Error state: retry button
+  - [x] Search bar at top: debounced 300ms, updates query param
+  - [x] "Add" button: optimistic update — immediately increments cart count, POST to API in background
+  - [x] If item already in cart: show quantity +/- controls instead of "Add"
+  - [x] GSAP ScrollTrigger: new cards fade-up as they enter viewport on infinite load
+- [x] TESTS: renders product list, pagination loads next page, add-to-cart optimistic update, search debounce
 
 ### 2.8 — Product Detail Page
 

@@ -1,5 +1,5 @@
 import { NotFoundError } from "@gorola/shared";
-import type { PrismaClient, Product } from "@prisma/client";
+import { Prisma, type PrismaClient, type Product } from "@prisma/client";
 
 export type CreateProductInput = {
   storeId: string;
@@ -13,6 +13,54 @@ export type CreateProductInput = {
 export type UpdateProductInput = Partial<
   Pick<Product, "name" | "description" | "imageUrl" | "categoryId" | "isActive" | "isDeleted">
 >;
+
+export type ListProductsInput = {
+  categoryId?: string;
+  storeId?: string;
+  search?: string;
+  cursor?: string;
+  limit: number;
+};
+
+export type ProductListItem = {
+  id: string;
+  name: string;
+  imageUrl: string;
+  storeId: string;
+  storeName: string;
+  categoryId: string;
+  highestPricedVariantId: string;
+  price: string;
+  unit: string;
+};
+
+export type ProductListResult = {
+  items: ProductListItem[];
+  nextCursor: string | null;
+};
+
+const productListInclude = Prisma.validator<Prisma.ProductInclude>()({
+  store: {
+    select: {
+      id: true,
+      name: true
+    }
+  },
+  variants: {
+    where: {
+      isActive: true
+    },
+    orderBy: {
+      price: "desc"
+    },
+    take: 1,
+    select: {
+      id: true,
+      price: true,
+      unit: true
+    }
+  }
+});
 
 function isPrismaError(error: unknown, code: string): boolean {
   return (
@@ -95,5 +143,58 @@ export class ProductRepository {
       }
       throw error;
     }
+  }
+
+  public async listForBuyer(input: ListProductsInput): Promise<ProductListResult> {
+    const where: Prisma.ProductWhereInput = {
+      isDeleted: false,
+      isActive: true,
+      ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
+      ...(input.storeId !== undefined ? { storeId: input.storeId } : {}),
+      ...(input.search !== undefined && input.search.length > 0
+        ? {
+            name: {
+              contains: input.search,
+              mode: "insensitive"
+            }
+          }
+        : {})
+    };
+
+    const rows: Prisma.ProductGetPayload<{ include: typeof productListInclude }>[] =
+      await this.db.product.findMany({
+        where,
+        take: input.limit + 1,
+        orderBy: { id: "asc" },
+        include: productListInclude,
+        ...(input.cursor !== undefined
+          ? {
+              cursor: { id: input.cursor },
+              skip: 1
+            }
+          : {})
+      });
+
+    const hasNext = rows.length > input.limit;
+    const page = hasNext ? rows.slice(0, input.limit) : rows;
+
+    const items = page
+      .filter((row) => row.variants.length > 0)
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        imageUrl: row.imageUrl,
+        storeId: row.store.id,
+        storeName: row.store.name,
+        categoryId: row.categoryId,
+        highestPricedVariantId: row.variants[0]!.id,
+        price: row.variants[0]!.price.toFixed(2),
+        unit: row.variants[0]!.unit
+      }));
+
+    return {
+      items,
+      nextCursor: hasNext ? page[page.length - 1]?.id ?? null : null
+    };
   }
 }
