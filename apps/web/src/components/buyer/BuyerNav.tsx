@@ -12,6 +12,7 @@ export function BuyerNav(): ReactElement {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const count = useCartStore((s) => s.totalItemCount());
+  const openCart = useCartStore((s) => s.open);
   const isWeatherMode = useWeatherStore((s) => s.isWeatherMode);
 
   const handleEnter = (event: KeyboardEvent<HTMLInputElement>): void => {
@@ -57,8 +58,10 @@ export function BuyerNav(): ReactElement {
           />
         </div>
 
-        <Link
-          to="/cart"
+        <button
+          type="button"
+          aria-label="Open cart"
+          onClick={openCart}
           className="relative inline-flex items-center gap-2 rounded-full bg-gorola-saffron px-3 py-2 text-sm font-semibold text-white"
         >
           <ShoppingCart size={15} />
@@ -69,7 +72,7 @@ export function BuyerNav(): ReactElement {
           >
             {count}
           </span>
-        </Link>
+        </button>
 
         <Link
           to="/login"

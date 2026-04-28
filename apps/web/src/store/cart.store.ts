@@ -5,13 +5,18 @@ export type CartLine = {
   quantity: number;
   productName?: string;
   variantLabel?: string;
+  unitPrice?: number;
 };
 
 type CartState = {
   lines: CartLine[];
+  isOpen: boolean;
   addOrMergeLine: (line: CartLine) => void;
   removeLine: (productVariantId: string) => void;
   setQty: (productVariantId: string, quantity: number) => void;
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
   clear: () => void;
   totalItemCount: () => number;
 };
@@ -35,6 +40,7 @@ function mergeLine(lines: CartLine[], line: CartLine): CartLine[] {
 
 export const useCartStore = create<CartState>((set, get) => ({
   lines: [],
+  isOpen: false,
   addOrMergeLine: (line) =>
     set((s) => ({
       lines: mergeLine(s.lines, line)
@@ -54,6 +60,9 @@ export const useCartStore = create<CartState>((set, get) => ({
       )
     }));
   },
+  open: () => set({ isOpen: true }),
+  close: () => set({ isOpen: false }),
+  toggle: () => set((s) => ({ isOpen: !s.isOpen })),
   clear: () => set({ lines: [] }),
   totalItemCount: () => get().lines.reduce((acc, l) => acc + l.quantity, 0)
 }));

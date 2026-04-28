@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-04-29
-- **Session Summary:** **Phase 2.8 completed (strict TDD, verified)** — Added RED integration tests for `GET /api/v1/products/:id` (detail + 404), implemented GREEN backend route and repository detail contract (store + active variants), then added RED/GREEN frontend tests and implementation for `ProductDetailPage` route with variant selection, price updates, quantity controls (including out-of-stock disable), add-to-cart payload, loading skeleton, and GSAP entry animation.
-- **Next Session Must Start With:** **Phase 2.9 start (strict TDD)** — begin cart drawer/sidebar vertical slice with backend cart runtime routes + contract tests, then frontend cart UI tests and implementation.
+- **Session Summary:** **Phase 2.9 completed (strict TDD, thorough)** — Finished runtime cart contract gate and frontend cart drawer/sidebar slice end-to-end: nav-trigger open, mobile bottom-drawer + desktop sidebar behavior, line item quantity/remove flows, subtotal/delivery/total math, discount apply success/error handling, payment method selection with UPI/Card flag gating, and proceed-checkout disable/enable states under tests-first flow.
+- **Next Session Must Start With:** **Phase 2.10 start (strict TDD)** — begin buyer OTP login page flow (step 1 + step 2) with API contract-aligned frontend tests before implementation.
 
 ---
 
@@ -76,6 +76,8 @@
 - **Session 47 (Phase 2.7 completion, strict TDD):** Added RED tests for `ProductGrid` loading skeleton count and variant-id cart payload plus backend `product.controller` variant-id response contract; implemented GREEN by exposing `highestPricedVariantId` from catalog API, wiring `ProductGrid` cart actions to that variant id, adding 12-card skeleton loading grid, and adding GSAP + ScrollTrigger entry animation for new cards. Verified with API/web targeted tests and package typechecks.
 - **Session 48 (Phase 2.8 start, strict TDD):** Added backend RED integration tests for `GET /api/v1/products/:id` detail and not-found behavior, then implemented GREEN route in `product.controller.ts` and `ProductRepository.getDetailForBuyer()` including active variant payload. Added frontend RED tests and implemented `pages/buyer/ProductDetailPage.tsx` + `/products/:id` app route with variant pill selector, selected-price updates, quantity +/- clamped by stock, add-to-cart API call with variant+quantity, loading skeleton, and GSAP page-entry animation. Verified with targeted lint/typecheck/test on API and web packages.
 - **Session 49 (Phase 2.8 hardening, strict TDD):** Added RED frontend tests for product-detail error state coverage and out-of-stock add-to-cart disable behavior, then implemented GREEN by disabling add-to-cart and quantity increment when selected variant stock is zero and guarding cart mutation path. Re-verified API/web lint + typecheck and targeted detail/controller tests.
+- **Session 50 (Phase 2.9 start, strict TDD):** Added RED integration tests in `cart.controller.test.ts` for runtime cart read/mutate lifecycle and validation errors, then implemented GREEN via new `modules/cart/cart.controller.ts` and route registration in `routes.ts`. Added RED frontend tests in `CartDrawer.test.tsx`, then implemented GREEN `CartDrawer` + `BuyerLayout`/`BuyerNav` wiring with open-from-nav behavior, empty state, line item quantity/remove actions, subtotal+delivery+total summary, payment-method selector (COD default), and discount-apply API call hook.
+- **Session 51 (Phase 2.9 completion, strict TDD):** Added RED frontend tests for discount invalid/expired messaging, remove-item API call, feature-flag gated UPI/Card methods, and proceed-checkout enabled/disabled states; implemented GREEN in `CartDrawer` with error handling, labeled remove actions, checkout CTA state, and responsive mobile-bottom-drawer/desktop-sidebar container behavior. Re-verified cart and nav tests plus package lint/typecheck.
 
 ---
 
@@ -83,7 +85,7 @@
 
 **Current Task:** **Phase 2.9** (Cart Drawer/Sidebar vertical slice with API Contract Gate).
 
-**Exact stopping point:** **2.8 complete** — runtime `GET /api/v1/products/:id` contract and frontend `ProductDetailPage` (route, variant selector, price update, qty clamp, add-to-cart payload, skeleton, GSAP entry) are implemented and verified with RED->GREEN tests. **Next:** proceed to Phase 2.9 cart vertical slice.
+**Exact stopping point:** **2.9 complete** — runtime cart read/mutate endpoints and frontend cart drawer/sidebar checklist items are implemented and validated via RED->GREEN tests. **Next:** proceed to Phase 2.10 OTP login flow.
 
 ---
 
@@ -451,25 +453,25 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.9 — Cart (Drawer on Mobile, Sidebar on Desktop)
 
-- [ ] API Contract Gate (mandatory for phase completion):
-  - [ ] Backend endpoints implemented and reachable at runtime for cart read/mutate flows
-  - [ ] Backend integration tests cover add/update/remove/clear semantics
-  - [ ] Routes are registered in runtime app route graph
-  - [ ] Frontend tests validated against expected API envelope and cart edge states
+- [x] API Contract Gate (mandatory for phase completion):
+  - [x] Backend endpoints implemented and reachable at runtime for cart read/mutate flows
+  - [x] Backend integration tests cover add/update/remove/clear semantics
+  - [x] Routes are registered in runtime app route graph
+  - [x] Frontend tests validated against expected API envelope and cart edge states
 
-- [ ] `src/components/buyer/CartDrawer.tsx` (mobile: bottom drawer, desktop: right sidebar)
-  - [ ] Triggered by cart icon in nav
-  - [ ] Lists cart items with quantity controls
-  - [ ] Per-item: product name, variant, price × qty, remove button
-  - [ ] Subtotal calculation
-  - [ ] Delivery fee (fetched from store config or flat rate from API)
-  - [ ] Active offers/discounts section: if store has active offers, show prominently
-  - [ ] Discount code input field + "Apply" button → `POST /api/v1/promotions/discounts/validate`
-  - [ ] If discount valid: show amount saved, update total
-  - [ ] Payment method selector: COD (pre-selected, green checkmark animation), UPI (flag-gated), Card (flag-gated)
-  - [ ] "Proceed to Checkout" CTA (disabled if cart empty)
-  - [ ] Empty state: "Your cart is empty — go find something good"
-- [ ] TESTS: item removal, quantity update, discount code validation (valid/invalid/expired), payment method selection, empty state
+- [x] `src/components/buyer/CartDrawer.tsx` (mobile: bottom drawer, desktop: right sidebar)
+  - [x] Triggered by cart icon in nav
+  - [x] Lists cart items with quantity controls
+  - [x] Per-item: product name, variant, price × qty, remove button
+  - [x] Subtotal calculation
+  - [x] Delivery fee (fetched from store config or flat rate from API)
+  - [x] Active offers/discounts section: if store has active offers, show prominently
+  - [x] Discount code input field + "Apply" button → `POST /api/v1/promotions/discounts/validate`
+  - [x] If discount valid: show amount saved, update total
+  - [x] Payment method selector: COD (pre-selected, green checkmark animation), UPI (flag-gated), Card (flag-gated)
+  - [x] "Proceed to Checkout" CTA (disabled if cart empty)
+  - [x] Empty state: "Your cart is empty — go find something good"
+- [x] TESTS: item removal, quantity update, discount code validation (valid/invalid/expired), payment method selection, empty state
 
 ### 2.10 — OTP Login Flow
 

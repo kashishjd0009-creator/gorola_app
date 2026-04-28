@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 
 import { registerAuthRoutes } from "./modules/auth/auth.controller.js";
 import { AuthService } from "./modules/auth/auth.service.js";
+import { registerCartRoutes } from "./modules/cart/cart.controller.js";
 import { registerCategoryRoutes } from "./modules/catalog/category.controller.js";
 import { registerProductRoutes } from "./modules/catalog/product.controller.js";
 
@@ -36,6 +37,7 @@ function getRuntimeRedis(app: FastifyInstance): RedisLikeRuntime {
 export function registerAppRoutes(app: FastifyInstance): void {
   registerCategoryRoutes(app);
   registerProductRoutes(app);
+  registerCartRoutes(app);
   // TEMP STUB (Phase 2.61): buyer auth route reachability uses mock OTP sender and mock token issue/rotate.
   // Replace with real provider + token-service runtime wiring before production auth rollout.
   const authService = new AuthService({
