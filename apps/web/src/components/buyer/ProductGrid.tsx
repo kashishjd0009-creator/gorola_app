@@ -1,10 +1,10 @@
-import type { ReactElement } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import gsap from "gsap";
+import type { ReactElement } from "react";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
-import { initGorolaGsapOnce } from "@/lib/gsap";
 import { api } from "@/lib/api";
+import { initGorolaGsapOnce } from "@/lib/gsap";
 import { useCartStore } from "@/store/cart.store";
 
 type ProductGridProps = {

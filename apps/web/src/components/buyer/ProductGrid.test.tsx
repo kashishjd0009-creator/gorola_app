@@ -1,3 +1,4 @@
+/* eslint-disable simple-import-sort/imports, import/order */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -5,6 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProductGrid } from "./ProductGrid";
 import { useCartStore } from "@/store/cart.store";
+
+
+
+
 
 const { getMock, postMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
@@ -25,7 +30,12 @@ class MockIntersectionObserver implements IntersectionObserver {
   public readonly rootMargin = "";
   public readonly thresholds = [0];
 
-  public constructor(callback: IntersectionObserverCallback) {
+  public constructor(
+    callback: (
+      entries: IntersectionObserverEntry[],
+      observer: IntersectionObserver
+    ) => void
+  ) {
     observerCallback = (entries) => {
       callback(entries, this);
     };

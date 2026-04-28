@@ -1,5 +1,5 @@
-import type { ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { ReactElement } from "react";
 import { useParams } from "react-router-dom";
 
 import { ProductGrid } from "@/components/buyer/ProductGrid";

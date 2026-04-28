@@ -1,10 +1,11 @@
+/* eslint-disable simple-import-sort/imports */
 import { ValidationError } from "@gorola/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { getPrismaClient } from "../../lib/prisma.js";
-import { ProductRepository } from "./product.repository.js";
-import type { ListProductsInput } from "./product.repository.js";
+
+import { type ListProductsInput, ProductRepository } from "./product.repository.js";
 
 type SuccessEnvelope<T> = {
   success: true;
