@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { GorolaMountainMark } from "@/components/shared/GorolaMountainMark";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
@@ -18,10 +19,22 @@ export function BuyerNav(): ReactElement {
   const role = useAuthStore((s) => s.role);
   const name = useAuthStore((s) => s.name);
   const phone = useAuthStore((s) => s.phone);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
   const clearSession = useAuthStore((s) => s.clearSession);
 
   const buyerLabel =
     name !== null && name.trim().length > 0 ? name.trim() : (phone !== null ? phone : "Buyer");
+
+  async function logoutBuyer(): Promise<void> {
+    try {
+      if (api !== null && refreshToken !== null && refreshToken.length > 0) {
+        await api.post("/api/v1/auth/buyer/logout", { refreshToken });
+      }
+    } finally {
+      clearSession();
+      navigate("/", { replace: true });
+    }
+  }
 
   const handleEnter = (event: KeyboardEvent<HTMLInputElement>): void => {
     if (event.key !== "Enter") {
@@ -90,8 +103,7 @@ export function BuyerNav(): ReactElement {
             <button
               type="button"
               onClick={() => {
-                clearSession();
-                navigate("/", { replace: true });
+                void logoutBuyer();
               }}
               className="inline-flex items-center gap-1 rounded-full border border-white/30 px-3 py-2 text-sm text-gorola-fog"
             >

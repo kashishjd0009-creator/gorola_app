@@ -163,6 +163,10 @@ export function CartDrawer(): ReactElement | null {
                 }
                 setSavedAmount(0);
                 setDiscountError("Invalid or expired discount code");
+              })
+              .catch(() => {
+                setSavedAmount(0);
+                setDiscountError("Could not validate discount code right now");
               });
           }}
           className="rounded-lg bg-gorola-pine px-3 py-2 font-dm-sans text-sm font-semibold text-white"

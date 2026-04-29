@@ -183,6 +183,27 @@ describe("CartDrawer", () => {
     expect(await screen.findByText("Invalid or expired discount code")).toBeInTheDocument();
   });
 
+  it("shows service error when discount validation request fails", async () => {
+    useCartStore.setState({
+      lines: [
+        {
+          productVariantId: "v1",
+          quantity: 1,
+          productName: "Apple",
+          variantLabel: "1kg",
+          unitPrice: 120
+        }
+      ],
+      isOpen: true
+    });
+    postMock.mockRejectedValue(new Error("network"));
+
+    renderShell();
+    fireEvent.change(screen.getByPlaceholderText("Discount code"), { target: { value: "SAVE20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByText("Could not validate discount code right now")).toBeInTheDocument();
+  });
+
   it("removes line item and calls cart delete API", async () => {
     useCartStore.setState({
       lines: [

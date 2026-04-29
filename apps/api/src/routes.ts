@@ -10,6 +10,7 @@ import { createNoopOtpProvider } from "./modules/auth/noop-otp-provider.js";
 import { registerCartRoutes } from "./modules/cart/cart.controller.js";
 import { registerCategoryRoutes } from "./modules/catalog/category.controller.js";
 import { registerProductRoutes } from "./modules/catalog/product.controller.js";
+import { registerPromotionRoutes } from "./modules/promotion/discount.controller.js";
 import { UserRepository } from "./modules/user/user.repository.js";
 
 type RedisLikeRuntime = {
@@ -41,6 +42,7 @@ export function registerAppRoutes(app: FastifyInstance): void {
   registerCategoryRoutes(app);
   registerProductRoutes(app);
   registerCartRoutes(app);
+  registerPromotionRoutes(app);
 
   const redis = getRuntimeRedis(app);
   const keys = resolveBuyerJwtKeyPair();

@@ -1,11 +1,21 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BuyerNav } from "@/components/buyer/BuyerNav";
 import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 import { useWeatherStore } from "@/store/weather.store";
+
+const { postMock } = vi.hoisted(() => ({
+  postMock: vi.fn()
+}));
+
+vi.mock("@/lib/api", () => ({
+  api: {
+    post: postMock
+  }
+}));
 
 function SearchDebugPage() {
   const location = useLocation();
@@ -14,6 +24,7 @@ function SearchDebugPage() {
 
 describe("BuyerNav", () => {
   beforeEach(() => {
+    postMock.mockReset();
     useCartStore.setState({ lines: [] });
     useWeatherStore.setState({ isWeatherMode: false });
     useAuthStore.getState().clearSession();
@@ -83,5 +94,28 @@ describe("BuyerNav", () => {
     expect(screen.getByText("Naveen")).toBeInTheDocument();
     expect(screen.getByText("Logout")).toBeInTheDocument();
     expect(screen.queryByText("Login")).not.toBeInTheDocument();
+  });
+
+  it("calls backend logout before clearing local session", async () => {
+    postMock.mockResolvedValue({ data: { success: true } });
+    useAuthStore.setState({
+      accessToken: "access",
+      name: "Naveen",
+      phone: "+919876543210",
+      refreshToken: "refresh-token",
+      role: "BUYER",
+      userId: "buyer_1"
+    });
+    render(
+      <MemoryRouter>
+        <BuyerNav />
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole("button", { name: /logout/i }));
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalledWith("/api/v1/auth/buyer/logout", {
+        refreshToken: "refresh-token"
+      });
+    });
   });
 });
