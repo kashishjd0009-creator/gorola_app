@@ -604,20 +604,21 @@ Introduce a temporary environment variable override in `generateBuyerOtp`:
 **Status:** Accepted
 
 **Context:**
-Buyer OTP verify succeeded but browser console showed: refresh cookie rejected in cross-site context because `SameSite` was `Lax`. Frontend and API are on different sites (`*.vercel.app` and `*.railway.app`), so refresh cookie writes happen in a cross-site request path.
+Buyer OTP verify succeeded but browser console showed: refresh cookie rejected in cross-site context because `SameSite` was `Lax`. Frontend and API are on different sites (`*.vercel.app` and `*.railway.app`), so refresh cookie writes happen in a cross-site request path. Follow-up checks confirmed this is concentrated in auth refresh-token cookie handling (buyer/store-owner/admin), not a broader non-auth cookie issue.
 
 **Decision:**
 Set refresh-token cookie attributes by environment in auth controllers:
 - **Production:** `SameSite=None` + `Secure=true` + `Partitioned=true` (cross-site compatible over HTTPS and aligned with Chrome third-party cookie deprecation / CHIPS warning).
 - **Non-production:** keep `SameSite=Lax` for local same-site dev behavior.
 
-Applied in `auth.controller.ts` through shared `refreshCookieOptions()` used by buyer/store-owner/admin login + refresh handlers.
+Applied in `auth.controller.ts` through shared `refreshCookieOptions()` used by buyer/store-owner/admin login + refresh handlers, and mirrored clear options in logout via `refreshCookieClearOptions()` so cookie deletion works under the same cross-site policy.
 
 **Rationale:**
 - Required for cross-site cookie persistence in modern browsers.
 - `Partitioned` addresses Chrome warning (`cookie ... is foreign and does not have the "Partitioned" attribute`) for third-party cookie hardening.
 - Keeps secure defaults in production while minimizing local-dev friction.
 - Removes misleading downstream symptoms where auth appears to fail even when OTP verify itself succeeds.
+- Matching clear attributes avoids stale refresh cookies when logout executes in cross-site contexts.
 
 **Tradeoffs:**
 - Cross-site cookies increase CSRF exposure surface and require tighter origin controls.

@@ -48,6 +48,31 @@ function refreshCookieOptions(): {
   };
 }
 
+function refreshCookieClearOptions(): {
+  path: string;
+  sameSite?: "lax" | "none";
+  secure?: boolean;
+  partitioned?: boolean;
+} {
+  const options = refreshCookieOptions();
+  const clearOptions: {
+    path: string;
+    sameSite?: "lax" | "none";
+    secure?: boolean;
+    partitioned?: boolean;
+  } = {
+    path: options.path,
+    sameSite: options.sameSite
+  };
+  if (options.secure !== undefined) {
+    clearOptions.secure = options.secure;
+  }
+  if (options.partitioned !== undefined) {
+    clearOptions.partitioned = options.partitioned;
+  }
+  return clearOptions;
+}
+
 function getRequestId(request: FastifyRequest, reply: FastifyReply): string {
   return reply.getHeader("x-request-id")?.toString() ?? request.id;
 }
@@ -92,7 +117,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthControllerDep
   app.post("/api/v1/auth/buyer/logout", async (request, reply) => {
     const payload = parseLogoutInput(request.body as { refreshToken: string });
     await deps.authService.logout(payload);
-    reply.clearCookie("refreshToken", { path: "/" });
+    reply.clearCookie("refreshToken", refreshCookieClearOptions());
     return success(request, reply, { loggedOut: true });
   });
 
