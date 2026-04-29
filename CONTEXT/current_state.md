@@ -9,7 +9,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-04-29
-- **Session Summary:** **Wiring closure after audit (2.9 fixed)** — closed the remaining runtime API gap by implementing + registering `POST /api/v1/promotions/discounts/validate` (`registerPromotionRoutes` in `registerAppRoutes`) and adding integration tests (`discount.controller.test.ts`) for valid/invalid discount validation behavior. Buyer logout API connection (`POST /api/v1/auth/buyer/logout`) was already wired from nav in prior step. Re-verified API lint/typecheck + targeted integration tests; reopened 2.9 checklist rows are now re-closed. Rule retained: checklist rows are marked complete only after runtime API verification.
+- **Session Summary:** **Auth UX hardening (reload + mobile nav)** — implemented startup refresh bootstrap so buyer session can recover after reload via cookie-backed refresh (`bootstrapBuyerAuthSession` on app mount) and updated auth API refresh/logout to accept refresh token from cookie when body token is absent. Fixed mobile nav responsiveness so search stays visible on small screens and login/logout labels are visible on mobile. Verified with API/web lint + typecheck + targeted integration/unit tests.
 - **Next Session Must Start With:** **Phase 2.11 (strict TDD)** — checkout / address entry slice and `POST /api/v1/orders` contract per checklist; keep `GOROLA_DUMMY_OTP` temporary and remove before real go-live.
 
 ---
@@ -85,6 +85,7 @@
 - **Session 56 (Post-login hardcoded behavior fixes, web):** Patched `BuyerNav` to render from auth state (buyer label + `Logout` when `role === "BUYER"`, `Login` otherwise) so OTP-verified users no longer see stale login CTA. Patched `CartDrawer` to replace hardcoded `MOCK_USER_ID` (`buyer-local`) with `useAuthStore().userId` for cart `PUT/DELETE` payloads/params, preventing post-login cart drift against wrong identity. Updated tests in `BuyerNav.test.tsx` and `CartDrawer.test.tsx`; web lint/typecheck + targeted tests green.
 - **Session 57 (Checklist integrity + logout API connection audit):** Wired `BuyerNav` logout to backend revoke endpoint (`POST /api/v1/auth/buyer/logout`) and added regression test asserting request dispatch. Audited Phase 2.7–2.10.1 UI API calls against registered runtime routes; confirmed one mismatch: `POST /api/v1/promotions/discounts/validate` not implemented though previously marked complete in 2.9. Reopened affected 2.9 checklist items and added explicit guardrail: checklist rows must remain unchecked until runtime API connectivity is verified.
 - **Session 58 (Promotion discount validate wiring closure):** Implemented `modules/promotion/discount.controller.ts` with `POST /api/v1/promotions/discounts/validate`, registered route via `registerPromotionRoutes` in runtime `registerAppRoutes`, and added integration tests (`discount.controller.test.ts`) proving valid and invalid discount paths through runtime route graph. 2.9 checklist drift resolved and items re-closed after runtime verification.
+- **Session 59 (Startup refresh bootstrap + mobile nav visibility):** Added `bootstrapBuyerAuthSession()` in `apps/web/src/lib/api.ts` and invoked it at app startup (`App.tsx`) to attempt one cookie-backed buyer refresh on reload. Updated auth controller refresh/logout routes to resolve refresh token from request body or `refreshToken` cookie for bootstrap compatibility. Refactored `BuyerNav` mobile layout to keep search input visible and always show login/logout text on small screens. Verified with API lint/typecheck + `auth.controller.test.ts`, and web lint/typecheck + `BuyerNav`/`LoginPage`/`api` tests.
 
 ---
 
@@ -92,7 +93,7 @@
 
 **Current Task:** **Phase 2.11** (Address entry + checkout / `POST /api/v1/orders` slice per checklist).
 
-**Exact stopping point:** **2.10.1 complete + post-login hardcode fixes landed** — buyer OTP verify persists `User`, nav reflects authenticated buyer state, cart mutations use real store `userId`, optional `GOROLA_DUMMY_OTP` supports manual OTP QA, and production refresh cookie remains cross-site hardened (`SameSite=None`, `Secure`, `Partitioned`) with matching logout clear attributes. **Next:** **2.11** (see checklist below).
+**Exact stopping point:** **2.10.1 complete + auth UX hardening landed** — buyer OTP verify persists `User`, startup refresh bootstrap now restores session from cookie path after reload, nav/cart use real auth state on mobile and desktop, optional `GOROLA_DUMMY_OTP` supports manual OTP QA, and production refresh cookie remains cross-site hardened (`SameSite=None`, `Secure`, `Partitioned`) with matching logout clear attributes. **Next:** **2.11** (see checklist below).
 
 ---
 

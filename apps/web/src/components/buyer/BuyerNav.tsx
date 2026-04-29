@@ -53,7 +53,7 @@ export function BuyerNav(): ReactElement {
       data-weather={isWeatherMode ? "on" : "off"}
       aria-label="Buyer navigation"
     >
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 md:flex-nowrap md:gap-3">
         <Link to="/" className="flex items-center gap-2 text-gorola-fog">
           <span aria-label="GoRola mountain logo">
             <GorolaMountainMark />
@@ -66,7 +66,7 @@ export function BuyerNav(): ReactElement {
           <span>Kulri, Mussoorie</span>
         </div>
 
-        <div className="relative ml-auto flex w-full max-w-sm items-center md:ml-0">
+        <div className="order-4 relative mt-2 flex w-full basis-full items-center md:order-none md:mt-0 md:max-w-sm md:basis-auto">
           <Search size={15} className="pointer-events-none absolute left-3 text-white/60" />
           <input
             value={search}
@@ -86,7 +86,7 @@ export function BuyerNav(): ReactElement {
           className="relative inline-flex items-center gap-2 rounded-full bg-gorola-saffron px-3 py-2 text-sm font-semibold text-white"
         >
           <ShoppingCart size={15} />
-          <span className="hidden sm:inline">Cart</span>
+          <span className="inline">Cart</span>
           <span
             className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gorola-amber px-1 text-[11px] font-bold text-gorola-charcoal"
             aria-label="Cart items"
@@ -108,7 +108,7 @@ export function BuyerNav(): ReactElement {
               className="inline-flex items-center gap-1 rounded-full border border-white/30 px-3 py-2 text-sm text-gorola-fog"
             >
               <UserRound size={15} />
-              <span className="hidden sm:inline">Logout</span>
+              <span className="inline">Logout</span>
             </button>
           </div>
         ) : (
@@ -117,7 +117,7 @@ export function BuyerNav(): ReactElement {
             className="inline-flex items-center gap-1 rounded-full border border-white/30 px-3 py-2 text-sm text-gorola-fog"
           >
             <UserRound size={15} />
-            <span className="hidden sm:inline">Login</span>
+            <span className="inline">Login</span>
           </Link>
         )}
       </div>

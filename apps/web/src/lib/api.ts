@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig, isAxiosError, type RawAxiosRequestHeaders } from "axios";
 
-import { type AuthTokens,useAuthStore } from "@/store/auth.store";
+import { type AuthTokens, useAuthStore } from "@/store/auth.store";
 
 const BUYER_REFRESH_PATH = "/api/v1/auth/buyer/refresh";
 
@@ -152,3 +152,26 @@ export const api: ReturnType<typeof createApiClient> | null = (() => {
     }
   });
 })();
+
+/**
+ * Startup auth bootstrap: try cookie-backed refresh once so reload keeps buyer session.
+ */
+export async function bootstrapBuyerAuthSession(): Promise<void> {
+  if (api === null) {
+    return;
+  }
+  if (useAuthStore.getState().accessToken !== null) {
+    return;
+  }
+  try {
+    const res = await api.post<unknown>(BUYER_REFRESH_PATH, {});
+    const tokens = parseRefreshEnvelope(res.data);
+    const auth = useAuthStore.getState();
+    auth.setTokens(tokens);
+    if (auth.role === null) {
+      auth.setRole("BUYER");
+    }
+  } catch {
+    // No valid refresh cookie/token on startup; keep anonymous state.
+  }
+}

@@ -1,11 +1,13 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
+import { useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import { AdminRoute, ProtectedRoute, StoreRoute } from "@/app/routes/guards";
 import { BuyerLayout } from "@/components/buyer/BuyerLayout";
 import { Toaster } from "@/components/ui/sonner";
 import { useGorolaMotion } from "@/hooks/useGorolaMotion";
+import { bootstrapBuyerAuthSession } from "@/lib/api";
 import { createAppQueryClient } from "@/lib/query-client";
 import { CategoryPage } from "@/pages/buyer/CategoryPage";
 import { HomePage } from "@/pages/buyer/HomePage";
@@ -20,6 +22,9 @@ function PlaceholderPage({ title }: { title: string }): ReactElement {
 
 export function App(): ReactElement {
   useGorolaMotion();
+  useEffect(() => {
+    void bootstrapBuyerAuthSession();
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <Routes>

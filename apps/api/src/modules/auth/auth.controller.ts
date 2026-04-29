@@ -87,6 +87,26 @@ function success<T>(request: FastifyRequest, reply: FastifyReply, data: T): Succ
   };
 }
 
+function resolveRefreshToken(
+  request: FastifyRequest,
+  body: unknown
+): { refreshToken: string } {
+  const bodyToken =
+    typeof body === "object" && body !== null && "refreshToken" in body
+      ? (body as { refreshToken?: unknown }).refreshToken
+      : undefined;
+  if (typeof bodyToken === "string" && bodyToken.length > 0) {
+    return { refreshToken: bodyToken };
+  }
+
+  const cookieToken = (request.cookies as Record<string, string | undefined> | undefined)
+    ?.refreshToken;
+  if (typeof cookieToken === "string" && cookieToken.length > 0) {
+    return { refreshToken: cookieToken };
+  }
+  return { refreshToken: "" };
+}
+
 export function registerAuthRoutes(app: FastifyInstance, deps: AuthControllerDeps): void {
   app.post("/api/v1/auth/buyer/send-otp", async (request, reply) => {
     const payload = parseSendOtpInput(request.body as { phone: string });
@@ -108,14 +128,14 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthControllerDep
   });
 
   app.post("/api/v1/auth/buyer/refresh", async (request, reply) => {
-    const payload = parseRefreshTokenInput(request.body as { refreshToken: string });
+    const payload = parseRefreshTokenInput(resolveRefreshToken(request, request.body));
     const tokens = await deps.authService.refreshToken(payload);
     reply.setCookie("refreshToken", tokens.refreshToken, refreshCookieOptions());
     return success(request, reply, tokens);
   });
 
   app.post("/api/v1/auth/buyer/logout", async (request, reply) => {
-    const payload = parseLogoutInput(request.body as { refreshToken: string });
+    const payload = parseLogoutInput(resolveRefreshToken(request, request.body));
     await deps.authService.logout(payload);
     reply.clearCookie("refreshToken", refreshCookieClearOptions());
     return success(request, reply, { loggedOut: true });

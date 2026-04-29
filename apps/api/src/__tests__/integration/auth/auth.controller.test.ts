@@ -202,6 +202,37 @@ describe("auth controller routes", () => {
     });
   });
 
+  it("POST /api/v1/auth/buyer/refresh should accept refresh token from cookie", async () => {
+    const authService = createAuthServiceMock();
+    const storeOwnerAuthService = createStoreOwnerAuthServiceMock();
+    const adminAuthService = createAdminAuthServiceMock();
+    authService.refreshToken.mockResolvedValueOnce({
+      accessToken: "cookie-access",
+      refreshToken: "cookie-refresh-next"
+    });
+
+    const server = createServer({
+      disableRedis: true,
+      registerRoutes: (app) =>
+        registerAuthRoutes(app, { adminAuthService, authService, storeOwnerAuthService })
+    });
+    servers.push(server);
+
+    const response = await server.inject({
+      method: "POST",
+      headers: {
+        cookie: "refreshToken=cookie-refresh"
+      },
+      payload: {},
+      url: "/api/v1/auth/buyer/refresh"
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(authService.refreshToken).toHaveBeenCalledWith({
+      refreshToken: "cookie-refresh"
+    });
+  });
+
   it("should pass through service typed errors", async () => {
     const authService = createAuthServiceMock();
     const storeOwnerAuthService = createStoreOwnerAuthServiceMock();
