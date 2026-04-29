@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { GorolaMountainMark } from "@/components/shared/GorolaMountainMark";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 import { useWeatherStore } from "@/store/weather.store";
 
@@ -14,6 +15,13 @@ export function BuyerNav(): ReactElement {
   const count = useCartStore((s) => s.totalItemCount());
   const openCart = useCartStore((s) => s.open);
   const isWeatherMode = useWeatherStore((s) => s.isWeatherMode);
+  const role = useAuthStore((s) => s.role);
+  const name = useAuthStore((s) => s.name);
+  const phone = useAuthStore((s) => s.phone);
+  const clearSession = useAuthStore((s) => s.clearSession);
+
+  const buyerLabel =
+    name !== null && name.trim().length > 0 ? name.trim() : (phone !== null ? phone : "Buyer");
 
   const handleEnter = (event: KeyboardEvent<HTMLInputElement>): void => {
     if (event.key !== "Enter") {
@@ -74,13 +82,32 @@ export function BuyerNav(): ReactElement {
           </span>
         </button>
 
-        <Link
-          to="/login"
-          className="inline-flex items-center gap-1 rounded-full border border-white/30 px-3 py-2 text-sm text-gorola-fog"
-        >
-          <UserRound size={15} />
-          <span className="hidden sm:inline">Login</span>
-        </Link>
+        {role === "BUYER" ? (
+          <div className="inline-flex items-center gap-2">
+            <span className="hidden rounded-full border border-white/20 px-3 py-2 text-sm text-gorola-fog md:inline">
+              {buyerLabel}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                clearSession();
+                navigate("/", { replace: true });
+              }}
+              className="inline-flex items-center gap-1 rounded-full border border-white/30 px-3 py-2 text-sm text-gorola-fog"
+            >
+              <UserRound size={15} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
+        ) : (
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-1 rounded-full border border-white/30 px-3 py-2 text-sm text-gorola-fog"
+          >
+            <UserRound size={15} />
+            <span className="hidden sm:inline">Login</span>
+          </Link>
+        )}
       </div>
     </nav>
   );

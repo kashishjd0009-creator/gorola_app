@@ -9,7 +9,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-04-29
-- **Session Summary:** **Ops auth-cookie hardening after 2.10.1** — after Railway OTP QA bridge (`GOROLA_DUMMY_OTP`), fixed cross-site refresh cookie behavior for Vercel↔Railway auth: production cookie policy updated to `SameSite=None` + `Secure` and then `Partitioned` (CHIPS warning follow-up), with logout `clearCookie` aligned to the same attributes. Quick repo scan indicates cookie-risk scope is auth flows (buyer/store-owner/admin refresh token), not non-auth modules. Decision log updated under DECISION-020; OTP bridge remains temporary until Fast2SMS wiring.
+- **Session Summary:** **Post-login hardcode cleanup (web)** — fixed two runtime UI/data hardcodes that blocked/blurred authenticated behavior: `BuyerNav` now consumes auth store and shows buyer identity + `Logout` instead of always rendering `Login`, and `CartDrawer` no longer uses hardcoded `buyer-local` for cart mutations (now uses logged-in `userId` from `useAuthStore`). Re-verified with web lint/typecheck and targeted `BuyerNav` + `CartDrawer` tests.
 - **Next Session Must Start With:** **Phase 2.11 (strict TDD)** — checkout / address entry slice and `POST /api/v1/orders` contract per checklist; keep `GOROLA_DUMMY_OTP` temporary and remove before real go-live.
 
 ---
@@ -82,6 +82,7 @@
 - **Session 53 (Phase 2.10.1 buyer auth plumbing, strict TDD):** `ensureBuyerByPhone`, `OtpProvider` + noop provider, random OTP + test-only `GOROLA_TEST_OTP`, `BuyerTokenService` (RS256, Redis refresh rotation), runtime wiring in `routes.ts`, `auth.buyer-flow.integration.test.ts` + unit tests, `LoginPage` verify narrowing for `userId`, `.env.example` JWT/test OTP notes; §2.61 buyer auth note superseded to reference 2.10.1 wiring.
 - **Session 54 (Railway OTP testing bridge, post-2.10.1):** Diagnosed browser CORS console noise as downstream from Railway `502` when API boot fails in `NODE_ENV=production` without valid JWT PEMs. Added temporary env-gated OTP fallback `GOROLA_DUMMY_OTP` (fixed six digits, e.g. `123456`) for manual login testing before SMS provider integration; retained `NODE_ENV=production` and JWT requirements. Added unit tests for override and `.env.example` production guidance.
 - **Session 55 (Cross-site refresh cookie fixes on Railway/Vercel):** Updated refresh-token cookie policy in `auth.controller.ts` for cross-site browser behavior: production uses `SameSite=None` + `Secure`, follow-up hardening adds `Partitioned` for Chrome CHIPS warning, and logout clear path now mirrors the same cookie attributes. Repo scan confirms impact area is auth cookie flows (buyer/store-owner/admin), not broader app modules. Decision log DECISION-020 updated accordingly; API lint/typecheck re-verified green.
+- **Session 56 (Post-login hardcoded behavior fixes, web):** Patched `BuyerNav` to render from auth state (buyer label + `Logout` when `role === "BUYER"`, `Login` otherwise) so OTP-verified users no longer see stale login CTA. Patched `CartDrawer` to replace hardcoded `MOCK_USER_ID` (`buyer-local`) with `useAuthStore().userId` for cart `PUT/DELETE` payloads/params, preventing post-login cart drift against wrong identity. Updated tests in `BuyerNav.test.tsx` and `CartDrawer.test.tsx`; web lint/typecheck + targeted tests green.
 
 ---
 
@@ -89,7 +90,7 @@
 
 **Current Task:** **Phase 2.11** (Address entry + checkout / `POST /api/v1/orders` slice per checklist).
 
-**Exact stopping point:** **2.10.1 complete + ops bridges in place** — buyer OTP verify persists `User`, RS256 access + Redis-backed refresh/logout, optional `GOROLA_DUMMY_OTP` supports manual OTP QA, and production refresh cookie is cross-site hardened (`SameSite=None`, `Secure`, `Partitioned`) with matching logout clear attributes. **Next:** **2.11** (see checklist below).
+**Exact stopping point:** **2.10.1 complete + post-login hardcode fixes landed** — buyer OTP verify persists `User`, nav reflects authenticated buyer state, cart mutations use real store `userId`, optional `GOROLA_DUMMY_OTP` supports manual OTP QA, and production refresh cookie remains cross-site hardened (`SameSite=None`, `Secure`, `Partitioned`) with matching logout clear attributes. **Next:** **2.11** (see checklist below).
 
 ---
 

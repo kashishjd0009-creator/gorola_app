@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { BuyerNav } from "@/components/buyer/BuyerNav";
+import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 import { useWeatherStore } from "@/store/weather.store";
 
@@ -15,6 +16,7 @@ describe("BuyerNav", () => {
   beforeEach(() => {
     useCartStore.setState({ lines: [] });
     useWeatherStore.setState({ isWeatherMode: false });
+    useAuthStore.getState().clearSession();
   });
 
   it("renders mountain logo and location pill", () => {
@@ -62,5 +64,24 @@ describe("BuyerNav", () => {
       </MemoryRouter>
     );
     expect(screen.getByRole("navigation")).toHaveAttribute("data-weather", "on");
+  });
+
+  it("shows buyer identity and logout when buyer session exists", () => {
+    useAuthStore.setState({
+      accessToken: "access",
+      name: "Naveen",
+      phone: "+919876543210",
+      refreshToken: "refresh",
+      role: "BUYER",
+      userId: "buyer_1"
+    });
+    render(
+      <MemoryRouter>
+        <BuyerNav />
+      </MemoryRouter>
+    );
+    expect(screen.getByText("Naveen")).toBeInTheDocument();
+    expect(screen.getByText("Logout")).toBeInTheDocument();
+    expect(screen.queryByText("Login")).not.toBeInTheDocument();
   });
 });

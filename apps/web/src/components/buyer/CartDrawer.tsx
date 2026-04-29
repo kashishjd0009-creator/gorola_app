@@ -2,12 +2,11 @@ import type { ChangeEvent, ReactElement } from "react";
 import { useMemo, useState } from "react";
 
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 import { useFeatureFlagsStore } from "@/store/feature-flags.store";
 
 const DELIVERY_FEE = 30;
-const MOCK_USER_ID = "buyer-local";
-
 type PaymentMethod = "COD" | "UPI" | "CARD";
 
 export function CartDrawer(): ReactElement | null {
@@ -16,6 +15,7 @@ export function CartDrawer(): ReactElement | null {
   const lines = useCartStore((s) => s.lines);
   const removeLine = useCartStore((s) => s.removeLine);
   const setQty = useCartStore((s) => s.setQty);
+  const userId = useAuthStore((s) => s.userId);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("COD");
   const [discountCode, setDiscountCode] = useState("");
@@ -63,14 +63,14 @@ export function CartDrawer(): ReactElement | null {
                   onClick={() => {
                     const next = line.quantity - 1;
                     setQty(line.productVariantId, next);
-                    if (api !== null) {
+                    if (api !== null && userId !== null) {
                       if (next <= 0) {
                         void api.delete(`/api/v1/cart/items/${line.productVariantId}`, {
-                          params: { userId: MOCK_USER_ID }
+                          params: { userId }
                         });
                       } else {
                         void api.put(`/api/v1/cart/items/${line.productVariantId}`, {
-                          userId: MOCK_USER_ID,
+                          userId,
                           quantity: next
                         });
                       }
@@ -87,9 +87,9 @@ export function CartDrawer(): ReactElement | null {
                   onClick={() => {
                     const next = line.quantity + 1;
                     setQty(line.productVariantId, next);
-                    if (api !== null) {
+                    if (api !== null && userId !== null) {
                       void api.put(`/api/v1/cart/items/${line.productVariantId}`, {
-                        userId: MOCK_USER_ID,
+                        userId,
                         quantity: next
                       });
                     }
@@ -103,9 +103,9 @@ export function CartDrawer(): ReactElement | null {
                   aria-label={`Remove ${line.productName ?? "item"}`}
                   onClick={() => {
                     removeLine(line.productVariantId);
-                    if (api !== null) {
+                    if (api !== null && userId !== null) {
                       void api.delete(`/api/v1/cart/items/${line.productVariantId}`, {
-                        params: { userId: MOCK_USER_ID }
+                        params: { userId }
                       });
                     }
                   }}

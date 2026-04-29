@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BuyerLayout } from "@/components/buyer/BuyerLayout";
+import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 import { useFeatureFlagsStore } from "@/store/feature-flags.store";
 
@@ -28,6 +29,14 @@ describe("CartDrawer", () => {
     useCartStore.setState({
       lines: [],
       isOpen: false
+    });
+    useAuthStore.setState({
+      accessToken: "access",
+      name: "Buyer",
+      phone: "+919999999999",
+      refreshToken: "refresh",
+      role: "BUYER",
+      userId: "buyer-u1"
     });
     useFeatureFlagsStore.getState().reset();
   });
@@ -196,7 +205,7 @@ describe("CartDrawer", () => {
         "/api/v1/cart/items/v1",
         expect.objectContaining({
           params: expect.objectContaining({
-            userId: "buyer-local"
+            userId: "buyer-u1"
           })
         })
       );
