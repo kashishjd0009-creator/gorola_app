@@ -595,3 +595,34 @@ Introduce a temporary environment variable override in `generateBuyerOtp`:
 1. Set `NODE_ENV=test` on Railway and use `GOROLA_TEST_OTP` — rejected: changes broader runtime behavior and diverges from production semantics.
 2. Keep random OTP with noop provider — rejected: no practical way to complete manual auth QA.
 3. Implement Fast2SMS immediately — deferred: outside current phase sequencing; checkout work should continue first.
+
+---
+
+## [DECISION-020] Cross-Site Refresh Cookie Policy for Vercel ↔ Railway
+
+**Date:** 2026-04-29  
+**Status:** Accepted
+
+**Context:**
+Buyer OTP verify succeeded but browser console showed: refresh cookie rejected in cross-site context because `SameSite` was `Lax`. Frontend and API are on different sites (`*.vercel.app` and `*.railway.app`), so refresh cookie writes happen in a cross-site request path.
+
+**Decision:**
+Set refresh-token cookie attributes by environment in auth controllers:
+- **Production:** `SameSite=None` + `Secure=true` (cross-site compatible over HTTPS).
+- **Non-production:** keep `SameSite=Lax` for local same-site dev behavior.
+
+Applied in `auth.controller.ts` through shared `refreshCookieOptions()` used by buyer/store-owner/admin login + refresh handlers.
+
+**Rationale:**
+- Required for cross-site cookie persistence in modern browsers.
+- Keeps secure defaults in production while minimizing local-dev friction.
+- Removes misleading downstream symptoms where auth appears to fail even when OTP verify itself succeeds.
+
+**Tradeoffs:**
+- Cross-site cookies increase CSRF exposure surface and require tighter origin controls.
+- Depends on HTTPS in production (`Secure` mandatory when `SameSite=None`).
+
+**Alternatives Considered:**
+1. Keep `SameSite=Lax` and rely only on refresh token in JSON body — rejected for now: inconsistent with intended HttpOnly cookie refresh posture (DECISION-008).
+2. Move web and API under one same-site domain immediately — deferred: infra/domain work outside current phase scope.
+3. Disable cookie usage and keep refresh strictly client-managed — rejected: weaker security posture vs HttpOnly design intent.

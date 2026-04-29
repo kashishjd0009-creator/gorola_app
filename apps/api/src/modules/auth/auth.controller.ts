@@ -28,6 +28,20 @@ type SuccessEnvelope<T> = {
   };
 };
 
+function refreshCookieOptions(): { path: string; sameSite: "lax" | "none"; secure?: boolean } {
+  if (process.env.NODE_ENV === "production") {
+    return {
+      path: "/",
+      sameSite: "none",
+      secure: true
+    };
+  }
+  return {
+    path: "/",
+    sameSite: "lax"
+  };
+}
+
 function getRequestId(request: FastifyRequest, reply: FastifyReply): string {
   return reply.getHeader("x-request-id")?.toString() ?? request.id;
 }
@@ -52,10 +66,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthControllerDep
   app.post("/api/v1/auth/buyer/verify-otp", async (request, reply) => {
     const payload = parseVerifyOtpInput(request.body as { otp: string; phone: string });
     const result = await deps.authService.verifyOtp(payload);
-    reply.setCookie("refreshToken", result.refreshToken, {
-      path: "/",
-      sameSite: "lax"
-    });
+    reply.setCookie("refreshToken", result.refreshToken, refreshCookieOptions());
     return success(request, reply, {
       accessToken: result.accessToken,
       name: result.name,
@@ -68,10 +79,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthControllerDep
   app.post("/api/v1/auth/buyer/refresh", async (request, reply) => {
     const payload = parseRefreshTokenInput(request.body as { refreshToken: string });
     const tokens = await deps.authService.refreshToken(payload);
-    reply.setCookie("refreshToken", tokens.refreshToken, {
-      path: "/",
-      sameSite: "lax"
-    });
+    reply.setCookie("refreshToken", tokens.refreshToken, refreshCookieOptions());
     return success(request, reply, tokens);
   });
 
@@ -91,10 +99,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthControllerDep
       }
     );
     const tokens = await deps.storeOwnerAuthService.login(payload);
-    reply.setCookie("refreshToken", tokens.refreshToken, {
-      path: "/",
-      sameSite: "lax"
-    });
+    reply.setCookie("refreshToken", tokens.refreshToken, refreshCookieOptions());
     return success(request, reply, tokens);
   });
 
@@ -119,10 +124,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthControllerDep
       }
     );
     const tokens = await deps.adminAuthService.login(payload);
-    reply.setCookie("refreshToken", tokens.refreshToken, {
-      path: "/",
-      sameSite: "lax"
-    });
+    reply.setCookie("refreshToken", tokens.refreshToken, refreshCookieOptions());
     return success(request, reply, tokens);
   });
 
