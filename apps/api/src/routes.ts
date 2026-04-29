@@ -2,14 +2,23 @@ import { NotImplementedError } from "@gorola/shared";
 import type { FastifyInstance } from "fastify";
 
 import { getPrismaClient } from "./lib/prisma.js";
+import { registerBuyerAddressRoutes } from "./modules/address/address.controller.js";
+import { AddressRepository } from "./modules/address/address.repository.js";
 import { registerAuthRoutes } from "./modules/auth/auth.controller.js";
 import { AuthService } from "./modules/auth/auth.service.js";
 import { createBuyerTokenService } from "./modules/auth/buyer-token.service.js";
 import { resolveBuyerJwtKeyPair } from "./modules/auth/jwt-keys.js";
 import { createNoopOtpProvider } from "./modules/auth/noop-otp-provider.js";
 import { registerCartRoutes } from "./modules/cart/cart.controller.js";
+import { CartRepository } from "./modules/cart/cart.repository.js";
 import { registerCategoryRoutes } from "./modules/catalog/category.controller.js";
 import { registerProductRoutes } from "./modules/catalog/product.controller.js";
+import { ProductVariantRepository } from "./modules/catalog/variant.repository.js";
+import { StockMovementRepository } from "./modules/inventory/stock-movement.repository.js";
+import { BuyerCheckoutService } from "./modules/order/buyer-checkout.service.js";
+import { registerOrderRoutes } from "./modules/order/order.controller.js";
+import { OrderRepository } from "./modules/order/order.repository.js";
+import { OrderService } from "./modules/order/order.service.js";
 import { registerPromotionRoutes } from "./modules/promotion/discount.controller.js";
 import { UserRepository } from "./modules/user/user.repository.js";
 
@@ -44,6 +53,8 @@ export function registerAppRoutes(app: FastifyInstance): void {
   registerCartRoutes(app);
   registerPromotionRoutes(app);
 
+  const prisma = getPrismaClient();
+
   const redis = getRuntimeRedis(app);
   const keys = resolveBuyerJwtKeyPair();
 
@@ -55,7 +66,7 @@ export function registerAppRoutes(app: FastifyInstance): void {
     refreshTtlSeconds: 7 * 24 * 60 * 60
   });
 
-  const userRepo = new UserRepository(getPrismaClient());
+  const userRepo = new UserRepository(prisma);
 
   const authService = new AuthService({
     ensureBuyerUser: async (phone) => {
@@ -70,6 +81,24 @@ export function registerAppRoutes(app: FastifyInstance): void {
     otpTtlSeconds: 5 * 60,
     redis,
     tokenService
+  });
+
+  const checkoutCartRepo = new CartRepository(prisma);
+  const orderRepoOrders = new OrderRepository(prisma);
+  const variantRepoOrders = new ProductVariantRepository(prisma);
+  const stockMovementRepoOrders = new StockMovementRepository(prisma);
+  const buyerOrderSvc = new OrderService(prisma, orderRepoOrders, variantRepoOrders, stockMovementRepoOrders);
+  const addressRepoOrders = new AddressRepository(prisma);
+  const buyerCheckout = new BuyerCheckoutService(prisma, checkoutCartRepo, addressRepoOrders, buyerOrderSvc);
+
+  registerOrderRoutes(app, {
+    buyerCheckout,
+    tokenVerifier: tokenService
+  });
+
+  registerBuyerAddressRoutes(app, {
+    addresses: addressRepoOrders,
+    tokenVerifier: tokenService
   });
 
   registerAuthRoutes(app, {

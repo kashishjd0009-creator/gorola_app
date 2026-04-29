@@ -65,6 +65,16 @@ export class AddressRepository {
     });
   }
 
+  public async findByIdForBuyer(userId: string, addressId: string): Promise<Address | null> {
+    return this.db.address.findFirst({
+      where: {
+        id: addressId,
+        isDeleted: false,
+        userId
+      }
+    });
+  }
+
   public async create(input: CreateAddressInput): Promise<Address> {
     try {
       return await this.db.$transaction(async (tx) => {

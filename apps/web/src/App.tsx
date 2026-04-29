@@ -10,6 +10,7 @@ import { useGorolaMotion } from "@/hooks/useGorolaMotion";
 import { bootstrapBuyerAuthSession } from "@/lib/api";
 import { createAppQueryClient } from "@/lib/query-client";
 import { CategoryPage } from "@/pages/buyer/CategoryPage";
+import { CheckoutPage } from "@/pages/buyer/CheckoutPage";
 import { HomePage } from "@/pages/buyer/HomePage";
 import { LoginPage } from "@/pages/buyer/LoginPage";
 import { ProductDetailPage } from "@/pages/buyer/ProductDetailPage";
@@ -75,6 +76,16 @@ export function App(): ReactElement {
             <ProtectedRoute>
               <BuyerLayout>
                 <PlaceholderPage title="Profile" />
+              </BuyerLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute>
+              <BuyerLayout>
+                <CheckoutPage />
               </BuyerLayout>
             </ProtectedRoute>
           }

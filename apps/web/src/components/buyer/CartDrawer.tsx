@@ -1,5 +1,6 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth.store";
@@ -10,6 +11,7 @@ const DELIVERY_FEE = 30;
 type PaymentMethod = "COD" | "UPI" | "CARD";
 
 export function CartDrawer(): ReactElement | null {
+  const navigate = useNavigate();
   const isOpen = useCartStore((s) => s.isOpen);
   const close = useCartStore((s) => s.close);
   const lines = useCartStore((s) => s.lines);
@@ -223,6 +225,13 @@ export function CartDrawer(): ReactElement | null {
         type="button"
         aria-label="Proceed to Checkout"
         disabled={lines.length === 0}
+        onClick={() => {
+          if (lines.length === 0) {
+            return;
+          }
+          navigate("/checkout");
+          close();
+        }}
         className="mt-4 w-full rounded-full bg-gorola-pine px-5 py-2 font-dm-sans text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
         Proceed to Checkout
