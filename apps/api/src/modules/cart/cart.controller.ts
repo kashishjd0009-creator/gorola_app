@@ -7,7 +7,7 @@ import { getPrismaClient } from "../../lib/prisma.js";
 import { requireAuth, requireRole } from "../auth/auth.middleware.js";
 import type { AccessTokenVerifier } from "../auth/auth.types.js";
 
-import { CartRepository } from "./cart.repository.js";
+import { type CartWithItems, CartRepository } from "./cart.repository.js";
 
 type SuccessEnvelope<T> = {
   success: true;
@@ -44,6 +44,67 @@ function success<T>(request: FastifyRequest, reply: FastifyReply, data: T): Succ
   };
 }
 
+type SerializedCartItem = {
+  id: string;
+  cartId: string;
+  productVariantId: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+  productName: string;
+  variantLabel: string;
+  variantUnit: string;
+  unitPrice: string;
+};
+
+type SerializedBuyerCart =
+  | {
+      createdAt: string;
+      id: string;
+      items: SerializedCartItem[];
+      updatedAt: string;
+      userId: string;
+    }
+  | {
+      items: [];
+      userId: string;
+    };
+
+function toIso(d: Date): string {
+  return d.toISOString();
+}
+
+function serializeCartItem(
+  item: CartWithItems["items"][number]
+): SerializedCartItem {
+  const v = item.productVariant;
+  return {
+    cartId: item.cartId,
+    createdAt: toIso(item.createdAt),
+    id: item.id,
+    productName: v.product.name,
+    productVariantId: item.productVariantId,
+    quantity: item.quantity,
+    unitPrice: v.price.toString(),
+    updatedAt: toIso(item.updatedAt),
+    variantLabel: v.label,
+    variantUnit: v.unit
+  };
+}
+
+function serializeBuyerCart(cart: CartWithItems | { items: []; userId: string }): SerializedBuyerCart {
+  if (!("id" in cart)) {
+    return { items: [], userId: cart.userId };
+  }
+  return {
+    createdAt: toIso(cart.createdAt),
+    id: cart.id,
+    items: cart.items.map(serializeCartItem),
+    updatedAt: toIso(cart.updatedAt),
+    userId: cart.userId
+  };
+}
+
 export function registerCartRoutes(
   app: FastifyInstance,
   deps: { tokenVerifier: AccessTokenVerifier }
@@ -57,7 +118,11 @@ export function registerCartRoutes(
       throw new ValidationError("Buyer subject missing from auth context");
     }
     const cart = await cartRepo.findByUserId(buyerId);
-    return success(request, reply, cart ?? { userId: buyerId, items: [] });
+    return success(
+      request,
+      reply,
+      cart === null ? serializeBuyerCart({ items: [], userId: buyerId }) : serializeBuyerCart(cart)
+    );
   });
 
   app.post("/api/v1/cart/items", { preHandler: preCheckout }, async (request, reply) => {
@@ -70,7 +135,7 @@ export function registerCartRoutes(
       throw new ValidationError("Buyer subject missing from auth context");
     }
     const cart = await cartRepo.addItem(buyerId, parsed.data.productVariantId, parsed.data.quantity);
-    return success(request, reply, cart);
+    return success(request, reply, serializeBuyerCart(cart));
   });
 
   app.put("/api/v1/cart/items/:productVariantId", { preHandler: preCheckout }, async (request, reply) => {
@@ -87,7 +152,7 @@ export function registerCartRoutes(
       throw new ValidationError("Buyer subject missing from auth context");
     }
     const cart = await cartRepo.updateQty(buyerId, params.data.productVariantId, body.data.quantity);
-    return success(request, reply, cart);
+    return success(request, reply, serializeBuyerCart(cart));
   });
 
   app.delete("/api/v1/cart/items/:productVariantId", { preHandler: preCheckout }, async (request, reply) => {
@@ -102,7 +167,7 @@ export function registerCartRoutes(
       throw new ValidationError("Buyer subject missing from auth context");
     }
     const cart = await cartRepo.removeItem(buyerId, params.data.productVariantId);
-    return success(request, reply, cart);
+    return success(request, reply, serializeBuyerCart(cart));
   });
 
   app.delete("/api/v1/cart", { preHandler: preCheckout }, async (request, reply) => {
@@ -111,6 +176,6 @@ export function registerCartRoutes(
       throw new ValidationError("Buyer subject missing from auth context");
     }
     const cart = await cartRepo.clearCart(buyerId);
-    return success(request, reply, cart);
+    return success(request, reply, serializeBuyerCart(cart));
   });
 }

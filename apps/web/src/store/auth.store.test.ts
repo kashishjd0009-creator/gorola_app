@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { useAuthStore } from "./auth.store";
+import { useCartStore } from "./cart.store";
 
 describe("useAuthStore", () => {
   beforeEach(() => {
@@ -48,11 +49,13 @@ describe("useAuthStore", () => {
         refreshToken: "r",
         userId: "u"
       });
+      useCartStore.getState().addOrMergeLine({ productVariantId: "v1", quantity: 2 });
       result.current.clearSession();
     });
     expect(result.current.accessToken).toBeNull();
     expect(result.current.refreshToken).toBeNull();
     expect(result.current.userId).toBeNull();
     expect(result.current.phone).toBeNull();
+    expect(useCartStore.getState().lines).toEqual([]);
   });
 });

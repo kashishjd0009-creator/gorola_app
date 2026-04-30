@@ -1,9 +1,18 @@
 import { NotFoundError, ValidationError } from "@gorola/shared";
-import type { Cart, CartItem, PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
-export type CartWithItems = Cart & {
-  items: CartItem[];
-};
+export const cartWithItemsInclude = {
+  items: {
+    include: {
+      productVariant: {
+        include: { product: true }
+      }
+    },
+    orderBy: { createdAt: "asc" as const }
+  }
+} satisfies Prisma.CartInclude;
+
+export type CartWithItems = Prisma.CartGetPayload<{ include: typeof cartWithItemsInclude }>;
 
 function isPrismaError(error: unknown, code: string): boolean {
   return (
@@ -16,12 +25,8 @@ function isPrismaError(error: unknown, code: string): boolean {
 
 async function getCartWithItems(db: PrismaClient, cartId: string): Promise<CartWithItems> {
   return db.cart.findUniqueOrThrow({
-    where: { id: cartId },
-    include: {
-      items: {
-        orderBy: { createdAt: "asc" }
-      }
-    }
+    include: cartWithItemsInclude,
+    where: { id: cartId }
   });
 }
 
@@ -50,12 +55,8 @@ export class CartRepository {
 
   public async findByUserId(userId: string): Promise<CartWithItems | null> {
     return this.db.cart.findUnique({
-      where: { userId },
-      include: {
-        items: {
-          orderBy: { createdAt: "asc" }
-        }
-      }
+      include: cartWithItemsInclude,
+      where: { userId }
     });
   }
 

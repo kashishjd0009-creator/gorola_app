@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-01
-- **Session Summary:** **Production CORS preflight hardening (post-2.11.1)** — explicitly configured Fastify CORS methods/headers (`GET,POST,PUT,PATCH,DELETE,OPTIONS`; `Authorization`, `Content-Type`, `X-Request-Id`) with `strictPreflight` in `server.ts` to prevent browser blocks on cart mutation preflights. Added integration regression `server.cors-credentials.test.ts` validating `PUT`/`DELETE` preflight for `/api/v1/cart/items/:id`. Verified API lint/typecheck + targeted CORS integration tests green.
-- **Next Session Must Start With:** **Phase 2.12** — Order Confirmation Page API Contract Gate + page data wiring against `GET /api/v1/orders/:id`.
+- **Session Summary:** **Buyer cart UI ↔ server reconciliation (Phase 2.11.1 follow-up)** — backend cart responses now serialize catalog context per line (`productName`, `variantLabel`, `variantUnit`, `unitPrice`) via Prisma joins in `cart.repository.ts` + `serializeBuyerCart` in `cart.controller.ts`. Web: `syncBuyerCartFromServer` (`buyer-cart-sync.ts`) replaces `useCartStore` lines from `GET /api/v1/cart`; mounted in `BuyerCartHydration` inside `BuyerLayout` on buyer `accessToken` + on `CheckoutPage` mount so drawer/checkout match persisted cart. Logout clears cart via `auth.store.ts` → `cart.store.clear()` regression. Strict TDD: `buyer-cart-sync.test.ts`, `BuyerCartHydration.test.tsx`, `replaceLines`/auth tests, mocks in `CartDrawer`/`CheckoutPage` suites. Full `pnpm test` green (**311** API, **115** web).
+- **Next Session Must Start With:** **Phase 2.12** — Order Confirmation Page polish/expansion (`GET /api/v1/orders/:id` UX gate already partially implemented; align checklist).
 
 ---
 
@@ -102,6 +102,7 @@
 - **Session 71 (Phase 2.11.1 P2 wiring closure W-008, strict TDD):** Added RED order integration regression for checkout discount persistence semantics, then implemented GREEN backend contract by extending checkout payload schema with optional `discountCode`, validating discount applicability in `BuyerCheckoutService`, applying discount into order totals, and returning explicit order `discount` metadata. Added DB reconciliation assertion (`subtotal + deliveryFee - discount == total`) in integration tests and wired web checkout order payload to include active discount code.
 - **Session 72 (Phase 2.11.1 P2 wiring closure W-009, strict TDD):** RED `ProductGrid` test with stalled `PUT` mocks proving parallel dispatch; GREEN shared `enqueueCartVariantMutation` plus repository-level per-variant enqueue for `addItem`, `updateQty`, and `removeItem`. Removed stale `userId` from buyer cart POST/PUT payloads in catalog UI. Cart repository concurrency test asserts final DB quantity follows serialized registration order (`Promise.all` updates).
 - **Session 73 (Phase 2.11.1 final closure W-001 coupling, strict TDD):** Added RED integration coverage for missing `GET /api/v1/orders/:id`, then implemented GREEN buyer-owned order read route in `order.controller.ts` and runtime wiring in `routes.ts`. Integration assertions now prove runtime retrieval of just-placed order id plus DB row correspondence through this exact backend path, and enforce 404 for non-owner buyer access.
+- **Session 74 (Phase 2.11.1 cart hydration + enriched cart contract, strict TDD):** Closed invisible “ghost” server-only cart lines vs Zustand-only UI. API: `CartRepository.findByUserId` / `getCartWithItems` include `productVariant.product`; all cart endpoints return serialized buyer cart envelope. Web: `replaceLines`, `BuyerCartHydration`, `CheckoutPage` mount sync; `cart.controller.test.ts` asserts `productName` on GET items. Verified `pnpm test` (**311** API, **115** web) + root `pnpm typecheck`.
 
 ---
 
@@ -653,6 +654,11 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
   - [x] API contract: idempotent/update semantics respected for PUT/DELETE cart operations
   - [x] DB assertion: final persisted quantity equals final UI quantity after burst interactions
 
+- [x] **W-010 / P2:** Zustand cart diverges from persisted `GET /api/v1/cart` (ghost lines / wrong subtotal / checkout mismatch)
+  - [x] RED→GREEN: unit tests for `mapBuyerCartItemsToLines`, `replaceLines`, layout hydration replacing stale local-only lines
+  - [x] API: cart payloads include buyer-display fields aligned with storefront (`productName`, variant label/unit, `unitPrice`)
+  - [x] UX: hydrate on authenticated buyer shell load and on checkout mount; logout clears cart client state
+
 ### 2.12 — Order Confirmation Page
 
 - [ ] API Contract Gate (mandatory for phase completion):
@@ -1200,7 +1206,7 @@ gorola/
 | user              | ❌         | ✅                | integration: `user.repository.test.ts`                                                                                                                            |
 | store-owner       | ❌         | ✅                | integration: `store-owner.repository.test.ts`                                                                                                                     |
 | admin             | ❌         | ✅                | integration: `admin.repository.test.ts`                                                                                                                           |
-| **web (buyer)**   | **✅**     | ⏳                | **unit/component:** Vitest **98** in `apps/web` including `CheckoutPage`, `AddressMapPicker`, `CategoryPage`, `OrderConfirmationPage`; E2E = Phase 2.18      |
+| **web (buyer)**   | **✅**     | ⏳                | **unit/component:** Vitest **115** in `apps/web` including cart hydration (`BuyerCartHydration`, `buyer-cart-sync`), `CheckoutPage`, `CartDrawer`; E2E = Phase 2.18      |
 | catalog           | ❌         | ✅                | integration: `category`, `product`, `variant` `*.repository.test.ts`                                                                                              |
 | cart              | ❌         | ✅                | integration: `cart.repository.test.ts`                                                                                                                            |
 | order             | ✅         | ✅                | unit: `order.service.test.ts`; integration: `order.repository.test.ts`, `order.service.stock.integration.test.ts`, `order.controller.test.ts` (checkout HTTP)                     |

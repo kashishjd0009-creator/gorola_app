@@ -15,6 +15,8 @@ type CartState = {
   discountSavedAmount: number;
   discountError: string | null;
   addOrMergeLine: (line: CartLine) => void;
+  /** Replaces all lines (e.g. after `GET /api/v1/cart`). */
+  replaceLines: (lines: CartLine[]) => void;
   removeLine: (productVariantId: string) => void;
   setQty: (productVariantId: string, quantity: number) => void;
   setDiscountState: (payload: {
@@ -63,6 +65,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     set((s) => ({
       lines: mergeLine(s.lines, line)
     })),
+  replaceLines: (lines) => set({ lines: lines.map((l) => ({ ...l })) }),
   removeLine: (productVariantId) =>
     set((s) => ({
       lines: s.lines.filter((l) => l.productVariantId !== productVariantId)

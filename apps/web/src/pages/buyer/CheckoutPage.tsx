@@ -8,6 +8,8 @@ import {
   type MapCoordinates,
   MUSSOORIE_AREA_CENTER} from "@/components/buyer/AddressMapPicker";
 import { api } from "@/lib/api";
+import { syncBuyerCartFromServer } from "@/lib/buyer-cart-sync";
+import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 
 const DELIVERY_FEE = 30;
@@ -20,6 +22,7 @@ type AddrRow = {
 
 export function CheckoutPage(): ReactElement {
   const navigate = useNavigate();
+  const accessToken = useAuthStore((s) => s.accessToken);
   const lines = useCartStore((s) => s.lines);
   const discountCode = useCartStore((s) => s.discountCode);
   const discountSavedAmount = useCartStore((s) => s.discountSavedAmount);
@@ -52,6 +55,15 @@ export function CheckoutPage(): ReactElement {
   const handleMapCoordinates = useCallback((coords: MapCoordinates) => {
     setMapCoords(coords);
   }, []);
+
+  useEffect(() => {
+    if (accessToken === null) {
+      return;
+    }
+    void syncBuyerCartFromServer().catch(() => {
+      /* keep local lines if cart fetch fails */
+    });
+  }, [accessToken]);
 
   useEffect(() => {
     if (addressDefaultSet) {

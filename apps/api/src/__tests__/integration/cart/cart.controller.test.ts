@@ -142,6 +142,7 @@ describe("Cart controller", () => {
         userId: user.id,
         items: expect.arrayContaining([
           expect.objectContaining({
+            productName: "Cart Product",
             productVariantId: variantA.id,
             quantity: 2
           })

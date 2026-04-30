@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import { useCartStore } from "./cart.store";
+
 export type AuthTokens = {
   accessToken: string;
   refreshToken: string;
@@ -37,7 +39,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   refreshToken: null,
   role: null,
   userId: null,
-  clearSession: () =>
+  clearSession: () => {
+    useCartStore.getState().clear();
     set({
       accessToken: null,
       name: null,
@@ -45,7 +48,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       refreshToken: null,
       role: null,
       userId: null
-    }),
+    });
+  },
   setBuyerSession: (session) =>
     set({
       accessToken: session.accessToken,

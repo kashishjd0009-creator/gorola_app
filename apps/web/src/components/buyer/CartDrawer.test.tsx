@@ -7,22 +7,29 @@ import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 import { useFeatureFlagsStore } from "@/store/feature-flags.store";
 
-const { postMock, putMock, deleteMock } = vi.hoisted(() => ({
+const { postMock, putMock, deleteMock, syncCartMock } = vi.hoisted(() => ({
+  deleteMock: vi.fn(),
   postMock: vi.fn(),
   putMock: vi.fn(),
-  deleteMock: vi.fn()
+  syncCartMock: vi.fn().mockResolvedValue(undefined)
+}));
+
+vi.mock("@/lib/buyer-cart-sync", () => ({
+  syncBuyerCartFromServer: syncCartMock
 }));
 
 vi.mock("@/lib/api", () => ({
   api: {
+    delete: deleteMock,
     post: postMock,
-    put: putMock,
-    delete: deleteMock
+    put: putMock
   }
 }));
 
 describe("CartDrawer", () => {
   beforeEach(() => {
+    syncCartMock.mockReset();
+    syncCartMock.mockResolvedValue(undefined);
     postMock.mockReset();
     putMock.mockReset();
     deleteMock.mockReset();

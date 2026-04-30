@@ -69,6 +69,15 @@ describe("useCartStore", () => {
     expect(result.current.lines).toEqual([]);
   });
 
+  it("replaceLines overwrites the full cart", () => {
+    const { result } = renderHook(() => useCartStore());
+    act(() => {
+      result.current.addOrMergeLine({ productVariantId: "a", quantity: 1 });
+      result.current.replaceLines([{ productVariantId: "b", quantity: 2, productName: "Only" }]);
+    });
+    expect(result.current.lines).toEqual([{ productName: "Only", productVariantId: "b", quantity: 2 }]);
+  });
+
   it("removeLine drops a variant", () => {
     const { result } = renderHook(() => useCartStore());
     act(() => {

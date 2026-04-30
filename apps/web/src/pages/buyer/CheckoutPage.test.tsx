@@ -11,9 +11,14 @@ import { CheckoutPage } from "./CheckoutPage";
 import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 
-const { getMock, postMock } = vi.hoisted(() => ({
+const { getMock, postMock, syncCartMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
-  postMock: vi.fn()
+  postMock: vi.fn(),
+  syncCartMock: vi.fn().mockResolvedValue(undefined)
+}));
+
+vi.mock("@/lib/buyer-cart-sync", () => ({
+  syncBuyerCartFromServer: syncCartMock
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -64,6 +69,8 @@ function renderCheckout(entries: InitialEntry[] = ["/checkout"]): void {
 
 describe("CheckoutPage", () => {
   beforeEach(() => {
+    syncCartMock.mockReset();
+    syncCartMock.mockResolvedValue(undefined);
     getMock.mockReset();
     postMock.mockReset();
     act(() => {
