@@ -1,6 +1,8 @@
 import "./config/env.js";
 
 import { isNodeMainModule } from "./lib/entrypoint.js";
+import { getLogger } from "./lib/logger.js";
+import { warmupExternalConnections } from "./lib/server-warmup.js";
 import { shutdownTelemetry, startTelemetry } from "./lib/telemetry.js";
 import { registerAppRoutes } from "./routes.js";
 
@@ -9,6 +11,12 @@ export async function startApp(): Promise<void> {
   const host = process.env.HOST ?? "0.0.0.0";
 
   await startTelemetry();
+  try {
+    await warmupExternalConnections();
+  } catch (err: unknown) {
+    getLogger().fatal({ err }, "startup warmup failed — database or redis unreachable");
+    process.exit(1);
+  }
   const { createServer } = await import("./server.js");
   const app = createServer({
     registerRoutes: registerAppRoutes

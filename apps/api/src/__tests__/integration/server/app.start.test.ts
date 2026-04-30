@@ -20,6 +20,14 @@ vi.mock("../../../lib/telemetry.js", () => ({
   shutdownTelemetry: vi.fn().mockResolvedValue(undefined),
   startTelemetry: vi.fn().mockResolvedValue(undefined)
 }));
+
+const { warmupMock } = vi.hoisted(() => ({
+  warmupMock: vi.fn().mockResolvedValue(undefined)
+}));
+vi.mock("../../../lib/server-warmup.js", () => ({
+  warmupExternalConnections: warmupMock
+}));
+
 vi.mock("../../../server.js", () => ({
   createServer: createServerMock
 }));
@@ -31,6 +39,7 @@ describe("startApp", () => {
     listenMock.mockReset();
     closeMock.mockReset();
     createServerMock.mockClear();
+    warmupMock.mockClear();
     delete process.env.PORT;
     delete process.env.HOST;
   });
@@ -42,6 +51,7 @@ describe("startApp", () => {
 
     await startApp();
 
+    expect(warmupMock).toHaveBeenCalledTimes(1);
     expect(createServerMock).toHaveBeenCalledTimes(1);
     expect(listenMock).toHaveBeenCalledWith({
       port: 4010,

@@ -160,6 +160,9 @@ export function createServer(options: CreateServerOptions = {}): FastifyInstance
   app.decorate("redis", redisClient);
 
   app.setErrorHandler((error, request, reply) => {
+    if (!(error instanceof AppError)) {
+      request.log.error({ err: error }, "unhandled_route_error");
+    }
     const appError =
       error instanceof AppError
         ? error

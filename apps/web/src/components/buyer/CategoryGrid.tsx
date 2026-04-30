@@ -48,6 +48,11 @@ export function CategoryGrid(): ReactElement {
     if (categories.length === 0) {
       return;
     }
+    const root = rootRef.current;
+    if (root === null) {
+      return;
+    }
+
     const ctx = gsap.context(() => {
       const hasScrollTrigger =
         typeof (gsap as { core?: { globals?: () => Record<string, unknown> } }).core?.globals ===
@@ -61,7 +66,7 @@ export function CategoryGrid(): ReactElement {
         duration: number;
         stagger: number;
         scrollTrigger?: {
-          trigger: string;
+          trigger: HTMLElement;
           start: string;
         };
       } = {
@@ -71,8 +76,9 @@ export function CategoryGrid(): ReactElement {
         stagger: 0.12
       };
       if (hasScrollTrigger) {
+        /** String selector misses `root` itself (`.category-grid` is on `root`), yields “element not found” after navigation. */
         toVars.scrollTrigger = {
-          trigger: ".category-grid",
+          trigger: root,
           start: "top 85%"
         };
       }
@@ -82,7 +88,7 @@ export function CategoryGrid(): ReactElement {
         { y: 18, opacity: 0 },
         toVars
       );
-    }, rootRef);
+    }, root);
 
     return () => {
       ctx.revert();

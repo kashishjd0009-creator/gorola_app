@@ -74,6 +74,14 @@ function telHref(phone: string): string {
   return `tel:${trimmed}`;
 }
 
+/** Short ref in primary copy; full id in `title` + screen-reader text for support. */
+function formatOrderRefForUi(fullId: string): string {
+  if (fullId.length <= 14) {
+    return fullId;
+  }
+  return `…${fullId.slice(-8)}`;
+}
+
 /** Honest ETA copy — avoids fake countdowns until scheduling + notifications are modeled. */
 function estimatedDeliveryCopy(
   order: BuyerOrderDetail,
@@ -203,12 +211,14 @@ export function OrderConfirmationPage(): ReactElement {
             <p className="font-dm-sans text-sm text-gorola-slate">Loading your order…</p>
           ) : null}
           {query.isError ? (
-            <p className="rounded-lg bg-red-50 px-3 py-2 font-dm-sans text-sm text-red-700" role="alert">
-              Could not load order details.
-            </p>
-          ) : null}
-          {typeof id === "string" ? (
-            <p className="font-dm-sans text-xs text-gorola-slate">Reference: {id}</p>
+            <div className="space-y-2 rounded-lg bg-red-50 px-3 py-2 font-dm-sans text-sm text-red-700" role="alert">
+              <p>Could not load order details.</p>
+              {typeof id === "string" ? (
+                <p className="text-xs text-red-800">
+                  Support reference: <span className="font-mono break-all">{id}</span>
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -244,7 +254,7 @@ export function OrderConfirmationPage(): ReactElement {
               <div
                 ref={bloomRef}
                 aria-hidden={true}
-                className="occ-bloom pointer-events-none fixed inset-0 z-[100] bg-gradient-to-br from-emerald-500 via-gorola-pine to-teal-800"
+                className="occ-bloom pointer-events-none fixed inset-0 z-[100] bg-gradient-to-br from-emerald-400/95 via-gorola-pine to-emerald-900/90"
               />
               <div className="occ-content relative z-[1] mx-auto flex max-w-lg flex-col items-center gap-6 text-center">
               <svg
@@ -276,7 +286,15 @@ export function OrderConfirmationPage(): ReactElement {
                   Thank you
                 </h1>
                 <p className="font-dm-sans text-sm text-gorola-slate">
-                  Order <span className="font-semibold text-gorola-charcoal">{query.data.id}</span> is locked in with{" "}
+                  <span className="sr-only">Full order reference {query.data.id}. </span>
+                  Order{" "}
+                  <span
+                    className="font-mono font-semibold text-gorola-charcoal"
+                    title={`Full order reference: ${query.data.id}`}
+                  >
+                    {formatOrderRefForUi(query.data.id)}
+                  </span>{" "}
+                  is locked in with{" "}
                   <span className="font-semibold text-gorola-charcoal">{query.data.store.name}</span>.
                 </p>
               </div>
