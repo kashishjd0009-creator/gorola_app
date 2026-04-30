@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -84,6 +85,9 @@ export function CheckoutPage(): ReactElement {
   );
   const total = Math.max(subtotal + DELIVERY_FEE - discountSavedAmount, 0);
 
+  /** Sync guard — double-clicks can fire two POSTs before mutation pending state updates in the DOM. */
+  const placeOrderInFlightRef = useRef(false);
+
   const placeMutation = useMutation({
     mutationFn: async (): Promise<string> => {
       if (api === null) {
@@ -139,6 +143,25 @@ export function CheckoutPage(): ReactElement {
       navigate(`/orders/${orderId}`);
     }
   });
+
+  const placeOrderErrorDetail = useMemo(() => {
+    const err = placeMutation.error;
+    if (err === null) {
+      return null;
+    }
+    if (isAxiosError(err)) {
+      const body = err.response?.data;
+      const msg =
+        typeof body === "object" &&
+        body !== null &&
+        "error" in body &&
+        typeof (body as { error?: { message?: unknown } }).error?.message === "string"
+          ? (body as { error: { message: string } }).error.message
+          : null;
+      return msg ?? (err.response?.status === 500 ? "Something went wrong on our side — please try once more." : null);
+    }
+    return err instanceof Error ? err.message : null;
+  }, [placeMutation.error]);
 
   function handleContinueFromAddress(): void {
     setStep1Error(null);
@@ -333,9 +356,17 @@ export function CheckoutPage(): ReactElement {
             Payment: {paymentMethod === "COD" ? "Cash on delivery" : paymentMethod}
           </p>
 
+          <div
+            aria-live="polite"
+            className="min-h-[1.25rem] font-dm-sans text-sm text-gorola-slate"
+          >
+            {placeMutation.isPending ? "Placing your order…" : "\u00A0"}
+          </div>
+
           <div className="flex flex-wrap gap-3">
             <button
               className="rounded-full border border-gorola-pine/30 px-5 py-2 font-dm-sans text-sm text-gorola-charcoal"
+              disabled={placeMutation.isPending}
               onClick={() => {
                 setStep(1);
               }}
@@ -344,18 +375,31 @@ export function CheckoutPage(): ReactElement {
               Back
             </button>
             <button
-              className="rounded-full bg-gorola-pine px-6 py-2 font-dm-sans text-sm font-semibold text-white"
+              aria-busy={placeMutation.isPending}
+              aria-label="Place order"
+              className="rounded-full bg-gorola-pine px-6 py-2 font-dm-sans text-sm font-semibold text-white disabled:opacity-60"
               disabled={placeMutation.isPending}
               onClick={() => {
-                void placeMutation.mutateAsync();
+                if (placeOrderInFlightRef.current || placeMutation.isPending) {
+                  return;
+                }
+                placeOrderInFlightRef.current = true;
+                placeMutation.mutate(undefined, {
+                  onSettled: () => {
+                    placeOrderInFlightRef.current = false;
+                  },
+                });
               }}
               type="button"
             >
-              Place Order
+              {placeMutation.isPending ? "Placing order…" : "Place Order"}
             </button>
           </div>
           {placeMutation.isError ? (
-            <p className="font-dm-sans text-sm text-red-600">Could not place order. Try again.</p>
+            <p className="font-dm-sans text-sm text-red-600" role="alert">
+              Could not place order.{" "}
+              {placeOrderErrorDetail ?? "Tap Place order again."}
+            </p>
           ) : null}
         </section>
       ) : null}

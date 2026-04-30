@@ -8,6 +8,7 @@ import { Prisma, type Discount, type PrismaClient } from "@prisma/client";
 
 import { AddressRepository } from "../address/address.repository.js";
 import type { CartRepository } from "../cart/cart.repository.js";
+import { getLogger } from "../../lib/logger.js";
 import { DiscountRepository } from "../promotion/discount.repository.js";
 
 import type { PlaceBuyerOrderBody } from "./order.schema.js";
@@ -109,6 +110,7 @@ export class BuyerCheckoutService {
     const storeId = [...storeIds][0]!;
     let appliedDiscountCode: string | null = null;
     let appliedDiscountAmount = new Prisma.Decimal(0);
+    let discountIdToIncrement: string | null = null;
 
     if (typeof body.discountCode === "string" && body.discountCode.trim().length > 0) {
       const normalizedCode = body.discountCode.trim().toUpperCase();
@@ -141,7 +143,7 @@ export class BuyerCheckoutService {
         this.computeDiscountAmount(discount, subtotal)
       );
       appliedDiscountCode = normalizedCode;
-      await this.discountRepo.incrementUsedCount(discount.id);
+      discountIdToIncrement = discount.id;
     }
 
     const total = Prisma.Decimal.max(subtotal.add(deliveryFee).sub(appliedDiscountAmount), new Prisma.Decimal(0));
@@ -167,6 +169,17 @@ export class BuyerCheckoutService {
     });
 
     await this.cartRepo.clearCart(userId);
+
+    if (discountIdToIncrement !== null) {
+      try {
+        await this.discountRepo.incrementUsedCount(discountIdToIncrement);
+      } catch (err: unknown) {
+        getLogger().warn(
+          { err, discountId: discountIdToIncrement, userId },
+          "incrementUsedCount failed after successful checkout — order persisted and cart cleared"
+        );
+      }
+    }
 
     if (
       body.addressMode === "new" &&

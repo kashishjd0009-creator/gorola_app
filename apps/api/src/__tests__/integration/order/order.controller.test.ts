@@ -374,6 +374,11 @@ describe("POST /api/v1/orders (buyer checkout)", () => {
       Number(persisted.subtotal) + Number(persisted.deliveryFee) - Number(orderPayload.data.discount.amount)
     ).toBe(Number(persisted.total));
 
+    const discountPersisted = await db.discount.findFirstOrThrow({
+      where: { code: "SAVE10", storeId: store.id }
+    });
+    expect(discountPersisted.usedCount).toBe(1);
+
     await server.close();
     delete process.env.GOROLA_TEST_OTP;
   });
