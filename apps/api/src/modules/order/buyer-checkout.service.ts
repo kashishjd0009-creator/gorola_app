@@ -6,9 +6,9 @@ import {
 } from "@gorola/shared";
 import { Prisma, type Discount, type PrismaClient } from "@prisma/client";
 
+import { getLogger } from "../../lib/logger.js";
 import { AddressRepository } from "../address/address.repository.js";
 import type { CartRepository } from "../cart/cart.repository.js";
-import { getLogger } from "../../lib/logger.js";
 import { DiscountRepository } from "../promotion/discount.repository.js";
 
 import type { PlaceBuyerOrderBody } from "./order.schema.js";
