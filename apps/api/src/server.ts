@@ -107,8 +107,12 @@ export function createServer(options: CreateServerOptions = {}): FastifyInstance
     }
   });
   void app.register(cors, {
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Authorization", "Content-Type", "X-Request-Id"],
+    exposedHeaders: ["X-Request-Id"],
     origin: corsOrigins.length === 0 ? true : corsOrigins,
-    credentials: true
+    credentials: true,
+    strictPreflight: true
   });
 
   const redisClient =
