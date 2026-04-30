@@ -275,4 +275,26 @@ jobs:
         run: |
           set -euo pipefail
           MSG="${GITHUB_REF_NAME} ${GITHUB_SHA:0:7}"
-          railway up --ci --message "$MSG" --service "$RAILWAY_SERVICE_ID"
+          # Railway CLI can occasionally fail after upload with:
+          #   "Failed to stream build logs: Failed to retrieve build log"
+          # even though the deploy itself is healthy. To avoid false-negative CI
+          # failures, we retry once *only* for this known log-streaming error.
+          set +e
+          DEPLOY_OUTPUT="$(railway up --ci --message "$MSG" --service "$RAILWAY_SERVICE_ID" 2>&1)"
+          DEPLOY_EXIT=$?
+          set -e
+          echo "$DEPLOY_OUTPUT"
+
+          if [ "$DEPLOY_EXIT" -eq 0 ]; then
+            exit 0
+          fi
+
+          if [[ "$DEPLOY_OUTPUT" == *"Failed to stream build logs"* ]]; then
+            echo "Railway log streaming failed; retrying deploy once in 20s..."
+            sleep 20
+            railway up --ci --message "$MSG (retry)" --service "$RAILWAY_SERVICE_ID"
+            exit 0
+          fi
+
+          # Non-transient deployment errors should still fail the pipeline.
+          exit "$DEPLOY_EXIT"
