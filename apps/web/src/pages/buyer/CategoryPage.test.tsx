@@ -82,9 +82,11 @@ describe("CategoryPage", () => {
   });
 
   it("does not request unfiltered products before category id resolves", async () => {
-    let releaseCategories: (() => void) | null = null;
+    let releaseCategories: () => void = () => {};
     const categoriesWait = new Promise<void>((resolve) => {
-      releaseCategories = resolve;
+      releaseCategories = () => {
+        resolve();
+      };
     });
 
     getMock.mockImplementation(async (url: string) => {
@@ -116,7 +118,7 @@ describe("CategoryPage", () => {
     expect(getMock).toHaveBeenCalledTimes(1);
     expect(getMock).toHaveBeenCalledWith("/api/v1/categories");
 
-    releaseCategories?.();
+    releaseCategories();
 
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith(

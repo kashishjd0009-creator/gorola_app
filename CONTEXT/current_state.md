@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-04-30
-- **Session Summary:** **Checkout/cart wiring hardening (post-2.11)** — fixed runtime mismatch where UI cart looked filled but server checkout failed with `Cart is empty`: `ProductGrid` and `ProductDetailPage` now send buyer `userId` on cart POST and persist optimistic cart metadata (`unitPrice`, `variantLabel`) so subtotal/total are non-zero. Also fixed grid decrement sync to call cart `DELETE` at quantity `0` (instead of invalid `POST quantity=0`) and `PUT` for positive qty updates. Updated targeted tests (`ProductGrid`, `ProductDetailPage`, `cart.store`) — **20/20 passing**.
-- **Next Session Must Start With:** **Phase 2.12** — Order confirmation page `/orders/:id`, `GET /api/v1/orders/:id` + tests; checkout review step still lacks cart discount line synced to placement (discount today is cart-drawer-local only until follow-up).
+- **Session Summary:** **Phase 2.11.1 wiring hardening kickoff (strict TDD)** — added explicit cross-app wiring audit backlog (frontend↔backend contracts, route discoverability, auth bootstrap races, placeholder-route exposure, cart/order identity consistency). Category page flicker bug (unfiltered products flashing before slug→categoryId resolve) is fixed and covered by regression test in `CategoryPage.test.tsx`. `pnpm --filter @gorola/web` lint + targeted tests green; root `ci:quality` green (web **97** tests).
+- **Next Session Must Start With:** **Phase 2.11.1 strict TDD backlog execution** — close P0 wiring gaps (`/orders/:id` route landing, category `productCount` contract alignment, auth bootstrap/guard race), then proceed to **2.12**.
 
 ---
 
@@ -19,7 +19,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                |
 | ------- | -------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub |
-| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.11 address/checkout done** incl. optional Leaflet/OSM pin + `lat`/`lng`; **discount line on checkout review** still deferred; next **2.12** confirmation |
+| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.11 done** + **2.11.1 wiring hardening started** (category flicker fixed); remaining wiring issues tracked below before/alongside **2.12** confirmation |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                               |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                               |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                |
@@ -89,14 +89,15 @@
 - **Session 60 (Phase 2.11 checkout + orders API, strict TDD):** RED integration tests (`order.controller.test.ts`) for saved/new-address placement + short-landmark 400; implemented `BuyerCheckoutService`, Zod `order.schema.ts`, `registerOrderRoutes` POST `/api/v1/orders`, buyer `GET /api/v1/addresses`; `address.repository.ts` helper `findByIdForBuyer`. RED `address.controller.test.ts` then GREEN listing. Web RED `CheckoutPage.test.tsx`, GREEN `CheckoutPage.tsx`, `/checkout` ProtectedRoute + cart proceed navigation. **`pnpm ci:quality`** green (**303** API tests, **92** web tests).
 - **Session 61 (Phase 2.11 optional map pin, strict TDD):** `leaflet` + `@types/leaflet`; `AddressMapPicker` + `AddressMapPicker.test.tsx` (mocked `leaflet` map/marker/tileLayer); `CheckoutPage` integration test for `lat`/`lng` on new-address place order; `vite-env.d.ts` `*.png`; checklist 2.11 optional map row closed.
 - **Session 62 (Cart/order wiring fix after Railway seed smoke):** Investigated checkout failure (`VALIDATION_ERROR: Cart is empty`) and zero subtotal bug. Root cause: cart add calls from `ProductGrid`/`ProductDetailPage` omitted `userId`, and grid decrement sent invalid cart `POST` with `quantity=0`. GREEN fix: add buyer `userId` to cart add payloads, use `PUT`/`DELETE` for qty mutations, and store `unitPrice` + `variantLabel` in `useCartStore` so subtotal reflects line prices. Added/updated tests in `ProductGrid.test.tsx`, `ProductDetailPage.test.tsx`, `cart.store.test.ts`; targeted Vitest run green (20 tests).
+- **Session 63 (Phase 2.11.1 wiring audit + first fix, strict TDD):** Ran cross-app wiring audit and created explicit 2.11.1 backlog for contract and navigation consistency. Fixed category page flash-of-wrong-products by gating `ProductGrid` render until slug→categoryId resolves in `CategoryPage.tsx`; added regression test `does not request unfiltered products before category id resolves` in `CategoryPage.test.tsx`. Verified `pnpm --filter @gorola/web test -- CategoryPage.test.tsx ProductGrid.test.tsx`, web lint, and root `pnpm ci:quality` (web 97 tests, api 303 tests).
 
 ---
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2.12** (Order confirmation page + `GET /api/v1/orders/:id`) after cart/order wiring stabilization.
+**Current Task:** **Phase 2.11.1** (wiring hardening, strict TDD) before and alongside 2.12 confirmation work.
 
-**Exact stopping point:** **Post-2.11 wiring fix complete** — cart adds now persist against buyer identity (`userId`) from both product list and detail, grid qty sync uses valid cart verbs (`PUT`/`DELETE`), and cart subtotal derives from populated `unitPrice`. This closes the observed UI/DB divergence (`items visible` + `subtotal 0` + checkout `Cart is empty`). Still deferred: **checkout review discount line** vs cart drawer `savedAmount` (not on order payload). Keep `GOROLA_DUMMY_OTP` temporary until SMS provider.
+**Exact stopping point:** **2.11.1 started** — category cross-category flash fixed (render gate + regression test), cart/order wiring fix from Session 62 retained, and remaining audited wiring backlog is now tracked as strict-TDD tasks below. Still deferred: checkout review discount line vs cart drawer `savedAmount` (not on order payload). Keep `GOROLA_DUMMY_OTP` temporary until SMS provider.
 
 ---
 
@@ -573,6 +574,72 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 - [x] Step 2 — Review (+ place): cart lines, subtotal, delivery fee (Rs 30, matches cart drawer), COD payment copy; **`POST /api/v1/orders`** on Place Order → navigate `/orders/:id`
 - [ ] Review screen: show **discount** consistent with cart drawer `savedAmount` (not persisted on order payload yet — deferred)
 - [x] TESTS: landmark validation + no pin/postal (`CheckoutPage.test.tsx`), mocked place order (saved + new address **`lat`/`lng`**, `AddressMapPicker` mocked); `AddressMapPicker.test.tsx` Leaflet mocks
+
+### 2.11.1 — Wiring Hardening (Strict TDD)
+
+- [ ] API/Route Wiring Gate (mandatory for phase completion):
+  - [ ] Every buyer-visible navigation target in active UI has runtime route coverage (`App.tsx`) or is intentionally hidden
+  - [ ] Every frontend API call in active buyer flows is contract-aligned (path/method/payload/auth) with runtime backend routes
+  - [ ] Cross-flow identity model is consistent (cart mutations and checkout attribution map to same buyer session assumptions)
+  - [ ] Regression tests added for each fixed wiring issue before GREEN implementation
+  - [ ] Each fixed wiring issue includes explicit DB persistence/read verification (integration test assertion on repository/database state)
+  - [ ] Each fixed wiring issue has evidence chain documented: UI trigger -> network contract -> runtime route -> service/repository -> DB effect -> UI result
+
+- [x] Fix: category page briefly showed products from other categories before filtering  
+  _RED→GREEN_: added regression in `CategoryPage.test.tsx`, then gated `ProductGrid` render in `CategoryPage.tsx` until slug→categoryId resolve.
+
+- [ ] Full Wiring Issue Register (must be closed end-to-end)
+
+- [ ] **W-001 / P0:** Checkout success dead-end: `navigate("/orders/:id")` exists in UI flow but route is missing in runtime route graph
+  - [ ] RED: failing route-level test proving post-checkout navigation lands on unresolved path in app router
+  - [ ] GREEN: add runtime route coverage (or temporary explicit fallback) and matching component-level assertion
+  - [ ] API/Backend: `GET /api/v1/orders/:id` contract aligned when route goes live (Phase 2.12 coupling)
+  - [ ] DB assertion: placed order row/id is retrievable via backend path used by confirmation route
+
+- [ ] **W-002 / P0:** Category payload contract drift (`productCount`)
+  - [ ] RED: failing integration/contract test proving frontend category card expectation mismatches backend envelope
+  - [ ] GREEN option A: backend enriches category response with stable `productCount`; option B: frontend removes hard dependency and handles absent count
+  - [ ] Runtime route assertion for `GET /api/v1/categories` remains green via app wiring
+  - [ ] DB assertion: counts map to active products per category repository query semantics
+
+- [ ] **W-003 / P0:** Auth bootstrap vs route guard race (flicker/login bounce)
+  - [ ] RED: test proving protected deep-link can redirect before `bootstrapBuyerAuthSession()` settles
+  - [ ] GREEN: introduce deterministic auth-loading handshake in guard/bootstrap path
+  - [ ] API contract: refresh flow (`/api/v1/auth/buyer/refresh`) failure/success branches covered
+  - [ ] DB/session assertion: buyer identity continuity maintained across refresh and guarded navigation
+
+- [ ] **W-004 / P1:** Footer discoverability links route to non-registered paths (`/about`, `/support`)
+  - [ ] RED: route test proving links resolve to missing pages
+  - [ ] GREEN: register route targets or hide/remove links until ready
+  - [ ] UI assertion: no dead-end navigation from visible footer controls
+
+- [ ] **W-005 / P1:** Placeholder pages exposed as real routes without guardrails (`/search`, `/cart`, `/profile`, `/store`, `/admin`)
+  - [ ] RED: user-journey tests showing placeholder dead-ends from visible entry points
+  - [ ] GREEN: route policy per page (hide, redirect, or implement minimal working screen)
+  - [ ] Security assertion: role-gated placeholders do not leak confusing unauthorized UX
+
+- [ ] **W-006 / P1:** Search entry is wired (`/search?q=`) but route behavior is placeholder-only
+  - [ ] RED: failing UX test for query-driven search expectation
+  - [ ] GREEN: implement minimal query rendering or suppress navigation until real search page exists
+  - [ ] API contract: if wired to backend search, ensure params/response alignment
+
+- [ ] **W-007 / P2:** Cart/order identity robustness hardening (state vs token drift)
+  - [ ] RED: integration test reproducing cart mutations with stale/mismatched `userId` vs checkout JWT subject
+  - [ ] GREEN: single-source buyer identity strategy for cart + checkout
+  - [ ] Backend contract: cart endpoints and checkout endpoint identity assumptions are explicit and tested
+  - [ ] DB assertion: cart rows and resulting order ownership consistently map to same buyer
+
+- [ ] **W-008 / P2:** Discount consistency drift (`CartDrawer.savedAmount` vs checkout/order summary)
+  - [ ] RED: cross-page test proving discount shown in cart disappears at checkout review/order summary
+  - [ ] GREEN: shared pricing model across cart drawer, checkout review, and placement payload/summary
+  - [ ] Backend contract: discount persistence semantics explicit (persisted vs display-only)
+  - [ ] DB assertion: if persisted, order totals/discount fields reconcile to computed totals
+
+- [ ] **W-009 / P2:** Optimistic cart mutation ordering/rollback gaps under rapid +/- actions
+  - [ ] RED: race-condition test proving out-of-order responses can desync UI/server quantity
+  - [ ] GREEN: mutation serialization, request cancellation, or reconciliation strategy
+  - [ ] API contract: idempotent/update semantics respected for PUT/DELETE cart operations
+  - [ ] DB assertion: final persisted quantity equals final UI quantity after burst interactions
 
 ### 2.12 — Order Confirmation Page
 
@@ -1121,7 +1188,7 @@ gorola/
 | user              | ❌         | ✅                | integration: `user.repository.test.ts`                                                                                                                            |
 | store-owner       | ❌         | ✅                | integration: `store-owner.repository.test.ts`                                                                                                                     |
 | admin             | ❌         | ✅                | integration: `admin.repository.test.ts`                                                                                                                           |
-| **web (buyer)**   | **✅**     | ⏳                | **unit/component:** Vitest **96** in `apps/web` including `CheckoutPage`, `AddressMapPicker`; E2E = Phase 2.18                                                 |
+| **web (buyer)**   | **✅**     | ⏳                | **unit/component:** Vitest **97** in `apps/web` including `CheckoutPage`, `AddressMapPicker`, `CategoryPage`; E2E = Phase 2.18                                |
 | catalog           | ❌         | ✅                | integration: `category`, `product`, `variant` `*.repository.test.ts`                                                                                              |
 | cart              | ❌         | ✅                | integration: `cart.repository.test.ts`                                                                                                                            |
 | order             | ✅         | ✅                | unit: `order.service.test.ts`; integration: `order.repository.test.ts`, `order.service.stock.integration.test.ts`, `order.controller.test.ts` (checkout HTTP)                     |

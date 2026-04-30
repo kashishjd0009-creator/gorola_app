@@ -629,3 +629,71 @@ Applied in `auth.controller.ts` through shared `refreshCookieOptions()` used by 
 1. Keep `SameSite=Lax` and rely only on refresh token in JSON body — rejected for now: inconsistent with intended HttpOnly cookie refresh posture (DECISION-008).
 2. Move web and API under one same-site domain immediately — deferred: infra/domain work outside current phase scope.
 3. Disable cookie usage and keep refresh strictly client-managed — rejected: weaker security posture vs HttpOnly design intent.
+
+---
+
+## [DECISION-021] Phase 2.11.1 — Dedicated Wiring Hardening Slice Before 2.12
+
+**Date:** 2026-04-30  
+**Status:** Accepted
+
+**Context:**
+After Phase 2.11 checkout delivery, runtime smoke testing exposed cross-layer wiring defects that were not feature-logic bugs: missing buyer route landing (`/orders/:id`), category response shape drift (`productCount` expectation), route discoverability dead-ends (`/about`, `/support`), placeholder-route exposure, and auth bootstrap/guard timing races. These issues created user-facing inconsistency despite green feature tests.
+
+**Decision:**
+Introduce **Phase 2.11.1** as a strict-TDD wiring hardening slice before/alongside Phase 2.12:
+- Track wiring issues explicitly in `current_state.md` with API/route/identity contract gates.
+- Fix each issue via RED→GREEN regression tests first, then implementation.
+- Mark already-fixed wiring regressions (category page wrong-category flash) as completed under 2.11.1.
+- Prioritize P0 wiring defects that break primary buyer journey continuity ahead of new feature depth.
+
+**Rationale:**
+- Preserves vertical-slice integrity by treating wiring contracts as first-class deliverables, not incidental cleanup.
+- Prevents “green tests, broken journey” drift between frontend UI assumptions and runtime backend behavior.
+- Reduces compounding risk before 2.12 confirmation flow depends on correct post-checkout navigation.
+
+**Tradeoffs:**
+- Adds a short hardening phase and slows immediate feature progression.
+- Expands checklist and regression surface area in the near term.
+- Requires disciplined issue triage to avoid turning 2.11.1 into an open-ended backlog.
+
+**Alternatives Considered:**
+1. Fold wiring fixes ad hoc into 2.12 implementation — rejected: high risk of mixing regression causes with new confirmation logic.
+2. Defer wiring cleanup to a later QA sweep — rejected: user journey breakages are already visible in active buyer flow.
+3. Fix only critical route bugs, ignore contract/discoverability issues — rejected: partial cleanup would leave repeated edge-case failures.
+
+---
+
+## [DECISION-022] 2.11.1 End-to-End Wiring Closure Matrix (UI -> API -> Route -> Service/Repo -> DB)
+
+**Date:** 2026-04-30  
+**Status:** Accepted
+
+**Context:**
+Phase 2.11.1 began as a wiring hardening effort after runtime smoke findings (navigation dead-ends, API shape drift, guard/bootstrap race, and consistency issues). A simple issue list is not sufficient: several defects look fixed at UI level while backend/runtime/DB expectations can still drift. Team requested explicit end-to-end closure criteria for every listed issue.
+
+**Decision:**
+For every 2.11.1 wiring issue, completion requires a mandatory closure matrix:
+1. **UI trigger/assertion** (component/router behavior),
+2. **Network contract assertion** (path/method/payload/auth),
+3. **Runtime route coverage** (`App.tsx` or API route graph registration),
+4. **Service/repository behavior assertion** (integration/unit as appropriate),
+5. **DB state assertion** (read/write invariants),
+6. **Strict TDD sequence** (RED regression first, then GREEN implementation).
+
+Additionally, 2.11.1 tracks the full wiring register (`W-001`..`W-009`) and marks only verifiable closures as checked.
+
+**Rationale:**
+- Prevents partial fixes where frontend appears corrected but backend/DB semantics remain inconsistent.
+- Aligns with DECISION-016/017 API Contract Gate intent by extending from endpoint reachability to full journey integrity.
+- Provides auditable traceability from user symptom to root cause to persistent-state correctness.
+
+**Tradeoffs:**
+- Higher implementation and test overhead per issue.
+- Slower short-term feature throughput while hardening is in progress.
+- Requires disciplined test design to avoid brittle over-specification.
+
+**Alternatives Considered:**
+1. UI-only regression closure for 2.11.1 — rejected: previously allowed runtime/DB drift to survive.
+2. API-only contract checks without DB assertions — rejected: insufficient for identity/pricing/order ownership issues.
+3. Postpone matrix discipline until later phases — rejected: buyer flow is live and already affected by wiring inconsistencies.
