@@ -29,6 +29,9 @@ async function cleanReorderGraph(db: PrismaClient): Promise<void> {
   await db.product.deleteMany();
   await db.category.deleteMany();
   await db.storeOwner.deleteMany();
+  await db.advertisement.deleteMany();
+  await db.offer.deleteMany();
+  await db.discount.deleteMany();
   await db.store.deleteMany();
   await db.address.deleteMany();
   await db.user.deleteMany();
