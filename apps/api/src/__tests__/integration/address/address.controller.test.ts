@@ -82,3 +82,116 @@ describe("GET /api/v1/addresses (buyer)", () => {
     expect(body.data.addresses[0]?.label).toBe("Hill home");
   });
 });
+
+describe("Address CRUD operations (buyer)", () => {
+  const db = getPrismaClient();
+  let server: ReturnType<typeof createServer>;
+  let token: string;
+  let user: { id: string };
+
+  beforeEach(async () => {
+    await cleanBuyerAddressControllerGraph(db);
+    process.env.GOROLA_TEST_OTP = "111222";
+    server = createServer({ disableRedis: true, registerRoutes: registerAppRoutes });
+    const phone = "+919977665502";
+    token = await getBuyerAccessToken(server, phone);
+    user = await db.user.findUniqueOrThrow({ where: { phone } });
+  });
+
+  afterAll(async () => {
+    await server?.close();
+    delete process.env.GOROLA_TEST_OTP;
+    await disconnectPrisma();
+  });
+
+  it("POST /api/v1/addresses creates a new address", async () => {
+    const res = await server.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "POST",
+      url: "/api/v1/addresses",
+      payload: {
+        label: "Office",
+        landmarkDescription: "Near the big clock tower in downtown",
+        flatRoom: "402",
+        isDefault: true
+      }
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { data: { id: string; label: string; isDefault: boolean; userId: string } };
+    expect(body.data.label).toBe("Office");
+    expect(body.data.isDefault).toBe(true);
+    expect(body.data.userId).toBe(user.id);
+
+    const dbRecord = await db.address.findUnique({ where: { id: body.data.id } });
+    expect(dbRecord).not.toBeNull();
+  });
+
+  it("PUT /api/v1/addresses/:id updates an address", async () => {
+    const address = await db.address.create({
+      data: {
+        label: "Old Label",
+        landmarkDescription: "Old landmark ten chars",
+        userId: user.id
+      }
+    });
+
+    const res = await server.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "PUT",
+      url: `/api/v1/addresses/${address.id}`,
+      payload: { label: "New Label" }
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { data: { label: string } };
+    expect(body.data.label).toBe("New Label");
+
+    const dbRecord = await db.address.findUnique({ where: { id: address.id } });
+    expect(dbRecord?.label).toBe("New Label");
+  });
+
+  it("DELETE /api/v1/addresses/:id soft deletes an address", async () => {
+    const address = await db.address.create({
+      data: {
+        label: "To Delete",
+        landmarkDescription: "Delete landmark ten",
+        userId: user.id
+      }
+    });
+
+    const res = await server.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "DELETE",
+      url: `/api/v1/addresses/${address.id}`
+    });
+
+    expect(res.statusCode).toBe(200);
+
+    const dbRecord = await db.address.findUnique({ where: { id: address.id } });
+    expect(dbRecord?.isDeleted).toBe(true);
+  });
+
+  it("PUT /api/v1/addresses/:id/default sets the address as default", async () => {
+    const address1 = await db.address.create({
+      data: { label: "A1", landmarkDescription: "Landmark one ten", userId: user.id, isDefault: true }
+    });
+    const address2 = await db.address.create({
+      data: { label: "A2", landmarkDescription: "Landmark two ten", userId: user.id, isDefault: false }
+    });
+
+    const res = await server.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "PUT",
+      url: `/api/v1/addresses/${address2.id}/default`
+    });
+
+    expect(res.statusCode).toBe(200);
+    
+    const dbA1 = await db.address.findUnique({ where: { id: address1.id } });
+    const dbA2 = await db.address.findUnique({ where: { id: address2.id } });
+    
+    expect(dbA1?.isDefault).toBe(false);
+    expect(dbA2?.isDefault).toBe(true);
+  });
+});

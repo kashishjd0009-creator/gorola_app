@@ -8,9 +8,9 @@
 
 ## 📍 Last Updated
 
-- **Date:** 2026-05-01
-- **Session Summary:** **Session 80 — Real-Time Order Tracking (Phase 2.13)** — **`socketPlugin`**: integrated `socket.io` into Fastify backend with JWT auth; **`OrderService`**: added `OrderEventEmitter` for status change broadcasts; **`useOrderSocket`**: custom hook for frontend real-time synchronization; **`OrderConfirmationPage`**: implemented dynamic `StatusStepper` with live state updates via React Query. **`order.socket.test.ts`**: integration suite verified for secure room-based event delivery.
-- **Next Session Must Start With:** **Phase 2.14** — Saved Addresses Page. Investigate "Orders" history page visibility (currently only visible post-checkout via `/orders/:id`).
+- **Date:** 2026-05-02
+- **Session Summary:** **Session 81 — Saved Addresses Page (Phase 2.14)** — **`address.controller.ts`**: added `POST`, `PUT`, `DELETE`, and `PUT /default` routes with Zod validation. **`SavedAddressesPage.tsx`**: built full CRUD UI with `AddressMapPicker` integration, "Set as Default" actions, and React Query mutations. **`App.tsx`**: added `/account/addresses` protected route. **`address.controller.test.ts` & `SavedAddressesPage.test.tsx`**: verified backend endpoints and frontend behavior. All quality gates passed.
+- **Next Session Must Start With:** **Phase 2.15** — Order History + Reorder. Implement `/account/orders` page.
 
 ---
 
@@ -19,7 +19,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                                                                                                            |
 | ------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub                                                                         |
-| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.13 done**, checkout + real-time status shipped; next **2.14** saved addresses + **2.15** order history.                                                                                                                                                                                                                                                                                           |
+| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.14 done**, checkout, real-time status, saved addresses shipped; next **2.15** order history.                                                                                                                                                                                                                                                                                           |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                                                                                                                           |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                                                                                                                           |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                                                                                                            |
@@ -114,9 +114,9 @@
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2.14** — Saved Addresses Page.
+**Current Task:** **Phase 2.15** — Order History + Reorder (`/account/orders`).
 
-**Exact stopping point:** **Phase 2.13** complete: Real-time order tracking and visual stepper shipped. All code quality gates are 100% green.
+**Exact stopping point:** **Phase 2.14** complete: Saved Addresses Page shipped with full CRUD functionality and test coverage. All code quality gates are 100% green.
 
 **Current Blocker:** `apps/api` build succeeds in CI, but local Windows `pnpm dev` while building can still cause `EPERM` due to file locking (intentional system limitation). All code quality gates are 100% green.
 
@@ -704,16 +704,16 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.14 — Saved Addresses Page
 
-- [ ] API Contract Gate (mandatory for phase completion):
-  - [ ] Backend address list/update/delete/default endpoints reachable at runtime
-  - [ ] Backend integration tests cover saved address CRUD/default behavior
-  - [ ] Routes are registered in runtime app route graph
-  - [ ] Frontend tests validated against expected API envelope and edge states
+- [x] API Contract Gate (mandatory for phase completion):
+  - [x] Backend address list/update/delete/default endpoints reachable at runtime
+  - [x] Backend integration tests cover saved address CRUD/default behavior
+  - [x] Routes are registered in runtime app route graph
+  - [x] Frontend tests validated against expected API envelope and edge states
 
-- [ ] `src/pages/buyer/SavedAddressesPage.tsx` → route: `/account/addresses`
-- [ ] Lists all saved addresses with landmark description
-- [ ] Edit, delete (soft), set as default
-- [ ] TESTS: renders addresses, edit/delete/default flows
+- [x] `src/pages/buyer/SavedAddressesPage.tsx` → route: `/account/addresses`
+- [x] Lists all saved addresses with landmark description
+- [x] Edit, delete (soft), set as default
+- [x] TESTS: renders addresses, edit/delete/default flows
 
 ### 2.15 — Order History + Reorder
 

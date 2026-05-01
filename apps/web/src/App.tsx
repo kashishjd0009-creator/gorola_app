@@ -15,6 +15,7 @@ import { HomePage } from "@/pages/buyer/HomePage";
 import { LoginPage } from "@/pages/buyer/LoginPage";
 import { OrderConfirmationPage } from "@/pages/buyer/OrderConfirmationPage";
 import { ProductDetailPage } from "@/pages/buyer/ProductDetailPage";
+import { SavedAddressesPage } from "@/pages/buyer/SavedAddressesPage";
 
 const queryClient = createAppQueryClient();
 
@@ -125,6 +126,16 @@ export function App(): ReactElement {
             <ProtectedRoute>
               <BuyerLayout>
                 <PlaceholderPage title="Profile" />
+              </BuyerLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account/addresses"
+          element={
+            <ProtectedRoute>
+              <BuyerLayout>
+                <SavedAddressesPage />
               </BuyerLayout>
             </ProtectedRoute>
           }
