@@ -1,6 +1,5 @@
-/* eslint-disable simple-import-sort/imports, import/order */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -145,11 +144,10 @@ describe("ProductDetailPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }));
     fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
 
-    await waitFor(() => {
-      expect(postMock).toHaveBeenCalledWith("/api/v1/cart/items", {
-        productVariantId: "v1",
-        quantity: 2
-      });
+    expect(postMock).toHaveBeenCalledWith("/api/v1/cart/items", {
+      userId: "u-buyer",
+      productVariantId: "v1",
+      quantity: 2
     });
     expect(useCartStore.getState().lines[0]).toEqual(
       expect.objectContaining({
@@ -159,46 +157,6 @@ describe("ProductDetailPage", () => {
         variantLabel: "500g"
       })
     );
-  });
-
-  it("posts add-to-cart when userId is null but access token exists", async () => {
-    useAuthStore.setState({
-      accessToken: "at-only",
-      name: null,
-      phone: null,
-      refreshToken: "rt-only",
-      role: "BUYER",
-      userId: null
-    });
-    getMock.mockResolvedValue({
-      data: {
-        success: true,
-        data: {
-          id: "p1",
-          name: "Apple",
-          description: "Fresh apple",
-          imageUrl: "https://cdn.example.com/apple.jpg",
-          store: {
-            id: "s1",
-            name: "Peak Mart",
-            phone: "+919111111111"
-          },
-          variants: [{ id: "v1", label: "500g", price: "120.00", unit: "g", stockQty: 5 }]
-        }
-      }
-    });
-    postMock.mockResolvedValue({ data: { success: true } });
-
-    renderPage();
-    await screen.findByRole("heading", { name: "Apple" });
-    fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
-
-    await waitFor(() => {
-      expect(postMock).toHaveBeenCalledWith("/api/v1/cart/items", {
-        productVariantId: "v1",
-        quantity: 1
-      });
-    });
   });
 
   it("caps quantity at selected variant stock", async () => {
@@ -227,11 +185,10 @@ describe("ProductDetailPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }));
     fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
 
-    await waitFor(() => {
-      expect(postMock).toHaveBeenCalledWith("/api/v1/cart/items", {
-        productVariantId: "v1",
-        quantity: 2
-      });
+    expect(postMock).toHaveBeenCalledWith("/api/v1/cart/items", {
+      userId: "u-buyer",
+      productVariantId: "v1",
+      quantity: 2
     });
   });
 

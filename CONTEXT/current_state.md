@@ -16,13 +16,13 @@
 
 ## 🚦 Overall Phase Status
 
-| Phase   | Name                 | Status         | Notes                                                                                                                                                |
-| ------- | -------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub |
+| Phase   | Name                 | Status         | Notes                                                                                                                                                                                                                                            |
+| ------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub                                                                         |
 | Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.11 done**, **2.11.1** + **2.12** shipped; checkout + confirmation polish; API **startup warmup** (Prisma + Redis) + **`unhandled_route_error`** request logs for production 500 root-cause; next **2.13** buyer order-status + Socket.IO |
-| Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                               |
-| Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                               |
-| Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                |
+| Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                                                                                                                           |
+| Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                                                                                                                           |
+| Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                                                                                                            |
 
 ---
 
@@ -306,12 +306,12 @@
 
 **Status:** **Complete.** The repo uses **one** workflow file: **`.github/workflows/ci-cd.yml`** (in `GoRola_app/`; working in production).
 
-| Part | What it does |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`ci`** | On every `push` / `pull_request` to `main` or `develop`, and `workflow_dispatch`: install, build `@gorola/shared`, wait for Postgres/Redis, Prisma `generate` + `migrate deploy` to test DB, **lint**, **typecheck**, **test**, **build**. Node **22**; service containers: **PostgreSQL 15** + **Redis 7** on `127.0.0.1` (not hostnames from compose). |
-| **`paths`** | `dorny/paths-filter` — sets **`vercel`** / **`railway`** from changed paths (e.g. `apps/web/**` vs `apps/api/**`, plus shared root files in both so lockfile/tsconfig changes can trigger either side). |
-| **`deploy-vercel`** | **After** `ci` succeeds; only **`main`**, on **push** or **`workflow_dispatch`**; runs if `paths` matched **or** `workflow_dispatch` (manual runs **both** deploys). `vercel deploy --prod` with `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. |
-| **`deploy-railway`** | Same gating; **`railway up --ci`** with `RAILWAY_TOKEN`, `RAILWAY_SERVICE_ID`. |
+| Part                 | What it does                                                                                                                                                                                                                                                                                                                                             |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`ci`**             | On every `push` / `pull_request` to `main` or `develop`, and `workflow_dispatch`: install, build `@gorola/shared`, wait for Postgres/Redis, Prisma `generate` + `migrate deploy` to test DB, **lint**, **typecheck**, **test**, **build**. Node **22**; service containers: **PostgreSQL 15** + **Redis 7** on `127.0.0.1` (not hostnames from compose). |
+| **`paths`**          | `dorny/paths-filter` — sets **`vercel`** / **`railway`** from changed paths (e.g. `apps/web/**` vs `apps/api/**`, plus shared root files in both so lockfile/tsconfig changes can trigger either side).                                                                                                                                                  |
+| **`deploy-vercel`**  | **After** `ci` succeeds; only **`main`**, on **push** or **`workflow_dispatch`**; runs if `paths` matched **or** `workflow_dispatch` (manual runs **both** deploys). `vercel deploy --prod` with `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.                                                                                                   |
+| **`deploy-railway`** | Same gating; **`railway up --ci`** with `RAILWAY_TOKEN`, `RAILWAY_SERVICE_ID`.                                                                                                                                                                                                                                                                           |
 
 **Not deployed from Actions:** **pull requests** and **`develop`** — only `ci` (and `paths`); no production deploy. Details and secret names: **`GoRola_app/README.md`**.
 
@@ -602,7 +602,7 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
   - [x] Each fixed wiring issue has evidence chain documented: UI trigger -> network contract -> runtime route -> service/repository -> DB effect -> UI result
 
 - [x] Fix: category page briefly showed products from other categories before filtering  
-  _RED→GREEN_: added regression in `CategoryPage.test.tsx`, then gated `ProductGrid` render in `CategoryPage.tsx` until slug→categoryId resolve.
+      _RED→GREEN_: added regression in `CategoryPage.test.tsx`, then gated `ProductGrid` render in `CategoryPage.tsx` until slug→categoryId resolve.
 
 - [x] Full Wiring Issue Register (must be closed end-to-end)
 
@@ -1209,12 +1209,12 @@ gorola/
 | user              | ❌         | ✅                | integration: `user.repository.test.ts`                                                                                                                            |
 | store-owner       | ❌         | ✅                | integration: `store-owner.repository.test.ts`                                                                                                                     |
 | admin             | ❌         | ✅                | integration: `admin.repository.test.ts`                                                                                                                           |
-| **web (buyer)**   | **✅**     | ⏳                | **unit/component:** Vitest **117** in `apps/web` (`OrderConfirmationPage`, cart hydration, `CheckoutPage`, `CartDrawer`); E2E = Phase 2.18      |
+| **web (buyer)**   | **✅**     | ⏳                | **unit/component:** Vitest **117** in `apps/web` (`OrderConfirmationPage`, cart hydration, `CheckoutPage`, `CartDrawer`); E2E = Phase 2.18                        |
 | catalog           | ❌         | ✅                | integration: `category`, `product`, `variant` `*.repository.test.ts`                                                                                              |
 | cart              | ❌         | ✅                | integration: `cart.repository.test.ts`                                                                                                                            |
-| order             | ✅         | ✅                | unit: `order.service.test.ts`; integration: `order.repository.test.ts`, `order.service.stock.integration.test.ts`, `order.controller.test.ts` (checkout HTTP)                     |
+| order             | ✅         | ✅                | unit: `order.service.test.ts`; integration: `order.repository.test.ts`, `order.service.stock.integration.test.ts`, `order.controller.test.ts` (checkout HTTP)     |
 | inventory (stock) | ❌         | ✅                | integration: `stock-movement.repository.test.ts`                                                                                                                  |
-| address           | ❌         | ✅                | integration: `address.repository.test.ts`, `address.controller.test.ts` (buyer GET list)                                                                             |
+| address           | ❌         | ✅                | integration: `address.repository.test.ts`, `address.controller.test.ts` (buyer GET list)                                                                          |
 | store             | ❌         | ✅                | integration: `store.repository.test.ts`                                                                                                                           |
 | promotion         | ❌         | ✅                | integration: `advertisement`, `offer`, `discount` `*.repository.test.ts`                                                                                          |
 | feature-flag      | ❌         | ✅                | integration: `feature-flag.repository.test.ts`                                                                                                                    |
