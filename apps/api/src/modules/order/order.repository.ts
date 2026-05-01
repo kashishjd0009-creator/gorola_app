@@ -205,4 +205,23 @@ export class OrderRepository {
       throw error;
     }
   }
+
+  public async updateRating(
+    orderId: string,
+    rating: boolean | null,
+    ratingComment: string | null
+  ): Promise<OrderWithRelations> {
+    try {
+      await this.db.order.update({
+        where: { id: orderId },
+        data: { rating, ratingComment }
+      });
+      return getOrderWithRelations(this.db, orderId);
+    } catch (error: unknown) {
+      if (isPrismaError(error, "P2025")) {
+        throw new NotFoundError("Order not found", { orderId }, error);
+      }
+      throw error;
+    }
+  }
 }

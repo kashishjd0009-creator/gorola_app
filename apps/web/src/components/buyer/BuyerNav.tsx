@@ -1,4 +1,4 @@
-import { MapPin, Search, ShoppingCart, UserRound } from "lucide-react";
+import { Clock, MapPin, Search, ShoppingCart, UserRound } from "lucide-react";
 import type { KeyboardEvent, ReactElement } from "react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -100,6 +100,13 @@ export function BuyerNav(): ReactElement {
             <span className="hidden rounded-full border border-white/20 px-3 py-2 text-sm text-gorola-fog md:inline">
               {buyerLabel}
             </span>
+            <Link
+              to="/account/orders"
+              className="inline-flex items-center gap-1 rounded-full border border-white/30 px-3 py-2 text-sm text-gorola-fog hover:bg-white/10"
+            >
+              <Clock size={15} />
+              <span className="inline">Orders</span>
+            </Link>
             <button
               type="button"
               onClick={() => {

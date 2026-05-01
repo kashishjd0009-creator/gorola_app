@@ -97,6 +97,23 @@ The app will be available at:
 
 ---
 
+## 6. Database Management (Prisma Studio)
+
+To view and edit your local database data via a GUI, you can use Prisma Studio:
+
+```powershell
+pnpm --filter @gorola/api exec prisma studio
+```
+
+### Common Development Uses:
+- **Testing Order States**: Manually change an order's `status` to `DELIVERED` to trigger the Feedback/Rating UI.
+- **Manual Verification**: Mark a new user as `isVerified: true` if you want to skip OTP flows during testing.
+- **Stock Tracking**: Check `stockQty` in `ProductVariant` after placing or cancelling orders to verify stock logic.
+- **Data Cleanup**: Quickly delete test orders or addresses without resetting the whole database.
+- **Feature Flags**: Toggle system-wide flags in the `FeatureFlag` table (e.g., enabling/disabling payment methods).
+
+---
+
 ## Alternative: Using Docker Compose
 If you prefer, you can create a `docker-compose.yml` in the root and run `docker-compose up -d` to start both services at once:
 

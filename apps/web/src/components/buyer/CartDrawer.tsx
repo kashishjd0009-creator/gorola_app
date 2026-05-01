@@ -1,9 +1,12 @@
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
 import type { ChangeEvent, ReactElement } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { api } from "@/lib/api";
 import { enqueueCartVariantMutation } from "@/lib/cart-variant-mutation-queue";
+import { lenis } from "@/lib/lenis";
 import { useAuthStore } from "@/store/auth.store";
 import { useCartStore } from "@/store/cart.store";
 import { useFeatureFlagsStore } from "@/store/feature-flags.store";
@@ -28,235 +31,270 @@ export function CartDrawer(): ReactElement | null {
   const upiEnabled = useFeatureFlagsStore((s) => s.getFlag("PAYMENT_UPI_ENABLED"));
   const cardEnabled = useFeatureFlagsStore((s) => s.getFlag("PAYMENT_CARD_ENABLED"));
 
+  const drawerRef = useRef<HTMLElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      lenis?.stop();
+    } else {
+      document.body.style.overflow = "";
+      lenis?.start();
+    }
+    return () => {
+      document.body.style.overflow = "";
+      lenis?.start();
+    };
+  }, [isOpen]);
+
+  useGSAP(() => {
+    if (isOpen) {
+      gsap.to(backdropRef.current, { opacity: 1, duration: 0.3, ease: "power2.out" });
+      gsap.to(drawerRef.current, { x: 0, duration: 0.4, ease: "power3.out" });
+    } else {
+      gsap.to(backdropRef.current, { opacity: 0, duration: 0.2, ease: "power2.in" });
+      gsap.to(drawerRef.current, { x: "100%", duration: 0.3, ease: "power3.in" });
+    }
+  }, [isOpen]);
+
   const subtotal = useMemo(
     () => lines.reduce((acc, line) => acc + (line.unitPrice ?? 0) * line.quantity, 0),
     [lines]
   );
   const total = Math.max(subtotal + DELIVERY_FEE - savedAmount, 0);
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <aside className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] w-full overflow-y-auto rounded-t-2xl border border-gorola-pine/10 bg-white p-4 shadow-xl md:inset-y-0 md:right-0 md:max-h-none md:w-full md:max-w-md md:rounded-none md:border-l md:border-t-0">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-playfair text-2xl text-gorola-charcoal">Your cart</h2>
-        <button
-          type="button"
-          aria-label="Close cart"
-          onClick={close}
-          className="rounded-full border border-gorola-pine/20 px-3 py-1 text-sm text-gorola-charcoal"
-        >
-          Close
-        </button>
-      </div>
+    <>
+      {/* Backdrop */}
+      <div
+        ref={backdropRef}
+        onClick={close}
+        className={`fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm pointer-events-none opacity-0 ${isOpen ? 'pointer-events-auto' : ''}`}
+      />
 
-      {lines.length === 0 ? (
-        <p className="font-dm-sans text-sm text-gorola-slate">Your cart is empty - go find something good</p>
-      ) : (
-        <div className="space-y-3">
-          {lines.map((line) => (
-            <article key={line.productVariantId} className="rounded-xl border border-gorola-pine/10 p-3">
-              <p className="font-dm-sans text-sm font-semibold text-gorola-charcoal">{line.productName ?? "Item"}</p>
-              <p className="font-dm-sans text-xs text-gorola-slate">{line.variantLabel ?? "Variant"}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label={`Decrease ${line.productName ?? "item"} quantity`}
-                  onClick={() => {
-                    const next = line.quantity - 1;
-                    setQty(line.productVariantId, next);
-                    if (api !== null && accessToken !== null) {
-                      const client = api;
-                      const variantId = line.productVariantId;
-                      void enqueueCartVariantMutation(variantId, async () => {
-                        if (next <= 0) {
-                          await client.delete(`/api/v1/cart/items/${variantId}`);
-                        } else {
-                          await client.put(`/api/v1/cart/items/${variantId}`, {
-                            quantity: next
+      <aside
+        ref={drawerRef}
+        className="fixed top-0 right-0 z-[70] h-[100dvh] w-full max-w-md bg-white shadow-2xl translate-x-full border-l border-gorola-pine/10 flex flex-col overflow-hidden isolate"
+      >
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6 scroll-smooth overscroll-contain" data-lenis-prevent>
+          <div className="flex items-center justify-between">
+            <h2 className="font-playfair text-3xl text-gorola-charcoal">Your cart</h2>
+            <button
+              type="button"
+              aria-label="Close cart"
+              onClick={close}
+              className="rounded-full border border-gorola-pine/20 px-3 py-1 text-sm text-gorola-charcoal hover:bg-gorola-pine/5 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+
+          {lines.length === 0 ? (
+            <p className="font-dm-sans text-sm text-gorola-slate">Your cart is empty - go find something good</p>
+          ) : (
+            <div className="space-y-4">
+              {lines.map((line) => (
+                <article key={line.productVariantId} className="rounded-2xl border border-gorola-pine/10 p-4 shadow-sm">
+                  <p className="font-dm-sans text-sm font-bold text-gorola-charcoal">{line.productName ?? "Item"}</p>
+                  <p className="font-dm-sans text-xs text-gorola-slate">{line.variantLabel ?? "Variant"}</p>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      type="button"
+                      aria-label={`Decrease ${line.productName ?? "item"} quantity`}
+                      onClick={() => {
+                        const next = line.quantity - 1;
+                        setQty(line.productVariantId, next);
+                        if (api !== null && accessToken !== null) {
+                          const client = api;
+                          const variantId = line.productVariantId;
+                          void enqueueCartVariantMutation(variantId, async () => {
+                            if (next <= 0) {
+                              await client.delete(`/api/v1/cart/items/${variantId}`);
+                            } else {
+                              await client.put(`/api/v1/cart/items/${variantId}`, {
+                                quantity: next
+                              });
+                            }
                           });
                         }
-                      });
-                    }
-                  }}
-                  className="h-7 w-7 rounded-full border border-gorola-pine/20 text-sm"
-                >
-                  -
-                </button>
-                <span className="font-dm-sans text-sm text-gorola-charcoal">{line.quantity}</span>
-                <button
-                  type="button"
-                  aria-label={`Increase ${line.productName ?? "item"} quantity`}
-                  onClick={() => {
-                    const next = line.quantity + 1;
-                    setQty(line.productVariantId, next);
-                    if (api !== null && accessToken !== null) {
-                      const client = api;
-                      const variantId = line.productVariantId;
-                      void enqueueCartVariantMutation(variantId, async () => {
-                        await client.put(`/api/v1/cart/items/${variantId}`, {
-                          quantity: next
-                        });
-                      });
-                    }
-                  }}
-                  className="h-7 w-7 rounded-full border border-gorola-pine/20 text-sm"
-                >
-                  +
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Remove ${line.productName ?? "item"}`}
-                  onClick={() => {
-                    removeLine(line.productVariantId);
-                    if (api !== null && accessToken !== null) {
-                      const client = api;
-                      const variantId = line.productVariantId;
-                      void enqueueCartVariantMutation(variantId, async () => {
-                        await client.delete(`/api/v1/cart/items/${variantId}`);
-                      });
-                    }
-                  }}
-                  className="ml-auto text-xs font-semibold text-gorola-slate"
-                >
-                  Remove
-                </button>
+                      }}
+                      className="h-8 w-8 flex items-center justify-center rounded-full border border-gorola-pine/20 text-gorola-charcoal hover:bg-gorola-pine/5 transition-colors"
+                    >
+                      -
+                    </button>
+                    <span className="font-dm-sans text-sm font-bold text-gorola-charcoal min-w-[1.5rem] text-center">{line.quantity}</span>
+                    <button
+                      type="button"
+                      aria-label={`Increase ${line.productName ?? "item"} quantity`}
+                      onClick={() => {
+                        const next = line.quantity + 1;
+                        setQty(line.productVariantId, next);
+                        if (api !== null && accessToken !== null) {
+                          const client = api;
+                          const variantId = line.productVariantId;
+                          void enqueueCartVariantMutation(variantId, async () => {
+                            await client.put(`/api/v1/cart/items/${variantId}`, {
+                              quantity: next
+                            });
+                          });
+                        }
+                      }}
+                      className="h-8 w-8 flex items-center justify-center rounded-full border border-gorola-pine/20 text-gorola-charcoal hover:bg-gorola-pine/5 transition-colors"
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${line.productName ?? "item"}`}
+                      onClick={() => {
+                        removeLine(line.productVariantId);
+                        if (api !== null && accessToken !== null) {
+                          const client = api;
+                          const variantId = line.productVariantId;
+                          void enqueueCartVariantMutation(variantId, async () => {
+                            await client.delete(`/api/v1/cart/items/${variantId}`);
+                          });
+                        }
+                      }}
+                      className="ml-auto text-xs font-bold text-gorola-slate hover:text-red-600 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-4 border-t border-gorola-pine/10 pt-6">
+            {lines.length > 0 ? (
+              <p className="rounded-xl bg-gorola-saffron/5 px-3 py-2 font-dm-sans text-xs font-semibold text-gorola-charcoal border border-gorola-saffron/10">
+                Active offers and discounts may apply at checkout
+              </p>
+            ) : null}
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="font-dm-sans text-sm text-gorola-charcoal">Subtotal</span>
+                <span className="font-dm-sans text-sm text-gorola-charcoal">Rs {subtotal.toFixed(2)}</span>
               </div>
-            </article>
-          ))}
-        </div>
-      )}
+              <div className="flex justify-between">
+                <span className="font-dm-sans text-sm text-gorola-charcoal">Delivery fee</span>
+                <span className="font-dm-sans text-sm text-gorola-charcoal">Rs {DELIVERY_FEE.toFixed(2)}</span>
+              </div>
+              {savedAmount > 0 && (
+                <div className="flex justify-between text-gorola-pine font-bold">
+                  <span className="font-dm-sans text-sm">Saved</span>
+                  <span className="font-dm-sans text-sm">-Rs {savedAmount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-gorola-pine/5 pt-2">
+                <span className="font-dm-sans text-base font-bold text-gorola-charcoal">Total</span>
+                <span className="font-dm-sans text-base font-bold text-gorola-charcoal">Rs {total.toFixed(2)}</span>
+              </div>
+            </div>
 
-      <div className="mt-4 space-y-2 border-t border-gorola-pine/10 pt-3">
-        {lines.length > 0 ? (
-          <p className="rounded-lg bg-gorola-saffron/10 px-2 py-1 font-dm-sans text-xs font-semibold text-gorola-charcoal">
-            Active offers and discounts may apply at checkout
-          </p>
-        ) : null}
-        <p className="font-dm-sans text-sm text-gorola-charcoal">Subtotal: Rs {subtotal.toFixed(2)}</p>
-        <p className="font-dm-sans text-sm text-gorola-charcoal">Delivery fee: Rs {DELIVERY_FEE.toFixed(2)}</p>
-        <p className="font-dm-sans text-sm font-semibold text-gorola-charcoal">Total: Rs {total.toFixed(2)}</p>
-        {savedAmount > 0 ? (
-          <p className="font-dm-sans text-sm font-semibold text-gorola-pine">Saved: Rs {savedAmount.toFixed(2)}</p>
-        ) : null}
-      </div>
-
-      <div className="mt-4 flex items-center gap-2">
-        <input
-          value={discountCode}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => {
-            setDiscountState({
-              code: event.target.value,
-              error: null,
-              savedAmount: 0
-            });
-          }}
-          placeholder="Discount code"
-          className="w-full rounded-lg border border-gorola-pine/20 px-3 py-2 font-dm-sans text-sm"
-        />
-        <button
-          type="button"
-          aria-label="Apply"
-          onClick={() => {
-            if (api === null || discountCode.trim().length === 0) {
-              return;
-            }
-            void api
-              .post("/api/v1/promotions/discounts/validate", {
-                code: discountCode.trim(),
-                subtotal
-              })
-              .then((response) => {
-                const amount = response.data?.data?.amountSaved;
-                if (response.data?.success === true && typeof amount === "number") {
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                value={discountCode}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => {
                   setDiscountState({
-                    code: discountCode.trim(),
+                    code: event.target.value,
                     error: null,
-                    savedAmount: amount
+                    savedAmount: 0
                   });
-                  return;
-                }
-                setDiscountState({
-                  code: discountCode.trim(),
-                  error: "Invalid or expired discount code",
-                  savedAmount: 0
-                });
-              })
-              .catch(() => {
-                setDiscountState({
-                  code: discountCode.trim(),
-                  error: "Could not validate discount code right now",
-                  savedAmount: 0
-                });
-              });
-          }}
-          className="rounded-lg bg-gorola-pine px-3 py-2 font-dm-sans text-sm font-semibold text-white"
-        >
-          Apply
-        </button>
-      </div>
-      {discountError !== null ? (
-        <p className="mt-1 font-dm-sans text-xs font-semibold text-red-600">{discountError}</p>
-      ) : null}
+                }}
+                placeholder="Discount code"
+                className="w-full rounded-xl border border-gorola-pine/10 bg-gorola-fog/50 px-4 py-2 font-dm-sans text-sm focus:outline-none focus:border-gorola-pine/30 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (api === null || discountCode.trim().length === 0) {
+                    return;
+                  }
+                  void api
+                    .post("/api/v1/promotions/discounts/validate", {
+                      code: discountCode.trim(),
+                      subtotal
+                    })
+                    .then((response) => {
+                      const amount = response.data?.data?.amountSaved;
+                      if (response.data?.success === true && typeof amount === "number") {
+                        setDiscountState({
+                          code: discountCode.trim(),
+                          error: null,
+                          savedAmount: amount
+                        });
+                        return;
+                      }
+                      setDiscountState({
+                        code: discountCode.trim(),
+                        error: "Invalid or expired discount code",
+                        savedAmount: 0
+                      });
+                    })
+                    .catch(() => {
+                      setDiscountState({
+                        code: discountCode.trim(),
+                        error: "Could not validate discount code",
+                        savedAmount: 0
+                      });
+                    });
+                }}
+                className="rounded-xl bg-gorola-charcoal px-4 py-2 font-dm-sans text-sm font-bold text-white hover:bg-gorola-charcoal/90 transition-all"
+              >
+                Apply
+              </button>
+            </div>
+            {discountError && <p className="text-[10px] font-bold text-red-500 ml-1">{discountError}</p>}
 
-      <fieldset className="mt-4 space-y-2">
-        <legend className="font-dm-sans text-sm font-semibold text-gorola-charcoal">Payment method</legend>
-        <label className="flex items-center gap-2 font-dm-sans text-sm text-gorola-charcoal">
-          <input
-            type="radio"
-            name="payment-method"
-            aria-label="Cash on Delivery"
-            checked={paymentMethod === "COD"}
-            onChange={() => {
-              setPaymentMethod("COD");
+            <fieldset className="space-y-3 pt-2">
+              <legend className="font-dm-sans text-sm font-bold text-gorola-charcoal mb-2">Payment method</legend>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { id: 'COD', label: 'Cash on Delivery', enabled: true },
+                  { id: 'UPI', label: 'UPI', enabled: upiEnabled },
+                  { id: 'CARD', label: 'Card', enabled: cardEnabled }
+                ].map((method) => (
+                  <label key={method.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                    paymentMethod === method.id 
+                      ? 'border-gorola-pine bg-gorola-pine/[0.03] text-gorola-pine' 
+                      : 'border-gorola-pine/10 text-gorola-charcoal hover:border-gorola-pine/30'
+                  } ${!method.enabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      checked={paymentMethod === method.id}
+                      disabled={!method.enabled}
+                      onChange={() => setPaymentMethod(method.id as PaymentMethod)}
+                      className="accent-gorola-pine"
+                    />
+                    <span className="font-dm-sans text-sm font-medium">{method.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
+        </div>
+        <div className="p-6 pt-2 border-t border-gorola-pine/5">
+          <button
+            type="button"
+            aria-label="Proceed to Checkout"
+            disabled={lines.length === 0}
+            onClick={() => {
+              if (lines.length === 0) {
+                return;
+              }
+              navigate("/checkout");
+              close();
             }}
-          />
-          Cash on Delivery
-        </label>
-        <label className="flex items-center gap-2 font-dm-sans text-sm text-gorola-charcoal">
-          <input
-            type="radio"
-            name="payment-method"
-            aria-label="UPI"
-            checked={paymentMethod === "UPI"}
-            disabled={!upiEnabled}
-            onChange={() => {
-              setPaymentMethod("UPI");
-            }}
-          />
-          UPI
-        </label>
-        <label className="flex items-center gap-2 font-dm-sans text-sm text-gorola-charcoal">
-          <input
-            type="radio"
-            name="payment-method"
-            aria-label="Card"
-            checked={paymentMethod === "CARD"}
-            disabled={!cardEnabled}
-            onChange={() => {
-              setPaymentMethod("CARD");
-            }}
-          />
-          Card
-        </label>
-      </fieldset>
-      <button
-        type="button"
-        aria-label="Proceed to Checkout"
-        disabled={lines.length === 0}
-        onClick={() => {
-          if (lines.length === 0) {
-            return;
-          }
-          navigate("/checkout");
-          close();
-        }}
-        className="mt-4 w-full rounded-full bg-gorola-pine px-5 py-2 font-dm-sans text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Proceed to Checkout
-      </button>
-    </aside>
+            className="w-full rounded-full bg-gorola-pine px-6 py-3 font-dm-sans text-sm font-bold text-white hover:bg-gorola-pine/90 transition-all shadow-lg shadow-gorola-pine/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Proceed to Checkout
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

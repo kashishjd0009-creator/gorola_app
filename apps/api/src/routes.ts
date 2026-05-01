@@ -117,6 +117,7 @@ export function registerAppRoutes(app: FastifyInstance): void {
 
   registerOrderRoutes(app, {
     buyerCheckout,
+    cart: checkoutCartRepo,
     orders: orderRepoOrders,
     tokenVerifier: tokenService
   });

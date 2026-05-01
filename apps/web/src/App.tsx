@@ -14,6 +14,7 @@ import { CheckoutPage } from "@/pages/buyer/CheckoutPage";
 import { HomePage } from "@/pages/buyer/HomePage";
 import { LoginPage } from "@/pages/buyer/LoginPage";
 import { OrderConfirmationPage } from "@/pages/buyer/OrderConfirmationPage";
+import { OrderHistoryPage } from "@/pages/buyer/OrderHistoryPage";
 import { ProductDetailPage } from "@/pages/buyer/ProductDetailPage";
 import { SavedAddressesPage } from "@/pages/buyer/SavedAddressesPage";
 
@@ -141,6 +142,16 @@ export function App(): ReactElement {
           }
         />
         <Route
+          path="/account/orders"
+          element={
+            <ProtectedRoute>
+              <BuyerLayout>
+                <OrderHistoryPage />
+              </BuyerLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/checkout"
           element={
             <ProtectedRoute>
@@ -177,7 +188,7 @@ export function App(): ReactElement {
           }
         />
       </Routes>
-      <Toaster />
+      <Toaster position="bottom-left" />
     </QueryClientProvider>
   );
 }

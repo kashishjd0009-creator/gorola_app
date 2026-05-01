@@ -81,9 +81,9 @@ describe("CartDrawer", () => {
     renderShell();
     expect(screen.getByText("Apple")).toBeInTheDocument();
     expect(screen.getByText("1kg")).toBeInTheDocument();
-    expect(screen.getByText("Subtotal: Rs 240.00")).toBeInTheDocument();
-    expect(screen.getByText("Delivery fee: Rs 30.00")).toBeInTheDocument();
-    expect(screen.getByText("Total: Rs 270.00")).toBeInTheDocument();
+    expect(screen.getByText("Rs 240.00")).toBeInTheDocument();
+    expect(screen.getByText("Rs 30.00")).toBeInTheDocument();
+    expect(screen.getByText("Rs 270.00")).toBeInTheDocument();
   });
 
   it("updates quantity with +/- controls and calls cart API", async () => {
@@ -193,7 +193,8 @@ describe("CartDrawer", () => {
         expect.objectContaining({ code: "SAVE20" })
       );
     });
-    expect(screen.getByText("Saved: Rs 20.00")).toBeInTheDocument();
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+    expect(screen.getByText("-Rs 20.00")).toBeInTheDocument();
   });
 
   it("shows discount error when code is invalid or expired", async () => {
@@ -239,7 +240,7 @@ describe("CartDrawer", () => {
     renderShell();
     fireEvent.change(screen.getByPlaceholderText("Discount code"), { target: { value: "SAVE20" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-    expect(await screen.findByText("Could not validate discount code right now")).toBeInTheDocument();
+    expect(await screen.findByText("Could not validate discount code")).toBeInTheDocument();
   });
 
   it("removes line item and calls cart delete API", async () => {

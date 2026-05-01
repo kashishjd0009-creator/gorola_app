@@ -722,3 +722,26 @@ In cloud deployments (Railway), users reported an `INTERNAL_SERVER_ERROR` (P2028
 **Tradeoffs:**
 - Service layer must now map IDs and pass data to repositories, slightly increasing code length for significant performance gains.
 
+---
+
+## [DECISION-024] Order Rating Model (Thumbs Up/Down + Optional Comment)
+
+**Date:** 2026-05-02
+**Status:** Accepted
+
+**Context:**
+For Phase 2.15 (Order History + Reorder), we needed a way for buyers to rate completed orders. The initial requirement was "no stars, just thumbs up / thumbs down".
+
+**Decision:**
+Add `rating Boolean?` and `ratingComment String?` to the `Order` model in Prisma.
+- `rating`: `true` means thumbs up, `false` means thumbs down, `null` means unrated.
+- `ratingComment`: Optional text feedback provided alongside the rating.
+
+**Rationale:**
+- A boolean perfectly captures the binary "thumbs up/down" requirement without the complexity of a 5-star scale.
+- Adding the `ratingComment` field proactively allows users to leave qualitative feedback (e.g., "Food was cold", "Driver was polite"), which is highly valuable for store owners.
+- Keeping these on the `Order` model avoids creating a separate `Review` table, simplifying the schema and reducing join overhead for order history queries.
+
+**Tradeoffs:**
+- A boolean cannot support a "neutral" rating if requested in the future. If a 3-tier system (happy, neutral, sad) is ever needed, we will have to migrate `rating` to an `Int` or `Enum`.
+- Storing text comments on the `Order` table slightly increases row size, but this is negligible in PostgreSQL.

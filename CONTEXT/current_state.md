@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-02
-- **Session Summary:** **Session 81 — Saved Addresses Page (Phase 2.14)** — **`address.controller.ts`**: added `POST`, `PUT`, `DELETE`, and `PUT /default` routes with Zod validation. **`SavedAddressesPage.tsx`**: built full CRUD UI with `AddressMapPicker` integration, "Set as Default" actions, and React Query mutations. **`App.tsx`**: added `/account/addresses` protected route. **`address.controller.test.ts` & `SavedAddressesPage.test.tsx`**: verified backend endpoints and frontend behavior. All quality gates passed.
-- **Next Session Must Start With:** **Phase 2.15** — Order History + Reorder. Implement `/account/orders` page.
+- **Session Summary:** **Session 82 — Order History & Feedback (Phase 2.15) — Refinements & Quality Stabilization.** Implemented `GET /api/v1/orders/history`, `POST /api/v1/orders/:id/reorder`, and `PUT /api/v1/orders/:id/rate`. Refined `OrderHistoryPage.tsx` with high-contrast UI and GSAP. Optimized `CartDrawer` with GSAP right-slide, background scroll lock (Lenis stop), and scroll-chaining prevention (`data-lenis-prevent`). Fixed route collision bugs and linting/type errors. Verified with full `pnpm ci:quality` (Green).
+- **Next Session Must Start With:** **Phase 2.16** — Weather Mode (System-Wide Toggle). Implement system-wide weather state and UI shifts.
 
 ---
 
@@ -19,7 +19,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                                                                                                            |
 | ------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub                                                                         |
-| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.14 done**, checkout, real-time status, saved addresses shipped; next **2.15** order history.                                                                                                                                                                                                                                                                                           |
+| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.15 done**, checkout, real-time status, saved addresses, order history shipped; next **2.16** weather mode. |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                                                                                                                           |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                                                                                                                           |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                                                                                                            |
@@ -108,15 +108,16 @@
 - **Session 77 (Order confirmation UX + API cold-start + ScrollTrigger fix):** **`server-warmup.ts`**, **`app.ts`** startup warmup, **`server.ts`** **`unhandled_route_error`** logging; **`OrderConfirmationPage`** loading/success id + bloom gradient; **`CategoryGrid`** ScrollTrigger **`HTMLElement` trigger**; **`app.start.test.ts`** mocks warmup. Details in **Last Updated** session summary.
 - **Session 78 (Quality gate stabilization + test fixes):** Resolved ESLint import sorting conflicts; fixed Leaflet `Marker.prototype` crash in `AddressMapPicker` tests; updated `ProductDetailPage` tests for async cart mutations and JWT-based payloads; fixed API integration test 401s by prioritizing `GOROLA_TEST_OTP` over dummy dev overrides in test mode. Full quality gate green for linting and testing; build pending `EPERM` resolution.
 - **Session 79 (Prisma Transaction Optimization & Timeout Resolution):** Resolved `P2028: Transaction not found` errors in deployment by increasing `$transaction` timeout to 15s. Optimized `OrderService` (both `placeOrderWithStock` and `cancelOrderWithStockRestore`) to use bulk-fetching (`findMany`) and in-memory stock checks. Updated `OrderRepository.create` to include relations in a single round-trip and modified `ProductVariantRepository` to skip redundant reads. Reduced checkout database round-trips from ~40+ down to ~5. Added unit tests for cancellation and updated mocks for bulk-fetching. Full `pnpm ci:quality` is GREEN.
-- **Session 80 (Phase 2.13 Real-time Order Tracking, strict TDD):** Integrated `socket.io` into Fastify backend with JWT handshake auth and room-based order ownership checks; updated `OrderService` to emit `order_status_changed` events. Implemented `useOrderSocket` hook and `StatusStepper` UI component on `OrderConfirmationPage` for live visual progression (Placed → Preparing → Out for Delivery → Delivered). Verified with `order.socket.test.ts` and root `pnpm ci:quality` green (**312** API tests, **118** web tests).
+- **Session 81 (Phase 2.14 Saved Addresses):** Built `address.repository.ts`, `address.controller.ts`, and `SavedAddressesPage.tsx` with `AddressMapPicker` integration. Verified with backend/frontend TDD suites; full CRUD for delivery locations.
+- **Session 82 (Phase 2.15 Order History + Reorder):** Implemented authenticated order listing, reorder logic with active variant validation (appending to cart), and binary rating system with optional feedback comments. Refined UI for light-mode visibility on `gorola-fog` and added GSAP right-side slide-in for `CartDrawer`. Fixed route collision bug and added API `dev` script. Re-verified all quality gates.
 
 ---
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2.15** — Order History + Reorder (`/account/orders`).
+**Current Task:** **Phase 2.16** — Weather Mode (System-Wide Toggle).
 
-**Exact stopping point:** **Phase 2.14** complete: Saved Addresses Page shipped with full CRUD functionality and test coverage. All code quality gates are 100% green.
+**Exact stopping point:** **Phase 2.15** complete: Order History & Feedback shipped with reorder and rating functionality. All code quality gates are 100% green.
 
 **Current Blocker:** `apps/api` build succeeds in CI, but local Windows `pnpm dev` while building can still cause `EPERM` due to file locking (intentional system limitation). All code quality gates are 100% green.
 
@@ -717,17 +718,17 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.15 — Order History + Reorder
 
-- [ ] API Contract Gate (mandatory for phase completion):
-  - [ ] Backend endpoints reachable at runtime: order history, reorder, and rating endpoints
-  - [ ] Backend integration tests cover reorder/rating behavior and constraints
-  - [ ] Routes are registered in runtime app route graph
-  - [ ] Frontend tests validated against expected API envelope and edge states
+- [x] API Contract Gate (mandatory for phase completion):
+  - [x] Backend endpoints reachable at runtime: order history, reorder, and rating endpoints
+  - [x] Backend integration tests cover reorder/rating behavior and constraints
+  - [x] Routes are registered in runtime app route graph
+  - [x] Frontend tests validated against expected API envelope and edge states
 
-- [ ] `src/pages/buyer/OrderHistoryPage.tsx` → route: `/account/orders`
-- [ ] Lists past orders: store name, items summary, total, date, status
-- [ ] "Reorder" button: `POST /api/v1/orders/:id/reorder` — re-adds all items to cart, navigates to cart
-- [ ] Thumbs up / thumbs down rating (no stars): `PUT /api/v1/orders/:id/rate`
-- [ ] TESTS: reorder adds items to cart, rating submission
+- [x] `src/pages/buyer/OrderHistoryPage.tsx` → route: `/account/orders`
+- [x] Lists past orders: store name, items summary, total, date, status
+- [x] "Reorder" button: `POST /api/v1/orders/:id/reorder` — re-adds all items to cart, navigates to cart
+- [x] Thumbs up / thumbs down rating (no stars): `PUT /api/v1/orders/:id/rate`
+- [x] TESTS: reorder adds items to cart, rating submission
 
 ### 2.16 — Weather Mode (System-Wide Toggle)
 
