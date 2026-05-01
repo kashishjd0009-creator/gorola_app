@@ -23,6 +23,8 @@ async function cleanRateGraph(db: PrismaClient): Promise<void> {
   await db.orderStatusHistory.deleteMany();
   await db.orderItem.deleteMany();
   await db.order.deleteMany();
+  await db.cartItem.deleteMany();
+  await db.cart.deleteMany();
   await db.productVariant.deleteMany();
   await db.product.deleteMany();
   await db.category.deleteMany();

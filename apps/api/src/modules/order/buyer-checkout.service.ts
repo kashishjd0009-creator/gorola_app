@@ -38,14 +38,21 @@ export class BuyerCheckoutService {
     }
 
     let landmarkDescription: string;
+    let addressLabel: string | null = null;
+    let flatRoom: string | null = null;
+
     if (body.addressMode === "saved") {
       const addr = await this.addressRepo.findByIdForBuyer(userId, body.addressId);
       if (addr === null) {
         throw new NotFoundError("Address not found");
       }
       landmarkDescription = addr.landmarkDescription;
+      addressLabel = addr.label;
+      flatRoom = addr.flatRoom;
     } else {
       landmarkDescription = body.landmarkDescription;
+      addressLabel = body.addressLabel ?? null;
+      flatRoom = body.flatRoom ?? null;
     }
 
     const variantIds = cart.items.map((i) => i.productVariantId);
@@ -160,6 +167,8 @@ export class BuyerCheckoutService {
         variantLabel: line.variantLabel
       })),
       landmarkDescription,
+      addressLabel,
+      flatRoom,
       paymentMethod: body.paymentMethod,
       scheduledFor: null,
       storeId,

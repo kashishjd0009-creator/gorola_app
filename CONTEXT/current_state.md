@@ -9,8 +9,9 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-02
-- **Session Summary:** **Session 82 — Order History & Feedback (Phase 2.15) — Refinements & Quality Stabilization.** Implemented `GET /api/v1/orders/history`, `POST /api/v1/orders/:id/reorder`, and `PUT /api/v1/orders/:id/rate`. Refined `OrderHistoryPage.tsx` with high-contrast UI and GSAP. Optimized `CartDrawer` with GSAP right-slide, background scroll lock (Lenis stop), and scroll-chaining prevention (`data-lenis-prevent`). Fixed route collision bugs and linting/type errors. Verified with full `pnpm ci:quality` (Green).
+- **Session Summary:** **Session 84 — Order Hardening, Address Snapshotting & Test Stability.** Implemented database-backed address snapshotting for orders to ensure historical accuracy. Refactored `OrderConfirmationPage` into a state-aware UI with 5 distinct states. Fixed critical CI/CD failures by hardening integration test cleanup logic for `Cart` and `CartItem` tables. All quality gates (lint, typecheck, test, build) are 100% green.
 - **Next Session Must Start With:** **Phase 2.16** — Weather Mode (System-Wide Toggle). Implement system-wide weather state and UI shifts.
+
 
 ---
 
@@ -92,8 +93,8 @@
 - **Session 63 (Phase 2.11.1 wiring audit + first fix, strict TDD):** Ran cross-app wiring audit and created explicit 2.11.1 backlog for contract and navigation consistency. Fixed category page flash-of-wrong-products by gating `ProductGrid` render until slug→categoryId resolves in `CategoryPage.tsx`; added regression test `does not request unfiltered products before category id resolves` in `CategoryPage.test.tsx`. Verified `pnpm --filter @gorola/web test -- CategoryPage.test.tsx ProductGrid.test.tsx`, web lint, and root `pnpm ci:quality` (web 97 tests, api 303 tests).
 - **Session 64 (Phase 2.11.1 P0 wiring closure W-001/W-002, strict TDD):** Added RED app-route regression in `router.test.tsx` for missing `/orders/:id`, then GREEN by wiring protected runtime route in `App.tsx` and creating `OrderConfirmationPage.tsx` landing screen. Added RED backend integration assertions for category `productCount` drift in `category.controller.test.ts` (including active/not-deleted DB count semantics), then GREEN by implementing `CategoryRepository.findAllForBuyer()` aggregation and switching controller route to this contract. Verified with targeted runs: API `category.controller.test.ts`, web `router.test.tsx`, `CheckoutPage.test.tsx`, `CategoryGrid.test.tsx`, and `CategoryPage.test.tsx`.
 - **Session 65 (Phase 2.11.1 final closure, strict TDD):** Added RED tests proving cart server-sync must still execute when `userId` is null but auth tokens exist (`ProductGrid.test.tsx`, `ProductDetailPage.test.tsx`, `CartDrawer.test.tsx`) and GREEN by switching cart sync guards to token presence (`accessToken`) instead of `userId`. Added RED test for order confirmation data wiring and GREEN `OrderConfirmationPage` fetch/render against `GET /api/v1/orders/:id`. Added RED API integration for discount read consistency and GREEN backend change in `order.controller.ts` to infer discount amount from persisted totals on GET responses. Stabilized `stock-movement.repository.test.ts` cleanup graph (`Advertisement`/`Offer`/`Discount` deletions before `Store`) to keep full suite deterministic. Verification: targeted web tests (31), targeted API order tests (8), targeted inventory tests (8), full `pnpm ci:quality` green.
-- **Session 66 (Production CORS preflight hardening):** Diagnosed live browser preflight failures (`CORS Method Not Found`) against cart mutation endpoints. Hardened Fastify CORS registration in `apps/api/src/server.ts` with explicit allowed methods/headers and `strictPreflight`. Added/expanded integration coverage in `apps/api/src/__tests__/integration/server/server.cors-credentials.test.ts` to assert `OPTIONS /api/v1/cart/items/:id` includes `PUT`/`DELETE` and auth/content headers. Verification: `pnpm --filter @gorola/api test -- --run src/__tests__/integration/server/server.cors-credentials.test.ts`, API lint, API typecheck.
 - **Session 65 (Phase 2.11.1 P0 wiring closure W-003, strict TDD):** Added RED deep-link regression in `router.test.tsx` for auth bootstrap/guard race (protected `/profile` bounced to login before refresh bootstrap settled). Implemented GREEN by adding auth bootstrap pending state (`isBootstrapPending`) in `auth.store.ts`, wiring settle semantics in `bootstrapBuyerAuthSession()` (`api.ts`), and making guards (`ProtectedRoute`/`StoreRoute`/`AdminRoute`) wait on bootstrap before redirecting. Updated guard tests for deterministic bootstrap state. Verified targeted web suites (`router.test.tsx`, `route-guards.test.tsx`) and full repo `pnpm ci:quality` (lint/typecheck/tests/build) all green.
+- **Session 66 (Production CORS preflight hardening):** Diagnosed live browser preflight failures (`CORS Method Not Found`) against cart mutation endpoints. Hardened Fastify CORS registration in `apps/api/src/server.ts` with explicit allowed methods/headers and `strictPreflight`. Added/expanded integration coverage in `apps/api/src/__tests__/integration/server/server.cors-credentials.test.ts` to assert `OPTIONS /api/v1/cart/items/:id` includes `PUT`/`DELETE` and auth/content headers. Verification: `pnpm --filter @gorola/api test -- --run src/__tests__/integration/server/server.cors-credentials.test.ts`, API lint, API typecheck.
 - **Session 66 (Phase 2.11.1 P1 wiring closure W-004, strict TDD):** Added RED router regression proving footer discoverability links (`About`, `Support`) landed on unresolved routes. Implemented GREEN by registering `/about` and `/support` in runtime app route graph (`App.tsx`) with buyer-layout placeholder pages so visible footer links no longer dead-end. Verified targeted `router.test.tsx` suite green; full `pnpm ci:quality` run pending for session completion.
 - **Session 67 (Phase 2.11.1 P1 wiring closure W-005, strict TDD):** Added RED router/user-journey regression for placeholder route exposure and role-gated confusion, then implemented GREEN guardrail policy in `App.tsx` placeholder pages: explicit in-progress copy (`This page is not ready yet.`) and `Back to Home` recovery action for placeholder routes (`/search`, `/cart`, `/profile`, `/store`, `/admin`, plus `/about`/`/support`). Added assertions covering non-owner `/store` redirect and owner-visible guarded placeholder behavior. Verified `router.test.tsx` green; full `pnpm ci:quality` pending for session closure.
 - **Session 68 (Phase 2.11.1 P1 wiring closure W-006, strict TDD):** Added RED regression in `router.test.tsx` for `/search?q=` expectation, then implemented GREEN query-aware search placeholder in `App.tsx` (`SearchPlaceholderPage` using `useSearchParams`) so search entry no longer behaves as a generic dead-end placeholder. Updated route guardrail assertions and re-verified `router.test.tsx` + `BuyerNav.test.tsx` green. Full `pnpm ci:quality` pending for session closure.
@@ -110,6 +111,8 @@
 - **Session 79 (Prisma Transaction Optimization & Timeout Resolution):** Resolved `P2028: Transaction not found` errors in deployment by increasing `$transaction` timeout to 15s. Optimized `OrderService` (both `placeOrderWithStock` and `cancelOrderWithStockRestore`) to use bulk-fetching (`findMany`) and in-memory stock checks. Updated `OrderRepository.create` to include relations in a single round-trip and modified `ProductVariantRepository` to skip redundant reads. Reduced checkout database round-trips from ~40+ down to ~5. Added unit tests for cancellation and updated mocks for bulk-fetching. Full `pnpm ci:quality` is GREEN.
 - **Session 81 (Phase 2.14 Saved Addresses):** Built `address.repository.ts`, `address.controller.ts`, and `SavedAddressesPage.tsx` with `AddressMapPicker` integration. Verified with backend/frontend TDD suites; full CRUD for delivery locations.
 - **Session 82 (Phase 2.15 Order History + Reorder):** Implemented authenticated order listing, reorder logic with active variant validation (appending to cart), and binary rating system with optional feedback comments. Refined UI for light-mode visibility on `gorola-fog` and added GSAP right-side slide-in for `CartDrawer`. Fixed route collision bug and added API `dev` script. Re-verified all quality gates.
+- **Session 83 (CI/CD Stabilization & Test Repair):** Resolved critical CI/CD failures caused by environment drift and foreign key constraints. Updated `api.ts` with a test-mode fallback to prevent `null` API instances in GitHub Actions. Repaired `cleanGraph` logic in `order.history.test.ts`, `order.rate.test.ts`, and `order.reorder.test.ts` to correctly order the deletion of `Advertisement`, `Offer`, and `Discount` records before `Store` records. Fixed "Ghost Feedback" UI bug in `order.controller.ts` by explicitly including `rating` fields in serialized responses. All quality gates are 100% green in both local and CI environments.
+- **Session 84 (Phase 2.15.2 Order Hardening & Address Snapshotting):** Implemented database-backed address snapshotting for orders. Refactored `OrderConfirmationPage` into a state-aware UI with 5 states (PLACED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED). Added dynamic delivery duration calculation and detailed address display block. Fixed flaky integration test cleanup logic in `order.history.test.ts` and `order.rate.test.ts` to include `Cart` and `CartItem` deletions. Verified with full quality gate pass.
 
 ---
 
@@ -117,9 +120,9 @@
 
 **Current Task:** **Phase 2.16** — Weather Mode (System-Wide Toggle).
 
-**Exact stopping point:** **Phase 2.15** complete: Order History & Feedback shipped with reorder and rating functionality. All code quality gates are 100% green.
+**Exact stopping point:** **Phase 2.15.2** complete: Order confirmation UI hardened with state machine and address snapshotting. All quality gates are 100% green.
 
-**Current Blocker:** `apps/api` build succeeds in CI, but local Windows `pnpm dev` while building can still cause `EPERM` due to file locking (intentional system limitation). All code quality gates are 100% green.
+**Current Blocker:** None. All quality gates are 100% green.
 
 ---
 
@@ -729,6 +732,31 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 - [x] "Reorder" button: `POST /api/v1/orders/:id/reorder` — re-adds all items to cart, navigates to cart
 - [x] Thumbs up / thumbs down rating (no stars): `PUT /api/v1/orders/:id/rate`
 - [x] TESTS: reorder adds items to cart, rating submission
+
+### 2.15.1 — Order Details & Status UI Hardening
+
+- [x] Refine "Thank You" bloom animation:
+  - [x] Increase bloom hold time for "excitement" (avoid jittery/fast feel)
+  - [x] Smooth out GSAP transitions for cinematic reveal
+- [x] Conditional "Thank You" bloom entrance: only executes if order was placed in the last 60 seconds or status is `PLACED`
+- [x] Status-based messaging:
+  - [x] `PLACED`: "Thanks for ordering" + Queue details
+  - [x] `PREPARING`: "Store is picking items" + ETA trust copy
+  - [x] `DELIVERED`: "Order Delivered" + immediate focus on Rating/Feedback UI
+- [x] Hide "Queue" copy and " cinematic" effects for historically completed orders
+- [x] TESTS: Component correctly switches content and animations based on API status payload
+
+### 2.15.2 — Advanced Order States & Address Snapshoting
+
+- [x] TDD: Create unit tests for `CANCELLED` state and `DELIVERED` duration badge
+- [x] TDD: Create integration tests for Address Snapshoting (Database-level persistence)
+- [x] DATABASE: Add `addressLabel` and `flatRoom` (optional) to `Order` model
+- [x] BACKEND: Implement snapshot logic in `OrderService` (copy from Address profile or body)
+- [x] UI: Implement "Delivered in XXm" duration calculation and badge
+- [x] UI: Implement Full Address block (Label + Flat + Landmark)
+- [x] UI: Hide in-progress elements (Contact, Footer, ETA) for `DELIVERED` and `CANCELLED`
+- [x] UI: Add `CANCELLED` state with neutral styling and clear messaging
+
 
 ### 2.16 — Weather Mode (System-Wide Toggle)
 
@@ -1388,3 +1416,17 @@ _(Append new entries — never delete old ones)_
 - **Components (TDD):** `TopographicBg` (decorative SVG, `opacity` default `0.12`); `WeatherBanner` (pine vs slate from `useWeatherStore`, `data-weather` + `role="status"`); `ETABanner` (`.eta-pulse` on amber dot, static `etaLabel` prop for now). **`HomePage`:** “Design system — Phase 2.2 preview” section with the three for visual smoke-testing.
 - **Tooling:** `WeatherBanner.test.tsx` needs **`eslint-disable simple-import-sort/imports, import/order`** (conflict between `import/order` and `@/` + `./` ordering).
 - **Verify:** `pnpm ci:quality` (API 277, web 30, build).
+
+**Session 84 (Phase 2.15.2 Order Hardening & Address Snapshotting):**
+
+- Implemented **Address Snapshotting** at checkout: `Order` model now stores `addressLabel` and `flatRoom` directly to preserve historical accuracy even if user addresses are updated/deleted.
+- Refined `OrderConfirmationPage` into a robust **Status State Machine**:
+  - `PLACED`: GSAP Bloom entrance.
+  - `PREPARING`: Store picking status.
+  - `OUT_FOR_DELIVERY`: Live rider tracking pulse.
+  - `DELIVERED`: Clean summary with a premium **"Delivered in XXm"** duration badge.
+  - `CANCELLED`: Neutral styling with apology messaging; hides in-progress UI elements.
+- Implemented **Duration Logic**: `calculateDeliveryDuration` uses `statusHistory` (PLACED vs DELIVERED) with a fallback to `createdAt` and a safe UI default (fixed the "XXm" placeholder).
+- Implemented **Full Address Block**: Shows label, flat/room, and landmark in a structured layout.
+- **Test Stability Hardening**: Fixed flaky integration tests in the API package by adding `Cart` and `CartItem` deletions to the `cleanGraph` functions of `order.history.test.ts` and `order.rate.test.ts`, preventing foreign key constraint violations during test suite execution.
+- Verification: Added integration tests for snapshots and state machine tests for UI; passed full repo `pnpm ci:quality`.

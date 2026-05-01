@@ -26,6 +26,8 @@ export type CreateOrderInput = {
   total: string | number;
   paymentMethod: PaymentMethod;
   landmarkDescription: string;
+  addressLabel?: string | null;
+  flatRoom?: string | null;
   deliveryNote?: string | null;
   scheduledFor?: Date | null;
   items: Array<{
@@ -84,6 +86,8 @@ export class OrderRepository {
           total: toDecimal(input.total),
           paymentMethod: input.paymentMethod,
           landmarkDescription: input.landmarkDescription,
+          addressLabel: input.addressLabel ?? null,
+          flatRoom: input.flatRoom ?? null,
           deliveryNote: input.deliveryNote ?? null,
           scheduledFor: input.scheduledFor ?? null,
           items: {

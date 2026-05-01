@@ -745,3 +745,115 @@ Add `rating Boolean?` and `ratingComment String?` to the `Order` model in Prisma
 **Tradeoffs:**
 - A boolean cannot support a "neutral" rating if requested in the future. If a 3-tier system (happy, neutral, sad) is ever needed, we will have to migrate `rating` to an `Int` or `Enum`.
 - Storing text comments on the `Order` table slightly increases row size, but this is negligible in PostgreSQL.
+
+---
+
+## [DECISION-025] CI/CD Test Stabilization (Explicit Serialization & API Fallback)
+
+**Date:** 2026-05-02
+**Status:** Accepted
+
+**Context:**
+After implementing Phase 2.15 (Order Rating), the project's CI/CD pipeline failed due to:
+1.  **"Ghost Feedback" Bug**: The UI incorrectly showed "Rating submitted" for unrated orders because the backend was excluding the `rating` field (returning `undefined` instead of `null`).
+2.  **TypeError in Tests**: Frontend tests crashed in GitHub Actions because the `api` singleton was `null` due to missing environment variables.
+3.  **FK Violations**: Integration tests failed during database cleanup because newly added `Advertisement` records blocked the deletion of `Store` records.
+
+**Decision:**
+1.  **Explicit Serialization**: Update `order.controller.ts` to explicitly include `rating: order.rating` and `ratingComment: order.ratingComment` in the serialized response.
+2.  **Test-Safe API**: Modify `apps/web/src/lib/api.ts` to provide a fallback URL (`http://test-api`) if `import.meta.env.MODE === 'test'`, ensuring the `api` instance is never `null` during tests.
+3.  **Hierarchical Cleanup**: Update all integration test cleanup functions to follow a strict "Leaf-to-Root" deletion order (e.g., delete `Advertisement` before `Store`).
+
+**Rationale:**
+- Explicitly mapping fields in the controller ensures the API contract is reliable and never dependent on Prisma's default omit/include behavior.
+- Providing a fallback URL during tests prevents infrastructure dependencies (like environment variables) from blocking purely functional unit tests.
+- Hierarchical cleanup is a best practice for integration testing with relational databases to maintain isolation without violating referential integrity.
+
+**Tradeoffs:**
+- Manually mapping fields adds a few lines to the controller but prevents "magic" bugs where fields disappear.
+- The dummy test URL prevents real network calls during tests (which is usually desired) but could hide configuration issues that only surface at runtime.
+
+**Alternatives Considered:**
+1.  Using a global database trigger for cascade deletes — rejected: too complex for test-only cleanup.
+---
+
+## [DECISION-026] State-Aware Order Details UI
+
+**Date:** 2026-05-02
+**Status:** Accepted
+
+**Context:**
+The `OrderConfirmationPage` was originally designed as a high-fidelity "Success" screen with cinematic GSAP animations (the "bloom" effect) and hardcoded "Thank you" messaging. However, this same page is used as the primary view for tracking order status and viewing order details from history. Seeing a "Thank you for ordering" bloom on a 3-day-old delivered order creates a confusing and unprofessional user experience.
+
+**Decision:**
+Implement a status-driven UI state machine within the `OrderConfirmationPage`. The page will dynamically adjust visibility and content based on the `status` payload from the API:
+
+1.  **Fresh Success (`PLACED`)**: High-fidelity bloom animation, "Thank you" header, and active status tracking.
+2.  **In-Progress (`PREPARING` / `OUT_FOR_DELIVERY`)**: Utility-focused view. Hide "Thank you" (switch to "Store is picking items" or "On the way"). Keep ETA trust copy and Store Contact cards visible for active assistance.
+3.  **Completion (`DELIVERED`)**: "Success" state focused on history and feedback.
+    *   **Hide**: Bloom, Store Contact card, ETA trust copy, and Drop-off cues.
+    *   **Show**: "Order Delivered" header, a new **"Delivered in XXm" duration badge**, and Rating UI.
+4.  **Failure (`CANCELLED`)**: Neutral informational state.
+    *   **Hide**: Bloom, Status Stepper (or grey it out), Contact cards, and ETA text.
+    *   **Show**: "Order Cancelled" header and clear cancellation notice.
+
+**Rationale:**
+- Improves the transition from "Post-Checkout" (excitement-focused) to "Tracking/History" (utility-focused).
+- Prevents animation fatigue by showing the expensive cinematic entrance only once (at the moment of success).
+- Better aligns the UI with the real-world state of the order.
+- As a quick-commerce app, GoRola must feel reliable. Historical views should emphasize utility (receipt/feedback), while active orders should emphasize status and support.
+
+**Tradeoffs:**
+- Adds complexity to the component's internal logic (conditional rendering and timeline control).
+- Requires careful handling of the transition states to ensure the page doesn't "flicker" while fetching the status.
+
+**Alternatives Considered:**
+1.  **Separate Pages:** Create a `OrderDetailPage` separate from `OrderConfirmationPage`. Rejected: This would duplicate significant amounts of layout and logic (items list, totals, store info).
+2.  **Stateless Redirects:** Redirect to a different component within the same route based on status. Rejected: Harder to handle entry animations consistently.
+
+---
+
+## [DECISION-027] Cinematic Animation Timing for Order Success
+
+**Date:** 2026-05-02
+**Status:** Accepted
+
+**Context:**
+The "green bloom" animation on the `OrderConfirmationPage` was reported as feeling "jittery" or too fast. The initial implementation began the fade-out immediately upon mount, not allowing the user to register the success state before the transition to the content began.
+
+**Decision:**
+Introduce a "hold" phase and slow down the GSAP timeline:
+1.  **Hold Time:** Add a 0.5s–0.8s pause where the green bloom is at full opacity to signify the "Success" impact.
+2.  **Slower Reveal:** Extend the bloom fade duration and stagger the checkmark drawing more deliberately.
+3.  **Easing:** Shift to `power3.out` for the reveal to create a more premium, "braking" feel as the content settles.
+
+**Rationale:**
+- High-fidelity animations require a clear beginning, middle, and end. The current version skipped the "beginning" (the impact) and went straight to the "end" (the reveal).
+- Slower transitions feel more expensive and deliberate, reducing the perception of technical glitches or frame drops.
+
+---
+
+## [DECISION-028] Address Snapshoting for Order History
+
+**Date:** 2026-05-02
+**Status:** Accepted
+
+**Context:**
+Currently, the `Order` model only stores the `landmarkDescription`. It does not store the user-provided `addressLabel` (e.g., "Home") or `flatRoom` number. Additionally, if an order were to simply link to the user's `Address` record, deleting or editing that address profile later would break the historical record of where the order was actually delivered.
+
+**Decision:**
+Instead of linking to the `Address` table, we will **snapshot** (copy) the address details into the `Order` record at the time of purchase. We will add `addressLabel` and `flatRoom` (optional) fields to the `Order` model.
+
+**Rationale:**
+- **Immutability**: Historical orders must reflect exactly where they were delivered at the time of the transaction. If a user moves house, their old orders should still show their old address details.
+- **Robustness**: If a user deletes an address profile, the order history remains intact.
+- **Uniformity**: Allows the same UI to handle both saved addresses and "one-time" addresses that were never saved to a profile.
+
+**Tradeoffs:**
+- Small amount of data duplication (denormalization).
+- Requires a database migration.
+
+---
+
+
+

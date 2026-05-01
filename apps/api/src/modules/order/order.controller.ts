@@ -53,6 +53,8 @@ function serializeOrderResponse(
       variantLabel: item.variantLabel
     })),
     landmarkDescription: order.landmarkDescription,
+    addressLabel: order.addressLabel,
+    flatRoom: order.flatRoom,
     paymentMethod: order.paymentMethod,
     scheduledFor: order.scheduledFor?.toISOString() ?? null,
     status: order.status,

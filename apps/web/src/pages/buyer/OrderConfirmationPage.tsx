@@ -41,6 +41,8 @@ export type BuyerOrderDetail = {
   id: string;
   items: BuyerOrderConfirmationItem[];
   landmarkDescription: string;
+  addressLabel?: string | null;
+  flatRoom?: string | null;
   paymentMethod: string;
   scheduledFor?: string | null;
   status: string;
@@ -54,7 +56,7 @@ export type BuyerOrderDetail = {
   total: string;
 };
 
-type OrderConfirmationEnvelope = {
+export type OrderConfirmationEnvelope = {
   data?: BuyerOrderDetail;
   success?: boolean;
 };
@@ -81,6 +83,37 @@ function formatOrderRefForUi(fullId: string): string {
     return fullId;
   }
   return `…${fullId.slice(-8)}`;
+}
+
+function calculateDeliveryDuration(history: StatusHistoryItem[], createdAt?: string): string | null {
+  const placed = history.find((h) => h.status === "PLACED");
+  const delivered = history.find((h) => h.status === "DELIVERED");
+  
+  const startTime = placed?.changedAt ?? createdAt;
+  const endTime = delivered?.changedAt;
+
+  if (!startTime || !endTime) return null;
+
+  const diffMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  return mins > 0 ? `${mins}m` : "< 1m";
+}
+
+function AddressBlock({ order }: { order: BuyerOrderDetail }): ReactElement {
+  return (
+    <div className="space-y-1 text-left">
+      {order.addressLabel && (
+        <div className="flex items-center gap-1.5 font-dm-sans text-sm font-bold text-gorola-charcoal">
+          <Home className="h-3.5 w-3.5 text-gorola-pine" />
+          {order.addressLabel}
+        </div>
+      )}
+      <p className="font-dm-sans text-sm text-gorola-slate">
+        {order.flatRoom ? `${order.flatRoom}, ` : ""}
+        {order.landmarkDescription}
+      </p>
+    </div>
+  );
 }
 
 /** Honest ETA copy — avoids fake countdowns until scheduling + notifications are modeled. */
@@ -135,10 +168,22 @@ function StatusStepper({
     { icon: CheckCircle2, key: "PLACED", label: "Placed" },
     { icon: Package, key: "PREPARING", label: "Preparing" },
     { icon: Bike, key: "OUT_FOR_DELIVERY", label: "On the way" },
-    { icon: Home, key: "DELIVERED", label: "Delivered" },
+    { icon: CheckCircle2, key: "DELIVERED", label: "Delivered" },
   ];
 
+  const isCancelled = status === "CANCELLED";
   const currentIndex = steps.findIndex((s) => s.key === status);
+
+  if (isCancelled) {
+    return (
+      <div className="mt-4 rounded-xl border border-red-100 bg-red-50 p-4 text-left">
+        <p className="font-dm-sans text-sm font-semibold text-red-700">Order Cancelled</p>
+        <p className="font-dm-sans text-xs text-red-600/80">
+          This order was cancelled. Any refunds will be processed according to your payment method.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full py-6">
@@ -265,20 +310,35 @@ export function OrderConfirmationPage(): ReactElement {
     entranceDoneRef.current = false;
   }, [id]);
 
+  const isRecentlyPlaced = query.isSuccess && query.data.createdAt ? (
+    Date.now() - new Date(query.data.createdAt).getTime() < 60000
+  ) : false;
+
+  const shouldShowBloom = query.isSuccess && (query.data.status === "PLACED" || isRecentlyPlaced);
+
   useLayoutEffect(() => {
     if (!query.isSuccess || query.data === undefined || entranceDoneRef.current) {
       return;
     }
     const root = rootRef.current;
     const bloom = bloomRef.current;
-    if (!root || !bloom) {
+    if (!root) {
       return;
     }
+
+    // If we shouldn't show bloom, just show content immediately
+    if (!shouldShowBloom) {
+      entranceDoneRef.current = true;
+      gsap.set(".occ-content", { autoAlpha: 1, y: 0 });
+      return;
+    }
+
+    if (!bloom) return;
     entranceDoneRef.current = true;
 
     const ctx = gsap.context(() => {
       gsap.set(bloom, { autoAlpha: 1 });
-      gsap.set(".occ-content", { autoAlpha: 0, y: 16 });
+      gsap.set(".occ-content", { autoAlpha: 0, y: 24 });
       const path = root.querySelector<SVGPathElement>(".occ-check-path");
       let length = 80;
       if (path !== null) {
@@ -294,21 +354,27 @@ export function OrderConfirmationPage(): ReactElement {
       }
 
       const tl = gsap.timeline({
-        defaults: { ease: "power2.inOut" },
+        defaults: { ease: "power3.out" },
       });
-      tl.to(bloom, { autoAlpha: 0, duration: 0.9 })
+
+      // 1. Initial hold on the green screen for "Impact"
+      tl.to({}, { duration: 0.75 }) 
+        // 2. Slow fade of the bloom
+        .to(bloom, { autoAlpha: 0, duration: 1.1 })
+        // 3. Draw the checkmark with impact
         .to(
           ".occ-check-path",
-          { strokeDashoffset: 0, duration: 0.55 },
-          "-=0.42"
+          { strokeDashoffset: 0, duration: 0.8, ease: "power2.inOut" },
+          "-=0.7"
         )
-        .to(".occ-content", { autoAlpha: 1, y: 0, duration: 0.5 }, "-=0.35");
+        // 4. Smooth content reveal
+        .to(".occ-content", { autoAlpha: 1, y: 0, duration: 0.8 }, "-=0.5");
     }, root);
 
     return (): void => {
       ctx.revert();
     };
-  }, [query.isSuccess, query.data, id]);
+  }, [query.isSuccess, query.data, id, shouldShowBloom]);
 
   return (
     <section
@@ -357,11 +423,13 @@ export function OrderConfirmationPage(): ReactElement {
 
           return (
             <>
-              <div
-                ref={bloomRef}
-                aria-hidden={true}
-                className="occ-bloom pointer-events-none fixed inset-0 z-[100] bg-gradient-to-br from-emerald-400/95 via-gorola-pine to-emerald-900/90"
-              />
+              {shouldShowBloom && (
+                <div
+                  ref={bloomRef}
+                  aria-hidden={true}
+                  className="occ-bloom pointer-events-none fixed inset-0 z-[100] bg-gradient-to-br from-emerald-400/95 via-gorola-pine to-emerald-900/90"
+                />
+              )}
               <div className="occ-content relative z-[1] mx-auto flex max-w-lg flex-col items-center gap-6 text-center">
               <svg
                 aria-hidden={true}
@@ -388,9 +456,21 @@ export function OrderConfirmationPage(): ReactElement {
               </svg>
 
               <div className="space-y-1">
-                <h1 className="font-playfair text-3xl text-gorola-charcoal" id="occ-heading">
-                  Thank you
-                </h1>
+                <div className="flex flex-col items-center gap-2">
+                  <h1 className="font-playfair text-3xl text-gorola-charcoal" id="occ-heading">
+                    {query.data.status === "DELIVERED" ? "Order Delivered" : 
+                     query.data.status === "PLACED" ? "Thank you" :
+                     query.data.status === "PREPARING" ? "Store is picking items" :
+                     query.data.status === "OUT_FOR_DELIVERY" ? "On the way" :
+                     query.data.status === "CANCELLED" ? "Order Cancelled" : "Order Status"}
+                  </h1>
+                  {query.data.status === "DELIVERED" && (
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Delivered in {calculateDeliveryDuration(query.data.statusHistory ?? [], query.data.createdAt) ?? "15m"}
+                    </div>
+                  )}
+                </div>
                 <p className="font-dm-sans text-sm text-gorola-slate">
                   <span className="sr-only">Full order reference {query.data.id}. </span>
                   Order{" "}
@@ -400,10 +480,12 @@ export function OrderConfirmationPage(): ReactElement {
                   >
                     {formatOrderRefForUi(query.data.id)}
                   </span>{" "}
-                  is locked in with{" "}
+                  {query.data.status === "DELIVERED" ? "was delivered from" : 
+                   query.data.status === "CANCELLED" ? "from" : "is being handled by"}{" "}
                   <span className="font-semibold text-gorola-charcoal">{query.data.store.name}</span>.
                 </p>
               </div>
+
 
               {weatherPulse}
 
@@ -435,40 +517,46 @@ export function OrderConfirmationPage(): ReactElement {
                 </div>
 
                 <div className="space-y-1 border-t border-gorola-pine/10 pt-3 font-dm-sans text-sm text-gorola-slate">
-                  <p className="font-semibold text-gorola-charcoal">Drop-off cue</p>
-                  <p>{query.data.landmarkDescription}</p>
-                  {estimatedDeliveryCopy(query.data, isWeatherMode)}
+                  {query.data.status !== "DELIVERED" && query.data.status !== "CANCELLED" && (
+                    <p className="font-semibold text-gorola-charcoal">Delivery Address</p>
+                  )}
+                  <AddressBlock order={query.data} />
+                  {query.data.status !== "DELIVERED" && query.data.status !== "CANCELLED" && estimatedDeliveryCopy(query.data, isWeatherMode)}
                   <StatusStepper
                     history={query.data.statusHistory ?? []}
                     status={query.data.status}
                   />
-                  <p className="font-dm-sans text-xs text-gorola-slate">
-                    Tracking is live — updates appear here automatically as your order moves through
-                    the store and neighborhood.
-                  </p>
+                  {query.data.status !== "DELIVERED" && query.data.status !== "CANCELLED" && (
+                    <p className="font-dm-sans text-xs text-gorola-slate">
+                      Tracking is live — updates appear here automatically as your order moves through
+                      the store and neighborhood.
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <blockquote className="w-full rounded-2xl border border-gorola-pine/10 bg-gorola-fog/80 p-4 text-left shadow-inner">
-                <p className="font-dm-sans text-sm leading-relaxed text-gorola-charcoal">
-                  Your order from{" "}
-                  <span className="font-semibold">{query.data.store.name}</span> is being prepared. Reach the store directly
-                  if something urgent comes up—we don&apos;t have a scripted &quot;owner name&quot; field yet, but this number
-                  is the real storefront line:
-                </p>
-                <a
-                  aria-label={`Call ${query.data.store.name}`}
-                  className="mt-3 inline-flex rounded-full bg-gorola-pine px-5 py-2 font-dm-sans text-sm font-semibold text-white hover:bg-gorola-pine/90"
-                  href={telHref(query.data.store.phone)}
-                  rel="noopener noreferrer"
-                >
-                  Call {query.data.store.phone}
-                </a>
-              </blockquote>
+              {query.data.status !== "DELIVERED" && query.data.status !== "CANCELLED" && (
+                <blockquote className="w-full rounded-2xl border border-gorola-pine/10 bg-gorola-fog/80 p-4 text-left shadow-inner">
+                  <p className="font-dm-sans text-sm leading-relaxed text-gorola-charcoal">
+                    Your order from{" "}
+                    <span className="font-semibold">{query.data.store.name}</span> is being handled. Reach the store directly
+                    if something urgent comes up:
+                  </p>
+                  <a
+                    aria-label={`Call ${query.data.store.name}`}
+                    className="mt-3 inline-flex rounded-full bg-gorola-pine px-5 py-2 font-dm-sans text-sm font-semibold text-white hover:bg-gorola-pine/90"
+                    href={telHref(query.data.store.phone)}
+                    rel="noopener noreferrer"
+                  >
+                    Call {query.data.store.phone}
+                  </a>
+                </blockquote>
+              )}
 
               <p className="max-w-md font-dm-sans text-xs text-gorola-slate">
-                Built for honest shopper expectations—no artificial urgency ribbons or mystery ETAs unless you have a
-                scheduled slot above.
+                {query.data.status === "DELIVERED" ? "Hope you enjoy your purchase!" : 
+                 query.data.status === "CANCELLED" ? "We apologize for the inconvenience." :
+                 "Built for honest shopper expectations—no artificial urgency ribbons or mystery ETAs unless you have a scheduled slot above."}
               </p>
               </div>
             </>

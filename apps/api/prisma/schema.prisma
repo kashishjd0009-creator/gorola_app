@@ -212,8 +212,10 @@ model Order {
   deliveryFee         Decimal              @db.Decimal(10, 2)
   total               Decimal              @db.Decimal(10, 2)
   paymentMethod       PaymentMethod        @default(COD)
-  deliveryNote        String?
   landmarkDescription String
+  addressLabel        String?
+  flatRoom            String?
+  deliveryNote        String?
   scheduledFor        DateTime?
   rating              Boolean?
   ratingComment       String?
