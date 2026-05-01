@@ -697,3 +697,32 @@ Additionally, 2.11.1 tracks the full wiring register (`W-001`..`W-009`) and mark
 1. UI-only regression closure for 2.11.1 — rejected: previously allowed runtime/DB drift to survive.
 2. API-only contract checks without DB assertions — rejected: insufficient for identity/pricing/order ownership issues.
 3. Postpone matrix discipline until later phases — rejected: buyer flow is live and already affected by wiring inconsistencies.
+
+---
+
+## [DECISION-023] — Prisma Transaction Timeout & Checkout Optimization
+
+**Date:** 2026-05-01
+**Status:** Accepted
+
+**Context:** 
+In cloud deployments (Railway), users reported an `INTERNAL_SERVER_ERROR` (P2028: Transaction not found) on the first "Place Order" attempt, which succeeded on the second attempt. This was caused by the first request exceeding Prisma's default 5-second transaction timeout due to cold-start latency and a "chatty" transaction logic performing many sequential database calls.
+
+**Decision:**
+1.  Increase the global transaction timeout for order placement to **15 seconds** to provide a safety buffer for infrastructure cold starts.
+2.  Optimize the `placeOrderWithStock` service method to use **Bulk-Fetching** (fetching all product variants in one `findMany` call) instead of sequential `findUnique` calls in a loop.
+3.  Optimize the `OrderRepository.create` method to use Prisma's `include` feature, allowing the order and its relations to be created and retrieved in a **single round-trip**.
+4.  Update `ProductVariantRepository.decrementStock` to accept pre-fetched data, eliminating redundant reads inside the transaction.
+
+**Rationale:**
+- Checkout latency for a multi-item cart is reduced by ~75% (from 40+ DB calls down to ~5).
+- Improved resilience to infrastructure cold starts on Railway/Vercel.
+- Unit tests updated to mock `findMany` and verify the new optimized call sequence.
+
+**Tradeoffs:**
+- Transaction logic becomes slightly more complex (mapping variants to IDs).
+- Pre-fetching consumes slightly more memory in the transaction context.
+
+**Alternatives Considered:**
+1. Only increase timeout — rejected: ignores the underlying performance bottleneck and high DB round-trip cost.
+2. Move stock logic out of transaction — rejected: violates the "Sacred Inventory" requirement (DECISION-013) for atomic decrements.

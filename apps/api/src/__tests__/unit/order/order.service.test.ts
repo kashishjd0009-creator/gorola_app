@@ -5,7 +5,8 @@ import type { CreateOrderInput, OrderWithRelations } from "../../../modules/orde
 import { OrderService } from "../../../modules/order/order.service.js";
 
 const mockProductVariant = {
-  findUnique: vi.fn()
+  findUnique: vi.fn(),
+  findMany: vi.fn()
 };
 
 const mockTx = { productVariant: mockProductVariant } as never;
@@ -69,11 +70,9 @@ const sampleOrder = (): OrderWithRelations =>
   }) as never;
 
 function mockVariantForPreCheck(available: number, storeId = "s1"): void {
-  mockProductVariant.findUnique.mockImplementation(async (args: { where: { id: string } }) => {
-    if (args.where.id === "v1") {
-      return { stockQty: available, product: { storeId } };
-    }
-    return null;
+  mockProductVariant.findMany.mockImplementation(async (args: { where: { id: { in: string[] } } }) => {
+    const ids = args.where.id.in;
+    return ids.map(id => ({ id, stockQty: available, product: { storeId } }));
   });
 }
 
@@ -104,16 +103,22 @@ describe("OrderService (unit)", () => {
   });
 
   describe("placeOrderWithStock", () => {
-    it("should deduct stock, record SALE, and return final order from findById", async () => {
+    it("should deduct stock, record SALE, and return order directly from transaction", async () => {
       mockVariantForPreCheck(10, "s1");
-      orders.create.mockResolvedValueOnce(sampleOrder());
+      const order = sampleOrder();
+      orders.create.mockResolvedValueOnce(order);
       variants.decrementStock.mockResolvedValue({ stockQtyBefore: 2, stockQtyAfter: 1 });
       stockMovements.create.mockResolvedValue({ id: "m1" });
-      orders.findById.mockResolvedValueOnce(sampleOrder());
 
       const result = await service.placeOrderWithStock(baseInput());
       expect(orders.create).toHaveBeenCalledWith(baseInput(), mockTx);
-      expect(variants.decrementStock).toHaveBeenCalledWith("v1", 1, "s1", mockTx);
+      expect(variants.decrementStock).toHaveBeenCalledWith(
+        "v1",
+        1,
+        "s1",
+        mockTx,
+        expect.objectContaining({ beforeRow: expect.any(Object) })
+      );
       expect(stockMovements.create).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "SALE",
@@ -122,7 +127,7 @@ describe("OrderService (unit)", () => {
         }),
         mockTx
       );
-      expect(orders.findById).toHaveBeenCalledWith("ord1");
+      expect(orders.findById).not.toHaveBeenCalled();
       expect(result.id).toBe("ord1");
     });
 

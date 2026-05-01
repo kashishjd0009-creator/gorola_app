@@ -5,7 +5,7 @@ import {
   NotFoundError,
   UnprocessableEntityError
 } from "@gorola/shared";
-import type { PrismaClient } from "@prisma/client";
+import { type PrismaClient, type ProductVariant } from "@prisma/client";
 
 import { ProductVariantRepository } from "../catalog/variant.repository.js";
 import { StockMovementRepository } from "../inventory/stock-movement.repository.js";
@@ -27,81 +27,91 @@ export class OrderService {
    * Creates the order, then deducts stock and records SALE movements — all in one transaction.
    */
   public async placeOrderWithStock(input: CreateOrderInput): Promise<OrderWithRelations> {
-    const orderId = await this.db.$transaction(async (tx) => {
-      const byVariant = new Map<string, number>();
-      for (const line of input.items) {
-        byVariant.set(
-          line.productVariantId,
-          (byVariant.get(line.productVariantId) ?? 0) + line.quantity
-        );
-      }
+    return this.db.$transaction(
+      async (tx) => {
+        const byVariant = new Map<string, number>();
+        for (const line of input.items) {
+          byVariant.set(
+            line.productVariantId,
+            (byVariant.get(line.productVariantId) ?? 0) + line.quantity
+          );
+        }
 
-      const lineIssues: Array<{
-        productVariantId: string;
-        requested: number;
-        available: number;
-      }> = [];
-
-      for (const [productVariantId, totalQty] of byVariant) {
-        const v = await tx.productVariant.findUnique({
-          where: { id: productVariantId },
+        const variantIds = Array.from(byVariant.keys());
+        const variants = await tx.productVariant.findMany({
+          where: { id: { in: variantIds } },
           include: { product: { select: { storeId: true } } }
         });
-        if (v === null) {
-          throw new NotFoundError("Product variant not found for line item", { productVariantId });
+
+        const variantMap = new Map<
+          string,
+          ProductVariant & { product: { storeId: string } }
+        >(variants.map((v) => [v.id, v]));
+
+        const lineIssues: Array<{
+          productVariantId: string;
+          requested: number;
+          available: number;
+        }> = [];
+
+        for (const [productVariantId, totalQty] of byVariant) {
+          const v = variantMap.get(productVariantId);
+          if (!v) {
+            throw new NotFoundError("Product variant not found for line item", { productVariantId });
+          }
+          if (v.product.storeId !== input.storeId) {
+            throw new ForbiddenError("Line item variant is not in this order's store", {
+              productVariantId,
+              storeId: input.storeId
+            });
+          }
+          if (v.stockQty < totalQty) {
+            lineIssues.push({
+              productVariantId,
+              requested: totalQty,
+              available: v.stockQty
+            });
+          }
         }
-        if (v.product.storeId !== input.storeId) {
-          throw new ForbiddenError("Line item variant is not in this order's store", {
-            productVariantId,
-            storeId: input.storeId
+
+        if (lineIssues.length > 0) {
+          throw new UnprocessableEntityError("Insufficient stock for one or more line items", {
+            lineItems: lineIssues
           });
         }
-        if (v.stockQty < totalQty) {
-          lineIssues.push({
-            productVariantId,
-            requested: totalQty,
-            available: v.stockQty
-          });
+
+        const order = await this.orders.create(input, tx);
+
+        for (const item of order.items) {
+          const preFetched = variantMap.get(item.productVariantId);
+          const { stockQtyBefore, stockQtyAfter } = await this.variants.decrementStock(
+            item.productVariantId,
+            item.quantity,
+            input.storeId,
+            tx,
+            { beforeRow: preFetched }
+          );
+          await this.stockMovements.create(
+            {
+              storeId: input.storeId,
+              productVariantId: item.productVariantId,
+              orderId: order.id,
+              type: "SALE",
+              quantity: item.quantity,
+              stockQtyBefore,
+              stockQtyAfter
+            },
+            tx
+          );
         }
+
+        return order;
+      },
+      {
+        timeout: 15000,
+        maxWait: 5000
       }
-
-      if (lineIssues.length > 0) {
-        throw new UnprocessableEntityError("Insufficient stock for one or more line items", {
-          lineItems: lineIssues
-        });
-      }
-
-      const order = await this.orders.create(input, tx);
-
-      for (const item of order.items) {
-        const { stockQtyBefore, stockQtyAfter } = await this.variants.decrementStock(
-          item.productVariantId,
-          item.quantity,
-          input.storeId,
-          tx
-        );
-        await this.stockMovements.create(
-          {
-            storeId: input.storeId,
-            productVariantId: item.productVariantId,
-            orderId: order.id,
-            type: "SALE",
-            quantity: item.quantity,
-            stockQtyBefore,
-            stockQtyAfter
-          },
-          tx
-        );
-      }
-
-      return order.id;
-    });
-
-    const result = await this.orders.findById(orderId);
-    if (result === null) {
-      throw new Error("Invariant: order missing after successful transaction");
-    }
-    return result;
+    );
   }
 
   /**

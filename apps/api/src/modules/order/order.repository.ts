@@ -75,6 +75,7 @@ export class OrderRepository {
 
     try {
       const order = await db.order.create({
+        include: orderRelationsInclude,
         data: {
           userId: input.userId,
           storeId: input.storeId,
@@ -104,7 +105,7 @@ export class OrderRepository {
         }
       });
 
-      return getOrderWithRelations(db, order.id);
+      return order;
     } catch (error: unknown) {
       if (isPrismaError(error, "P2003")) {
         throw new NotFoundError(
