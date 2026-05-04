@@ -26,7 +26,7 @@ describe("createBuyerTokenService", () => {
       refreshTtlSeconds: 120
     });
 
-    const first = await svc.issueTokens({ phone: "+919900000099", userId: "u1" });
+    const first = await svc.issueTokens({ name: "Test User", phone: "+919900000099", userId: "u1" });
     expect(first.accessToken.length).toBeGreaterThan(20);
     expect(first.refreshToken.length).toBeGreaterThan(20);
 
@@ -34,8 +34,11 @@ describe("createBuyerTokenService", () => {
     expect(payload.sub).toBe("u1");
     expect(payload.role).toBe("BUYER");
 
-    const second = await svc.rotateRefreshToken(first.refreshToken);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const second = (await svc.rotateRefreshToken(first.refreshToken)) as any;
     expect(second.accessToken.length).toBeGreaterThan(20);
+    expect(second.userId).toBe("u1");
+    expect(second.phone).toBe("+919900000099");
 
     await expect(svc.rotateRefreshToken(first.refreshToken)).rejects.toThrow();
 

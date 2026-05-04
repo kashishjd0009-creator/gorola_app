@@ -1,7 +1,15 @@
 import MockAdapter from "axios-mock-adapter";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createApiClient, type CreateApiClientOptions,getNormalizedApiBaseUrl } from "./api";
+import { useAuthStore } from "@/store/auth.store";
+
+import { api, bootstrapBuyerAuthSession, createApiClient, type CreateApiClientOptions, getNormalizedApiBaseUrl } from "./api";
+
+vi.mock("@/store/auth.store", () => ({
+  useAuthStore: {
+    getState: vi.fn(),
+  },
+}));
 
 function opts(over: Partial<CreateApiClientOptions> = {}): CreateApiClientOptions {
   return {
@@ -65,13 +73,24 @@ describe("createApiClient", () => {
     mock.onGet("/data").replyOnce(200, { ok: "retry" });
     mock.onPost("/api/v1/auth/buyer/refresh").reply(200, {
       success: true,
-      data: { accessToken: "new-a", refreshToken: "new-r" },
+      data: {
+        accessToken: "new-a",
+        refreshToken: "new-r",
+        userId: "u1",
+        phone: "+9199"
+      },
       meta: { requestId: "r" }
     });
 
     const res = await client.get("/data");
     expect(res.data).toEqual({ ok: "retry" });
-    expect(setTokens).toHaveBeenCalledWith({ accessToken: "new-a", refreshToken: "new-r" });
+    expect(setTokens).toHaveBeenCalledWith({
+      accessToken: "new-a",
+      refreshToken: "new-r",
+      userId: "u1",
+      phone: "+9199",
+      name: null
+    });
     expect(clearSession).not.toHaveBeenCalled();
   });
 
@@ -89,5 +108,44 @@ describe("createApiClient", () => {
     mock.onPost("/api/v1/auth/buyer/refresh").reply(401);
     await expect(client.get("/x")).rejects.toBeTruthy();
     expect(clearSession).toHaveBeenCalled();
+  });
+});
+
+describe("bootstrapBuyerAuthSession", () => {
+  let mock: MockAdapter;
+
+  it("hydrates full buyer session on success", async () => {
+    const setBuyerSession = vi.fn();
+    const setBootstrapPending = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (useAuthStore.getState as any).mockReturnValue({
+      accessToken: null,
+      setBuyerSession,
+      setBootstrapPending,
+    });
+
+    if (api) {
+      mock = new MockAdapter(api);
+      mock.onPost("/api/v1/auth/buyer/refresh").reply(200, {
+        success: true,
+        data: {
+          accessToken: "a",
+          name: "N",
+          phone: "P",
+          refreshToken: "r",
+          userId: "u"
+        }
+      });
+    }
+
+    await bootstrapBuyerAuthSession();
+
+    expect(setBuyerSession).toHaveBeenCalledWith({
+      accessToken: "a",
+      name: "N",
+      phone: "P",
+      refreshToken: "r",
+      userId: "u"
+    });
   });
 });

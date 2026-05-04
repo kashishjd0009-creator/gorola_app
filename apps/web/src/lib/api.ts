@@ -14,10 +14,19 @@ type RefreshResponseBody = {
   data?: {
     accessToken?: string;
     refreshToken?: string;
+    userId?: string;
+    phone?: string;
+    name?: string | null;
   };
 };
 
-function parseRefreshEnvelope(body: unknown): AuthTokens {
+export type FullBuyerSession = AuthTokens & {
+  userId: string;
+  phone: string;
+  name: string | null;
+};
+
+function parseRefreshEnvelope(body: unknown): FullBuyerSession {
   if (body === null || typeof body !== "object") {
     throw new Error("Invalid refresh response");
   }
@@ -25,12 +34,17 @@ function parseRefreshEnvelope(body: unknown): AuthTokens {
   if (b.success !== true) {
     throw new Error("Refresh response not successful");
   }
-  const access = b.data?.accessToken;
-  const refresh = b.data?.refreshToken;
-  if (access === undefined || access.length === 0 || refresh === undefined || refresh.length === 0) {
-    throw new Error("Missing tokens in refresh response");
+  const data = b.data;
+  if (!data || !data.accessToken || !data.refreshToken || !data.userId || !data.phone) {
+    throw new Error("Missing session data in refresh response");
   }
-  return { accessToken: access, refreshToken: refresh };
+  return {
+    accessToken: data.accessToken,
+    name: data.name ?? null,
+    phone: data.phone,
+    refreshToken: data.refreshToken,
+    userId: data.userId
+  };
 }
 
 export function getNormalizedApiBaseUrl(raw: string | undefined): string {
@@ -168,12 +182,8 @@ export async function bootstrapBuyerAuthSession(): Promise<void> {
   useAuthStore.getState().setBootstrapPending(true);
   try {
     const res = await api.post<unknown>(BUYER_REFRESH_PATH, {});
-    const tokens = parseRefreshEnvelope(res.data);
-    const auth = useAuthStore.getState();
-    auth.setTokens(tokens);
-    if (auth.role === null) {
-      auth.setRole("BUYER");
-    }
+    const session = parseRefreshEnvelope(res.data);
+    useAuthStore.getState().setBuyerSession(session);
   } catch {
     // No valid refresh cookie/token on startup; keep anonymous state.
   } finally {

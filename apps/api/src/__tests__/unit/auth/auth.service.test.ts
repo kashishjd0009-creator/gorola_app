@@ -3,7 +3,7 @@ import { hash } from "bcryptjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthService } from "../../../modules/auth/auth.service.js";
-import type { AuthTokenPair, OtpStoreRecord } from "../../../modules/auth/auth.types.js";
+import type { AuthTokenPair, BuyerRefreshSuccess, OtpStoreRecord } from "../../../modules/auth/auth.types.js";
 
 type MockRedisClient = {
   del: ReturnType<typeof vi.fn>;
@@ -127,6 +127,7 @@ describe("AuthService", () => {
 
       expect(ensureBuyerUser).toHaveBeenCalledWith("+919876543210");
       expect(tokenService.issueTokens).toHaveBeenCalledWith({
+        name: null,
         phone: "+919876543210",
         userId: "user_test_1"
       });
@@ -207,17 +208,23 @@ describe("AuthService", () => {
   });
 
   describe("refreshToken", () => {
-    it("should issue new access and rotated refresh tokens", async () => {
+    it("should issue new tokens and return user profile", async () => {
       tokenService.rotateRefreshToken.mockResolvedValueOnce({
         accessToken: "new-access",
-        refreshToken: "new-refresh"
-      } satisfies AuthTokenPair);
+        name: "Test User",
+        phone: "+919999999999",
+        refreshToken: "new-refresh",
+        userId: "user_1"
+      } satisfies BuyerRefreshSuccess);
 
       const result = await service.refreshToken({ refreshToken: "old-refresh" });
 
       expect(result).toEqual({
         accessToken: "new-access",
-        refreshToken: "new-refresh"
+        name: "Test User",
+        phone: "+919999999999",
+        refreshToken: "new-refresh",
+        userId: "user_1"
       });
     });
 

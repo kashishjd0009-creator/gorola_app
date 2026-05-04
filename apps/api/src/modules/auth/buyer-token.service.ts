@@ -6,7 +6,7 @@ import { jwtVerify, SignJWT } from "jose";
 
 import type {
   AccessTokenPayload,
-  AuthTokenPair,
+  BuyerRefreshSuccess,
   IssueTokensInput,
   RedisLikeClient,
   TokenService
@@ -41,10 +41,14 @@ export function createBuyerTokenService(options: BuyerTokenServiceOptions): Buye
     refreshTtlSeconds
   } = options;
 
-  async function issueTokens(input: IssueTokensInput): Promise<AuthTokenPair> {
+  async function issueTokens(input: IssueTokensInput): Promise<BuyerRefreshSuccess> {
     const refreshRaw = randomBytes(32).toString("hex");
     const key = redisRefreshKey(refreshRaw);
-    const stored = JSON.stringify({ phone: input.phone, userId: input.userId });
+    const stored = JSON.stringify({
+      name: input.name,
+      phone: input.phone,
+      userId: input.userId
+    });
     await redis.set(key, stored, "EX", refreshTtlSeconds);
 
     const accessToken = await new SignJWT({
@@ -60,11 +64,14 @@ export function createBuyerTokenService(options: BuyerTokenServiceOptions): Buye
 
     return {
       accessToken,
-      refreshToken: refreshRaw
+      name: input.name,
+      phone: input.phone,
+      refreshToken: refreshRaw,
+      userId: input.userId
     };
   }
 
-  async function rotateRefreshToken(oldRefreshRaw: string): Promise<AuthTokenPair> {
+  async function rotateRefreshToken(oldRefreshRaw: string): Promise<BuyerRefreshSuccess> {
     const rtKey = redisRefreshKey(oldRefreshRaw);
     const payload = await redis.get(rtKey);
     if (payload === null || payload.length === 0) {
@@ -72,19 +79,21 @@ export function createBuyerTokenService(options: BuyerTokenServiceOptions): Buye
     }
     await redis.del(rtKey);
 
-    let parsed: { phone?: unknown; userId?: unknown };
+    let parsed: { name?: unknown; phone?: unknown; userId?: unknown };
     try {
-      parsed = JSON.parse(payload) as { phone?: unknown; userId?: unknown };
+      parsed = JSON.parse(payload) as { name?: unknown; phone?: unknown; userId?: unknown };
     } catch {
       throw new UnauthorizedError("Refresh token is invalid.");
     }
     const userId = typeof parsed.userId === "string" ? parsed.userId : "";
     const phone = typeof parsed.phone === "string" ? parsed.phone : "";
+    const name = typeof parsed.name === "string" || parsed.name === null ? (parsed.name as string | null) : null;
+
     if (userId.length === 0 || phone.length === 0) {
       throw new UnauthorizedError("Refresh token is invalid.");
     }
 
-    return issueTokens({ phone, userId });
+    return issueTokens({ name, phone, userId });
   }
 
   async function revokeRefreshToken(refreshRaw: string): Promise<void> {

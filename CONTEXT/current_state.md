@@ -9,7 +9,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-04
-- **Session Summary:** **Session 85 — Scoped Mutation States & Vercel SPA Fix.** Fixed a UI bug in `OrderHistoryPage` (scoped loading states) and merged regression tests. Resolved critical deployment issue where refreshing a subpage on Vercel caused a 404 error by adding rewrite rules to `vercel.json`. All quality gates are 100% green.
+- **Session Summary:** **Session 86 — Identity Hydration Fix.** Resolved issue where user phone/name disappeared on page reload by updating the refresh flow to return full user profile information. Implemented backend changes to `TokenService` and `AuthService` to store and retrieve user data from Redis refresh keys. Updated frontend `bootstrapBuyerAuthSession` to correctly hydrate the `authStore` on startup. Verified with TDD (Red-Green) and CI-level integration tests.
 - **Next Session Must Start With:** **Phase 2.16** — Weather Mode (System-Wide Toggle). Implement system-wide weather state and UI shifts.
 
 
@@ -114,6 +114,7 @@
 - **Session 83 (CI/CD Stabilization & Test Repair):** Resolved critical CI/CD failures caused by environment drift and foreign key constraints. Updated `api.ts` with a test-mode fallback to prevent `null` API instances in GitHub Actions. Repaired `cleanGraph` logic in `order.history.test.ts`, `order.rate.test.ts`, and `order.reorder.test.ts` to correctly order the deletion of `Advertisement`, `Offer`, and `Discount` records before `Store` records. Fixed "Ghost Feedback" UI bug in `order.controller.ts` by explicitly including `rating` fields in serialized responses. All quality gates are 100% green in both local and CI environments.
 - **Session 84 (Phase 2.15.2 Order Hardening & Address Snapshotting):** Implemented database-backed address snapshotting for orders. Refactored `OrderConfirmationPage` into a state-aware UI with 5 states (PLACED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED). Added dynamic delivery duration calculation and detailed address display block. Fixed flaky integration test cleanup logic in `order.history.test.ts` and `order.rate.test.ts` to include `Cart` and `CartItem` deletions. Verified with full quality gate pass.
 - **Session 85 (Scoped Mutation States & Vercel SPA Fix):** Resolved UI bug in `OrderHistoryPage` where multiple orders displayed simultaneous loading/disabled states during reorder or rating. Scoped mutation states to individual orders using `reorderMutation.variables`. Merged regression tests into the permanent `OrderHistoryPage.test.tsx` suite. Fixed SPA routing 404s on Vercel by adding a catch-all rewrite rule to `vercel.json`.
+- **Session 86 (Identity Hydration Fix):** Fixed bug where user's phone/name would revert to "Buyer" on page reload. Updated `TokenService` (Backend) to persist `name` in Redis alongside refresh tokens. Modified `rotateRefreshToken` to return the full user profile. Updated frontend `bootstrapBuyerAuthSession` to use `setBuyerSession` for full identity hydration during the startup refresh flow. Added regression tests in `buyer-token.service.test.ts`, `auth.service.test.ts`, `auth.controller.test.ts`, and `api.test.ts`.
 
 ---
 
@@ -1441,3 +1442,9 @@ _(Append new entries — never delete old ones)_
 - Verification: Created TDD reproduction test confirming the fix (Pass: 2/2) and re-verified original tests (Pass: 5/5).
 - Regression: Merged the reproduction test cases into the permanent `OrderHistoryPage.test.tsx` suite to prevent future regressions.
 - **Deployment Fix**: Added `rewrites` to `vercel.json` to handle SPA routing. This ensures that refreshing the page on any sub-route (like `/account/orders`) correctly serves `index.html` instead of a 404.
+- **Session 86 (Identity Hydration Fix):**
+- Fixed bug where user profile (phone/name) reverted to "Buyer" on page reload.
+- Root Cause: The refresh flow (`POST /api/v1/auth/buyer/refresh`) only returned new tokens, losing the user's identity details during hydration.
+- Fix (Backend): Updated `TokenService` to store the user's `name` in Redis alongside the `userId` and `phone`. Modified `rotateRefreshToken` to return the full profile.
+- Fix (Frontend): Updated `bootstrapBuyerAuthSession` in `api.ts` to consume the full profile from the refresh response and call `setBuyerSession` for complete store hydration.
+- Verification: Implemented Red-Green TDD with new integration tests in `buyer-token.service.test.ts`, `auth.service.test.ts`, `auth.controller.test.ts`, and `api.test.ts`. Passed full repo `pnpm ci:quality`.

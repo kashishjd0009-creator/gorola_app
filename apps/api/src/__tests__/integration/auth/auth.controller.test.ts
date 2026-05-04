@@ -151,7 +151,10 @@ describe("auth controller routes", () => {
     const adminAuthService = createAdminAuthServiceMock();
     authService.refreshToken.mockResolvedValueOnce({
       accessToken: "next-access",
-      refreshToken: "next-refresh"
+      name: "Hydrated User",
+      phone: "+919999999999",
+      refreshToken: "next-refresh",
+      userId: "user_refresh_1"
     });
 
     const server = createServer({
@@ -168,7 +171,11 @@ describe("auth controller routes", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().data.accessToken).toBe("next-access");
+    const data = response.json().data;
+    expect(data.accessToken).toBe("next-access");
+    expect(data.userId).toBe("user_refresh_1");
+    expect(data.phone).toBe("+919999999999");
+    expect(data.name).toBe("Hydrated User");
     expect(authService.refreshToken).toHaveBeenCalledWith({
       refreshToken: "old-refresh"
     });
@@ -208,7 +215,10 @@ describe("auth controller routes", () => {
     const adminAuthService = createAdminAuthServiceMock();
     authService.refreshToken.mockResolvedValueOnce({
       accessToken: "cookie-access",
-      refreshToken: "cookie-refresh-next"
+      name: null,
+      phone: "+919999999999",
+      refreshToken: "cookie-refresh-next",
+      userId: "user_cookie_1"
     });
 
     const server = createServer({

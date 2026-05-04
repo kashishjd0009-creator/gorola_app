@@ -2,7 +2,7 @@ import { RateLimitError, UnauthorizedError, ValidationError } from "@gorola/shar
 import { compare, hash } from "bcryptjs";
 
 import type {
-  AuthTokenPair,
+  BuyerRefreshSuccess,
   BuyerVerifySuccess,
   LogoutInput,
   OtpProvider,
@@ -116,6 +116,7 @@ export class AuthService {
 
     const user = await this.deps.ensureBuyerUser(input.phone);
     const tokens = await this.deps.tokenService.issueTokens({
+      name: user.name.trim().length === 0 ? null : user.name,
       phone: user.phone,
       userId: user.id
     });
@@ -129,7 +130,7 @@ export class AuthService {
     };
   }
 
-  public async refreshToken(input: RefreshTokenInput): Promise<AuthTokenPair> {
+  public async refreshToken(input: RefreshTokenInput): Promise<BuyerRefreshSuccess> {
     return this.deps.tokenService.rotateRefreshToken(input.refreshToken);
   }
 

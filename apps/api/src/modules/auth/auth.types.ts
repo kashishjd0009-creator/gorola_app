@@ -21,16 +21,19 @@ export type AuthTokenPair = {
 };
 
 export type IssueTokensInput = {
-  phone: string;
-  userId: string;
-};
-
-/** Successful buyer verify: tokens + persisted user snapshot */
-export type BuyerVerifySuccess = AuthTokenPair & {
   name: string | null;
   phone: string;
   userId: string;
 };
+
+/** Successful buyer verify or refresh: tokens + persisted user snapshot */
+export type BuyerRefreshSuccess = AuthTokenPair & {
+  name: string | null;
+  phone: string;
+  userId: string;
+};
+
+export type BuyerVerifySuccess = BuyerRefreshSuccess;
 
 export type OtpStoreRecord = {
   hashedOtp: string;
@@ -47,7 +50,7 @@ export type OtpProvider = {
 export type TokenService = {
   issueTokens: (input: IssueTokensInput) => Promise<AuthTokenPair>;
   revokeRefreshToken: (refreshToken: string) => Promise<void>;
-  rotateRefreshToken: (refreshToken: string) => Promise<AuthTokenPair>;
+  rotateRefreshToken: (refreshToken: string) => Promise<BuyerRefreshSuccess>;
 };
 
 export type AccessTokenPayload = {
