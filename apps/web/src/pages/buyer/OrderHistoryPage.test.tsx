@@ -170,4 +170,91 @@ describe("OrderHistoryPage", () => {
       expect(screen.getByText("No orders yet")).toBeInTheDocument();
     });
   });
+
+  it("only shows loading state on the specific reorder button being clicked", async () => {
+    const user = userEvent.setup();
+    
+    // Mock a delayed response
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let resolvePost: (value: any) => void;
+    const postPromise = new Promise((resolve) => {
+      resolvePost = resolve;
+    });
+    apiPostSpy.mockReturnValue(postPromise);
+
+    renderComponent();
+    await waitFor(() => screen.getByText("Test Store"));
+
+    const reorderBtns = screen.getAllByRole("button", { name: /Reorder/i });
+    
+    // Click reorder on the first order
+    await user.click(reorderBtns[0]!);
+
+    // Check that ONLY the first button's icon is spinning
+    await waitFor(() => {
+      const spinningIcons = document.querySelectorAll(".animate-spin");
+      expect(spinningIcons.length).toBe(1);
+    });
+
+    // Cleanup
+    resolvePost!({ data: { data: { warnings: [] } } });
+  });
+
+  it("only disables rating buttons on the specific order being rated", async () => {
+    const user = userEvent.setup();
+    
+    // Mock a delayed response
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let resolvePut: (value: any) => void;
+    const putPromise = new Promise((resolve) => {
+      resolvePut = resolve;
+    });
+    apiPutSpy.mockReturnValue(putPromise);
+
+    renderComponent();
+    await waitFor(() => screen.getByText("DELIVERED"));
+
+    // Click thumbs up on Order 1
+    const thumbsUpBtns = screen.getAllByRole("button", { name: /Thumbs Up/i });
+    await user.click(thumbsUpBtns[0]!);
+
+    // Submit feedback
+    const submitBtn = screen.getByRole("button", { name: /Submit Feedback/i });
+    await user.click(submitBtn);
+
+    // Order 1's rating buttons should be disabled
+    expect(thumbsUpBtns[0]).toBeDisabled();
+    
+    // Order 2 is not delivered so it doesn't have rating buttons in this test setup,
+    // but if we had another delivered order, its buttons should remain enabled.
+    // Let's update the mock to have two delivered orders for a better test.
+    apiGetSpy.mockResolvedValue({
+      data: {
+        data: {
+          orders: [
+            { id: "o1", store: { name: "S1" }, total: "10", status: "DELIVERED", createdAt: "2026-05-01T10:00:00Z", items: [], rating: null, ratingComment: null },
+            { id: "o2", store: { name: "S2" }, total: "20", status: "DELIVERED", createdAt: "2026-05-01T11:00:00Z", items: [], rating: null, ratingComment: null }
+          ]
+        }
+      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    
+    // Re-render with two delivered orders
+    queryClient.clear();
+    renderComponent();
+    await waitFor(() => screen.getByText("S1"));
+    
+    const s1ThumbsUp = screen.getAllByRole("button", { name: /Thumbs Up/i })[0]!;
+    const s2ThumbsUp = screen.getAllByRole("button", { name: /Thumbs Up/i })[1]!;
+    
+    await user.click(s1ThumbsUp);
+    await user.click(screen.getAllByRole("button", { name: /Submit Feedback/i })[0]!);
+    
+    expect(s1ThumbsUp).toBeDisabled();
+    expect(s2ThumbsUp).not.toBeDisabled();
+
+    // Cleanup
+    resolvePut!({ data: { data: { id: "ok" } } });
+  });
 });

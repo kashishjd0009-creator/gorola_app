@@ -8,8 +8,8 @@
 
 ## 📍 Last Updated
 
-- **Date:** 2026-05-02
-- **Session Summary:** **Session 84 — Order Hardening, Address Snapshotting & Test Stability.** Implemented database-backed address snapshotting for orders to ensure historical accuracy. Refactored `OrderConfirmationPage` into a state-aware UI with 5 distinct states. Fixed critical CI/CD failures by hardening integration test cleanup logic for `Cart` and `CartItem` tables. All quality gates (lint, typecheck, test, build) are 100% green.
+- **Date:** 2026-05-04
+- **Session Summary:** **Session 85 — Scoped Mutation States & UI Fixes.** Fixed a UI bug in `OrderHistoryPage` where multiple orders displayed loading/spinning states simultaneously during reorder or rating. Scoped mutation states to individual orders using TanStack Query variables. All quality gates (lint, typecheck, test, build) are 100% green.
 - **Next Session Must Start With:** **Phase 2.16** — Weather Mode (System-Wide Toggle). Implement system-wide weather state and UI shifts.
 
 
@@ -113,6 +113,7 @@
 - **Session 82 (Phase 2.15 Order History + Reorder):** Implemented authenticated order listing, reorder logic with active variant validation (appending to cart), and binary rating system with optional feedback comments. Refined UI for light-mode visibility on `gorola-fog` and added GSAP right-side slide-in for `CartDrawer`. Fixed route collision bug and added API `dev` script. Re-verified all quality gates.
 - **Session 83 (CI/CD Stabilization & Test Repair):** Resolved critical CI/CD failures caused by environment drift and foreign key constraints. Updated `api.ts` with a test-mode fallback to prevent `null` API instances in GitHub Actions. Repaired `cleanGraph` logic in `order.history.test.ts`, `order.rate.test.ts`, and `order.reorder.test.ts` to correctly order the deletion of `Advertisement`, `Offer`, and `Discount` records before `Store` records. Fixed "Ghost Feedback" UI bug in `order.controller.ts` by explicitly including `rating` fields in serialized responses. All quality gates are 100% green in both local and CI environments.
 - **Session 84 (Phase 2.15.2 Order Hardening & Address Snapshotting):** Implemented database-backed address snapshotting for orders. Refactored `OrderConfirmationPage` into a state-aware UI with 5 states (PLACED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED). Added dynamic delivery duration calculation and detailed address display block. Fixed flaky integration test cleanup logic in `order.history.test.ts` and `order.rate.test.ts` to include `Cart` and `CartItem` deletions. Verified with full quality gate pass.
+- **Session 85 (Scoped Mutation States & UI Fixes):** Resolved UI bug in `OrderHistoryPage` where multiple orders displayed simultaneous loading/disabled states during reorder or rating. Scoped mutation states to individual orders using `reorderMutation.variables`. Merged regression tests into the permanent `OrderHistoryPage.test.tsx` suite to ensure CI-level protection against shared-state bugs.
 
 ---
 
@@ -1430,3 +1431,12 @@ _(Append new entries — never delete old ones)_
 - Implemented **Full Address Block**: Shows label, flat/room, and landmark in a structured layout.
 - **Test Stability Hardening**: Fixed flaky integration tests in the API package by adding `Cart` and `CartItem` deletions to the `cleanGraph` functions of `order.history.test.ts` and `order.rate.test.ts`, preventing foreign key constraint violations during test suite execution.
 - Verification: Added integration tests for snapshots and state machine tests for UI; passed full repo `pnpm ci:quality`.
+
+**Session 85 (Scoped Mutation States & UI Fixes):**
+
+- Fixed a UI bug in `OrderHistoryPage` where multiple "Reorder" buttons displayed a spinning icon and became disabled simultaneously.
+- Root Cause: Shared `reorderMutation.isPending` flag was used without checking if the mutation was specifically for the current order.
+- Fix: Updated UI to check `reorderMutation.variables === order.id` for scoping loading/disabled states.
+- Applied similar scoping fix to the **Rating Section** to prevent all "Thumbs Up/Down" buttons from being disabled when submitting feedback for one order.
+- Verification: Created TDD reproduction test confirming the fix (Pass: 2/2) and re-verified original tests (Pass: 5/5).
+- Regression: Merged the reproduction test cases into the permanent `OrderHistoryPage.test.tsx` suite to prevent future regressions.

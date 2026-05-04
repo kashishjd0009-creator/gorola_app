@@ -156,7 +156,9 @@ export function OrderHistoryPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-gorola-pine text-white hover:bg-gorola-pine/90 rounded-xl font-bold text-sm transition-all duration-300 disabled:opacity-50 shadow-md shadow-gorola-pine/10"
                     aria-label="Reorder"
                   >
-                    <RefreshCcw className={`w-4 h-4 ${reorderMutation.isPending ? 'animate-spin' : ''}`} />
+                    <RefreshCcw 
+                      className={`w-4 h-4 ${(reorderMutation.isPending && reorderMutation.variables === order.id) ? 'animate-spin' : ''}`} 
+                    />
                     Reorder
                   </button>
                   <button
@@ -192,7 +194,7 @@ export function OrderHistoryPage() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setActiveRating(activeRating === `${order.id}:up` ? null : `${order.id}:up`)}
-                      disabled={order.rating !== null || rateMutation.isPending}
+                      disabled={order.rating !== null || (rateMutation.isPending && rateMutation.variables?.orderId === order.id)}
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                         order.rating === true || activeRating === `${order.id}:up`
                           ? 'bg-green-100 text-green-700 border border-green-200' 
@@ -205,7 +207,7 @@ export function OrderHistoryPage() {
                     </button>
                     <button
                       onClick={() => setActiveRating(activeRating === `${order.id}:down` ? null : `${order.id}:down`)}
-                      disabled={order.rating !== null || rateMutation.isPending}
+                      disabled={order.rating !== null || (rateMutation.isPending && rateMutation.variables?.orderId === order.id)}
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                         order.rating === false || activeRating === `${order.id}:down`
                           ? 'bg-red-100 text-red-700 border border-red-200' 
@@ -238,7 +240,8 @@ export function OrderHistoryPage() {
                           rating: activeRating.endsWith(":up"), 
                           comment: ratingComment[order.id] 
                         })}
-                        className="px-4 py-1.5 bg-gorola-pine text-white text-xs font-bold rounded-lg hover:bg-gorola-pine/90 transition-colors shadow-md shadow-gorola-pine/10"
+                        className="px-4 py-1.5 bg-gorola-pine text-white text-xs font-bold rounded-lg hover:bg-gorola-pine/90 transition-colors shadow-md shadow-gorola-pine/10 disabled:opacity-50"
+                        disabled={rateMutation.isPending && rateMutation.variables?.orderId === order.id}
                       >
                         Submit Feedback
                       </button>
