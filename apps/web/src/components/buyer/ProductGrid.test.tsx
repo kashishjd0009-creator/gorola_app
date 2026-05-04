@@ -128,6 +128,10 @@ describe("ProductGrid", () => {
     expect(await screen.findByText("Apple")).toBeInTheDocument();
     expect(screen.getByText("Peak Mart")).toBeInTheDocument();
     expect(screen.getByText("Rs 220.00")).toBeInTheDocument();
+
+    const img = screen.getByAltText("Apple");
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("src", "https://x");
   });
 
   it("loads next page when sentinel enters viewport", async () => {

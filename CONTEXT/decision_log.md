@@ -855,5 +855,58 @@ Instead of linking to the `Address` table, we will **snapshot** (copy) the addre
 
 ---
 
+## [DECISION-029] Three-Tier Catalog Hierarchy (Category -> SubCategory -> Product)
 
+**Date:** 2026-05-04
+**Status:** Accepted
 
+**Context:**
+Initially, the GoRola catalog was a flat two-tier system (`Category -> Product`). However, as the product range expanded (e.g., Groceries containing Rice, Snacks, Beverages), the UI became cluttered. A middle tier was needed to organize products more logically for buyers.
+
+**Decision:**
+Introduce a `SubCategory` model and enforce a mandatory relationship at the database level.
+- `SubCategory` belongs to a `Category` (`1:N`).
+- `Product` belongs to a `SubCategory` (`N:1`).
+- `subCategoryId` on the `Product` model is **non-nullable** (mandatory).
+- Replace `emoji` field on `Category` and `SubCategory` with `imageUrl` for a more premium visual experience.
+
+**Rationale:**
+- **Better UX:** Allows buyers to drill down into specific niches (e.g., "Medical -> Pain Relief") instead of scrolling through hundreds of unrelated items.
+- **Data Integrity:** Making `subCategoryId` non-nullable ensures that every product is strictly categorized, preventing "orphan" products from appearing in search or category results.
+- **Visual Consistency:** Moving from emojis to high-quality images aligns with the premium "GoRola" aesthetic established in Phase 2.
+
+**Tradeoffs:**
+- **Constraint Hell:** Making the relationship mandatory broke all existing test data and seeding scripts across the entire repository. Every integration test that seeds a product now requires a sub-category setup.
+- **Migration Complexity:** Required a complete database reset for both dev and test environments as existing products could not be automatically backfilled with a mandatory FK.
+
+**Alternatives Considered:**
+1. Optional `subCategoryId` — Rejected: Leads to inconsistent UI where some products are grouped and others are not.
+2. Tagging system — Rejected: Overly complex for a local commerce app where hierarchical navigation is the expected standard.
+3. JSON metadata for sub-categories — Rejected: Prevents database-level referential integrity and makes filtering queries significantly slower.
+---
+
+## [DECISION-030] Guest-to-User Cart Synchronization (Reconciliation Strategy)
+
+**Date:** 2026-05-05
+**Status:** Accepted
+
+**Context:**
+During the checkout flow, guest users (not logged in) add items to their local cart. When they log in to complete the purchase, the application was erroneously clearing the local cart if the server-side cart was empty, leading to a "Empty Cart" error at the final payment step.
+
+**Decision:**
+Implement a "Push-on-Empty" reconciliation strategy in `buyer-cart-sync.ts`:
+1. If an authenticated user has an empty server cart BUT has items in their local guest cart, push all guest items to the server.
+2. If both carts have items, the server cart remains the source of truth (to prevent duplication across devices).
+3. Local state is strictly updated from the server response AFTER the reconciliation attempt.
+
+**Rationale:**
+- **Prevents Conversion Drop-off:** Ensures that users don't lose their selected items the moment they sign in to pay.
+- **Data Integrity:** Avoids complex merging logic (e.g., summing quantities) which can lead to desyncs. The server remains the ultimate source of truth.
+- **Simplicity:** High reliability with minimal background network overhead.
+
+**Tradeoffs:**
+- If a user intentionally wants to discard their local cart in favor of an empty server cart, they cannot (the local items will be "restored" to the server). However, this is an extreme edge case compared to the common bug of losing items.
+
+**Alternatives Considered:**
+1. **Aggressive Merge:** Always sum local + server quantities. Rejected: Risk of exceeding stock limits silently and creates complex race conditions.
+2. **Clear Local Always:** Rejected: Caused the original bug.

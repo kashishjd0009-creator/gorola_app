@@ -11,7 +11,7 @@ type CategoryDto = {
   id: string;
   slug: string;
   name: string;
-  emoji: string;
+  imageUrl: string | null;
   productCount: number;
 };
 
@@ -56,7 +56,7 @@ export function CategoryGrid(): ReactElement {
     const ctx = gsap.context(() => {
       const hasScrollTrigger =
         typeof (gsap as { core?: { globals?: () => Record<string, unknown> } }).core?.globals ===
-        "function"
+          "function"
           ? Boolean((gsap as { core?: { globals?: () => Record<string, unknown> } }).core?.globals?.().ScrollTrigger)
           : false;
 
@@ -146,9 +146,17 @@ export function CategoryGrid(): ReactElement {
             navigate(`/categories/${category.slug}`);
           }}
         >
-          <p className="text-2xl" aria-hidden>
-            {category.emoji}
-          </p>
+          {category.imageUrl ? (
+            <img 
+              src={category.imageUrl} 
+              alt={`${category.name} category`} 
+              className="h-12 w-12 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gorola-saffron/20">
+              <span className="text-xl">📦</span>
+            </div>
+          )}
           <p className="mt-2 font-dm-sans text-lg font-semibold text-gorola-charcoal">{category.name}</p>
           <p className="mt-1 font-dm-sans text-sm text-gorola-slate">{category.productCount} products</p>
         </button>

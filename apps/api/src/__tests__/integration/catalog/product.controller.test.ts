@@ -24,6 +24,7 @@ async function cleanCatalogIntegrationGraph(db: PrismaClient): Promise<void> {
   await db.offer.deleteMany();
   await db.discount.deleteMany();
   await db.store.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
 }
 
@@ -59,12 +60,19 @@ describe("Product controller", () => {
     const groceries = await categoryRepo.create({
       slug: "groceries",
       name: "Groceries",
-      emoji: "🥬",
+      imageUrl: "https://example.com/groceries.jpg",
     });
     const medical = await categoryRepo.create({
       slug: "medical",
       name: "Medical",
-      emoji: "💊",
+      imageUrl: "https://example.com/medical.jpg",
+    });
+    
+    const grocSub = await db.subCategory.create({
+      data: { slug: "groc-sub", name: "Groc Sub", categoryId: groceries.id }
+    });
+    const medSub = await db.subCategory.create({
+      data: { slug: "med-sub", name: "Med Sub", categoryId: medical.id }
     });
     groceriesId = groceries.id;
     medicalId = medical.id;
@@ -72,6 +80,7 @@ describe("Product controller", () => {
     const apple = await productRepo.create({
       storeId: storeOne.id,
       categoryId: groceries.id,
+      subCategoryId: grocSub.id,
       name: "Apple",
       description: "Fresh apple",
       imageUrl: "https://cdn.example.com/apple.jpg",
@@ -86,6 +95,7 @@ describe("Product controller", () => {
     const banana = await productRepo.create({
       storeId: storeOne.id,
       categoryId: groceries.id,
+      subCategoryId: grocSub.id,
       name: "Banana",
       description: "Ripe banana",
       imageUrl: "https://cdn.example.com/banana.jpg",
@@ -97,6 +107,7 @@ describe("Product controller", () => {
     const coughSyrup = await productRepo.create({
       storeId: storeTwo.id,
       categoryId: medical.id,
+      subCategoryId: medSub.id,
       name: "Cough Syrup",
       description: "Relief syrup",
       imageUrl: "https://cdn.example.com/syrup.jpg",

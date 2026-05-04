@@ -24,6 +24,7 @@ async function cleanCatalogIntegrationGraph(db: PrismaClient): Promise<void> {
   await db.offer.deleteMany();
   await db.discount.deleteMany();
   await db.store.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
 }
 
@@ -35,6 +36,7 @@ describe("ProductRepository", () => {
 
   let store: Store;
   let category: Category;
+  let subCategory: { id: string };
 
   beforeEach(async () => {
     await cleanCatalogIntegrationGraph(db);
@@ -44,7 +46,10 @@ describe("ProductRepository", () => {
       phone: "+911111111111",
       address: "Road"
     });
-    category = await categoryRepo.create({ slug: "fixture-cat", name: "Fixture" });
+    category = await categoryRepo.create({ slug: "fixture-cat", name: "Fixture", imageUrl: "https://example.com/cat.jpg" });
+    subCategory = await db.subCategory.create({
+      data: { slug: "fixture-sub", name: "Fixture Sub", categoryId: category.id }
+    });
   });
 
   afterAll(async () => {
@@ -56,6 +61,7 @@ describe("ProductRepository", () => {
       const p = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Rice",
         description: "White rice",
         imageUrl: "https://example.com/rice.jpg"
@@ -73,6 +79,7 @@ describe("ProductRepository", () => {
         repo.create({
           storeId: "nonexistent_cuid_xyz",
           categoryId: category.id,
+          subCategoryId: subCategory.id,
           name: "x",
           description: "d",
           imageUrl: "https://x"
@@ -85,6 +92,7 @@ describe("ProductRepository", () => {
         repo.create({
           storeId: store.id,
           categoryId: "nonexistent_cuid_xyz",
+          subCategoryId: subCategory.id,
           name: "x",
           description: "d",
           imageUrl: "https://x"
@@ -98,6 +106,7 @@ describe("ProductRepository", () => {
       const created = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Find",
         description: "d",
         imageUrl: "https://i"
@@ -114,6 +123,7 @@ describe("ProductRepository", () => {
       const created = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Del",
         description: "d",
         imageUrl: "https://i"
@@ -126,6 +136,7 @@ describe("ProductRepository", () => {
       const created = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Del2",
         description: "d",
         imageUrl: "https://i"
@@ -141,6 +152,7 @@ describe("ProductRepository", () => {
       await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Zebra",
         description: "z",
         imageUrl: "https://z"
@@ -148,6 +160,7 @@ describe("ProductRepository", () => {
       await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Apple",
         description: "a",
         imageUrl: "https://a"
@@ -155,6 +168,7 @@ describe("ProductRepository", () => {
       const inactive = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Off",
         description: "o",
         imageUrl: "https://o",
@@ -163,6 +177,7 @@ describe("ProductRepository", () => {
       const deleted = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Gone",
         description: "g",
         imageUrl: "https://g"
@@ -179,6 +194,7 @@ describe("ProductRepository", () => {
       await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "On",
         description: "o",
         imageUrl: "https://o"
@@ -186,6 +202,7 @@ describe("ProductRepository", () => {
       const off = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Off",
         description: "f",
         imageUrl: "https://f",
@@ -206,6 +223,7 @@ describe("ProductRepository", () => {
       const created = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "Old",
         description: "d",
         imageUrl: "https://o"
@@ -232,6 +250,7 @@ describe("ProductRepository", () => {
       const created = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: "P",
         description: "d",
         imageUrl: "https://i"
@@ -248,6 +267,7 @@ describe("ProductRepository", () => {
       const p = await repo.create({
         storeId: store.id,
         categoryId: category.id,
+        subCategoryId: subCategory.id,
         name: malicious,
         description: "d",
         imageUrl: "https://i"

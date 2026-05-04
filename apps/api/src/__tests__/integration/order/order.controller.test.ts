@@ -28,6 +28,7 @@ async function cleanOrderIntegrationGraph(db: PrismaClient): Promise<void> {
   await db.offer.deleteMany();
   await db.storeOwner.deleteMany();
   await db.store.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
 }
 
@@ -67,6 +68,7 @@ describe("POST /api/v1/orders (buyer checkout)", () => {
   let userRow: User;
   let otherUserRow: User;
   let category: Category;
+  let subCategory: { id: string };
   let store: Store;
   let product: Product;
   let variant: ProductVariant;
@@ -78,7 +80,11 @@ describe("POST /api/v1/orders (buyer checkout)", () => {
 
     category = await categoryRepo.create({
       slug: `oc-${Date.now().toString(36)}`,
-      name: "OC Cat"
+      name: "OC Cat",
+      imageUrl: "https://example.com/cat.jpg"
+    });
+    subCategory = await db.subCategory.create({
+      data: { slug: "oc-sub", name: "OC Sub", categoryId: category.id }
     });
     store = await storeRepo.create({
       address: "Mall Road",
@@ -88,6 +94,7 @@ describe("POST /api/v1/orders (buyer checkout)", () => {
     });
     product = await productRepo.create({
       categoryId: category.id,
+      subCategoryId: subCategory.id,
       description: "d",
       imageUrl: "https://x.jpg",
       name: "OC Product",

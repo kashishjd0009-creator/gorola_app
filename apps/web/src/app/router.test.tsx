@@ -171,12 +171,13 @@ describe("buyer routes", () => {
     useAuthStore.getState().setBootstrapPending(false);
 
     const searchRender = render(
-      <MemoryRouter initialEntries={["/search"]}>
-        <App />
-      </MemoryRouter>
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/search"]}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>
     );
-    expect(screen.getByText("Search results page is under active development.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to Home" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
     searchRender.unmount();
 
     const profileRender = render(
@@ -207,17 +208,17 @@ describe("buyer routes", () => {
     expect(screen.getByText("This page is not ready yet.")).toBeInTheDocument();
   });
 
-  it("renders query-aware search placeholder for /search?q=", () => {
+  it("renders query-aware search page for /search?q=", () => {
     useAuthStore.getState().setBootstrapPending(false);
 
     render(
-      <MemoryRouter initialEntries={["/search?q=bread"]}>
-        <App />
-      </MemoryRouter>
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/search?q=bread"]}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>
     );
 
-    expect(screen.getByRole("heading", { name: 'Search results for "bread"' })).toBeInTheDocument();
-    expect(screen.getByText("Search results page is under active development.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to Home" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
   });
 });

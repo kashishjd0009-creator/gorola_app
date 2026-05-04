@@ -17,6 +17,7 @@ type SuccessEnvelope<T> = {
 
 const productListQuerySchema = z.object({
   categoryId: z.string().min(1).optional(),
+  subCategoryId: z.string().min(1).optional(),
   storeId: z.string().min(1).optional(),
   search: z.string().trim().min(1).optional(),
   cursor: z.string().min(1).optional(),
@@ -44,6 +45,7 @@ function toListProductsInput(parsed: z.infer<typeof productListQuerySchema>): Li
   return {
     limit: parsed.limit,
     ...(parsed.categoryId !== undefined ? { categoryId: parsed.categoryId } : {}),
+    ...(parsed.subCategoryId !== undefined ? { subCategoryId: parsed.subCategoryId } : {}),
     ...(parsed.storeId !== undefined ? { storeId: parsed.storeId } : {}),
     ...(parsed.search !== undefined ? { search: parsed.search } : {}),
     ...(parsed.cursor !== undefined ? { cursor: parsed.cursor } : {})

@@ -1,8 +1,7 @@
-
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { getPrismaClient } from "../../lib/prisma.js";
-import { CategoryRepository } from "./category.repository.js";
+import { SubCategoryRepository } from "./sub-category.repository.js";
 
 type SuccessEnvelope<T> = {
   success: true;
@@ -26,12 +25,15 @@ function success<T>(request: FastifyRequest, reply: FastifyReply, data: T): Succ
   };
 }
 
-export function registerCategoryRoutes(app: FastifyInstance): void {
-  void app;
-  const categoryRepo = new CategoryRepository(getPrismaClient());
+export function registerSubCategoryRoutes(app: FastifyInstance): void {
+  const subCategoryRepo = new SubCategoryRepository(getPrismaClient());
 
-  app.get("/api/v1/categories", async (request, reply) => {
-    const categories = await categoryRepo.findAllForBuyer();
-    return success(request, reply, categories);
-  });
+  app.get<{ Params: { slug: string } }>(
+    "/api/v1/categories/:slug/sub-categories",
+    async (request, reply) => {
+      const { slug } = request.params;
+      const subCategories = await subCategoryRepo.findAllByCategorySlug(slug);
+      return success(request, reply, subCategories);
+    }
+  );
 }

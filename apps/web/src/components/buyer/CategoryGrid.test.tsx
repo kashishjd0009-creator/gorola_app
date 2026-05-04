@@ -59,8 +59,8 @@ describe("CategoryGrid", () => {
       data: {
         success: true,
         data: [
-          { id: "c1", slug: "groceries", name: "Groceries", emoji: "🥬", productCount: 12 },
-          { id: "c2", slug: "medical", name: "Medical", emoji: "💊", productCount: 7 }
+          { id: "c1", slug: "groceries", name: "Groceries", imageUrl: "https://example.com/groc.jpg", productCount: 12 },
+          { id: "c2", slug: "medical", name: "Medical", imageUrl: "https://example.com/med.jpg", productCount: 7 }
         ]
       }
     });
@@ -69,6 +69,9 @@ describe("CategoryGrid", () => {
 
     expect(await screen.findByRole("button", { name: /groceries/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /medical/i })).toBeInTheDocument();
+
+    expect(screen.getByAltText(/groceries category/i)).toHaveAttribute("src", "https://example.com/groc.jpg");
+    expect(screen.getByAltText(/medical category/i)).toHaveAttribute("src", "https://example.com/med.jpg");
 
     fireEvent.click(screen.getByRole("button", { name: /groceries/i }));
     expect(navigateMock).toHaveBeenCalledWith("/categories/groceries");

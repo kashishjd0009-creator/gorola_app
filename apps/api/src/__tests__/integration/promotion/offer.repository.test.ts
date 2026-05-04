@@ -23,6 +23,7 @@ async function cleanPromotionGraph(db: PrismaClient): Promise<void> {
   await db.offer.deleteMany();
   await db.discount.deleteMany();
   await db.store.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
 }
 

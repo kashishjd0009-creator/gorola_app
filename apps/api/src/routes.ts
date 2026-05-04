@@ -14,6 +14,8 @@ import { registerCartRoutes } from "./modules/cart/cart.controller.js";
 import { CartRepository } from "./modules/cart/cart.repository.js";
 import { registerCategoryRoutes } from "./modules/catalog/category.controller.js";
 import { registerProductRoutes } from "./modules/catalog/product.controller.js";
+import { registerSearchRoutes } from "./modules/catalog/search.controller.js";
+import { registerSubCategoryRoutes } from "./modules/catalog/sub-category.controller.js";
 import { ProductVariantRepository } from "./modules/catalog/variant.repository.js";
 import { registerFeatureFlagRoutes } from "./modules/feature-flag/feature-flag.controller.js";
 import { FeatureFlagRepository } from "./modules/feature-flag/feature-flag.repository.js";
@@ -54,7 +56,9 @@ function getRuntimeRedis(app: FastifyInstance): RedisLikeRuntime {
 
 export function registerAppRoutes(app: FastifyInstance): void {
   registerCategoryRoutes(app);
+  registerSubCategoryRoutes(app);
   registerProductRoutes(app);
+  registerSearchRoutes(app);
   registerPromotionRoutes(app);
 
   const prisma = getPrismaClient();

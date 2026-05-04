@@ -26,6 +26,8 @@ async function cleanCatalogIntegrationGraph(db: PrismaClient): Promise<void> {
   await db.offer.deleteMany();
   await db.discount.deleteMany();
   await db.store.deleteMany();
+  await db.subCategory.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
 }
 
@@ -38,6 +40,7 @@ describe("ProductVariantRepository", () => {
 
   let store: Store;
   let category: Category;
+  let subCategory: { id: string };
   let product: Product;
 
   beforeEach(async () => {
@@ -48,10 +51,14 @@ describe("ProductVariantRepository", () => {
       phone: "+911111111112",
       address: "Lane"
     });
-    category = await categoryRepo.create({ slug: "v-cat", name: "Cat" });
+    category = await categoryRepo.create({ slug: "v-cat", name: "Cat", imageUrl: "https://example.com/cat.jpg" });
+    subCategory = await db.subCategory.create({
+      data: { slug: "v-sub", name: "Sub", categoryId: category.id }
+    });
     product = await productRepo.create({
       storeId: store.id,
       categoryId: category.id,
+      subCategoryId: subCategory.id,
       name: "Base Product",
       description: "d",
       imageUrl: "https://p"

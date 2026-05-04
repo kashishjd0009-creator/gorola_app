@@ -107,37 +107,57 @@ model Admin {
 }
 
 model Category {
-  id           String    @id @default(cuid())
-  slug         String    @unique
-  name         String
-  emoji        String?
-  icon         String?
-  displayOrder Int       @default(0)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  products     Product[]
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  name          String
+  imageUrl      String?
+  icon          String?
+  displayOrder  Int           @default(0)
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  subCategories SubCategory[]
+  products      Product[]
 
   @@index([isActive, displayOrder])
 }
 
+model SubCategory {
+  id           String    @id @default(cuid())
+  slug         String    @unique
+  name         String
+  imageUrl     String?
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  categoryId   String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  category     Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  products     Product[]
+
+  @@index([categoryId, isActive, displayOrder])
+}
+
 model Product {
-  id          String           @id @default(cuid())
-  storeId     String
-  categoryId  String
-  name        String
-  description String
-  imageUrl    String
-  isActive    Boolean          @default(true)
-  isDeleted   Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  store       Store            @relation(fields: [storeId], references: [id], onDelete: Restrict)
-  category    Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  variants    ProductVariant[]
+  id            String           @id @default(cuid())
+  storeId       String
+  categoryId    String
+  subCategoryId String
+  name          String
+  description   String
+  imageUrl      String
+  isActive      Boolean          @default(true)
+  isDeleted     Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  store         Store            @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  category      Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  subCategory   SubCategory      @relation(fields: [subCategoryId], references: [id], onDelete: Restrict)
+  variants      ProductVariant[]
 
   @@index([storeId, isActive, isDeleted])
   @@index([categoryId])
+  @@index([subCategoryId])
   @@index([name])
 }
 

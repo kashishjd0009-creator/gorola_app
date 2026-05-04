@@ -22,6 +22,7 @@ async function cleanCatalogIntegrationGraph(db: PrismaClient): Promise<void> {
   await db.offer.deleteMany();
   await db.discount.deleteMany();
   await db.store.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
 }
 
@@ -49,7 +50,7 @@ describe("CategoryRepository", () => {
       expect(c.name).toBe("Snacks");
       expect(c.displayOrder).toBe(3);
       expect(c.isActive).toBe(true);
-      expect(c.emoji).toBeNull();
+      expect(c.imageUrl).toBeNull();
     });
 
     it("throws ConflictError when slug already exists", async () => {
@@ -134,13 +135,13 @@ describe("CategoryRepository", () => {
       const updated = await repo.update(created.id, {
         slug: "new-slug",
         name: "New",
-        emoji: "🍎",
+        imageUrl: "https://example.com/apple.jpg",
         displayOrder: 5,
         isActive: false
       });
       expect(updated.slug).toBe("new-slug");
       expect(updated.name).toBe("New");
-      expect(updated.emoji).toBe("🍎");
+      expect(updated.imageUrl).toBe("https://example.com/apple.jpg");
       expect(updated.displayOrder).toBe(5);
       expect(updated.isActive).toBe(false);
     });

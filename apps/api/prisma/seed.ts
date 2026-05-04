@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { seedDummyData } from "./dummy-data";
 
 const prisma = new PrismaClient();
 
@@ -49,79 +50,8 @@ async function main(): Promise<void> {
     }
   });
 
-  const groceriesCategory = await prisma.category.upsert({
-    where: { slug: "groceries" },
-    update: {},
-    create: {
-      slug: "groceries",
-      name: "Groceries",
-      emoji: "🛒",
-      displayOrder: 1,
-      isActive: true
-    }
-  });
-
-  const medicalCategory = await prisma.category.upsert({
-    where: { slug: "medical" },
-    update: {},
-    create: {
-      slug: "medical",
-      name: "Medical",
-      emoji: "💊",
-      displayOrder: 2,
-      isActive: true
-    }
-  });
-
-  const riceProduct = await prisma.product.upsert({
-    where: { id: "product_hillside_premium_rice" },
-    update: {},
-    create: {
-      id: "product_hillside_premium_rice",
-      storeId: storeA.id,
-      categoryId: groceriesCategory.id,
-      name: "Premium Rice",
-      description: "Daily staple rice, 5kg family pack.",
-      imageUrl: "https://example.com/images/premium-rice.jpg",
-      isActive: true,
-      variants: {
-        create: [
-          {
-            label: "5 kg pack",
-            price: "525.00",
-            stockQty: 40,
-            unit: "pack",
-            isActive: true
-          }
-        ]
-      }
-    }
-  });
-
-  const paracetamolProduct = await prisma.product.upsert({
-    where: { id: "product_mountain_paracetamol_650" },
-    update: {},
-    create: {
-      id: "product_mountain_paracetamol_650",
-      storeId: storeB.id,
-      categoryId: medicalCategory.id,
-      name: "Paracetamol 650",
-      description: "Pain and fever relief tablets.",
-      imageUrl: "https://example.com/images/paracetamol-650.jpg",
-      isActive: true,
-      variants: {
-        create: [
-          {
-            label: "10 tablets",
-            price: "42.00",
-            stockQty: 120,
-            unit: "strip",
-            isActive: true
-          }
-        ]
-      }
-    }
-  });
+  // Import and run dummy data seeder
+  await seedDummyData(prisma, storeA.id, storeB.id);
 
   await prisma.featureFlag.createMany({
     data: [
@@ -184,8 +114,7 @@ async function main(): Promise<void> {
   });
 
   console.info("Seed completed", {
-    stores: [storeA.name, storeB.name],
-    sampleProducts: [riceProduct.name, paracetamolProduct.name]
+    stores: [storeA.name, storeB.name]
   });
 }
 

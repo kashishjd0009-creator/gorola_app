@@ -27,6 +27,7 @@ async function cleanReorderGraph(db: PrismaClient): Promise<void> {
   await db.cart.deleteMany();
   await db.productVariant.deleteMany();
   await db.product.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
   await db.storeOwner.deleteMany();
   await db.advertisement.deleteMany();
@@ -43,6 +44,7 @@ describe("POST /api/v1/orders/:id/reorder", () => {
   let token: string;
   let user: { id: string };
   let store: { id: string };
+  let subCategory: { id: string };
   let variant1: { id: string };
   let variant2: { id: string };
 
@@ -58,9 +60,12 @@ describe("POST /api/v1/orders/:id/reorder", () => {
       data: { address: "Test Addr", description: "Test Desc", name: "Test Store", phone: "123" }
     });
 
-    const category = await db.category.create({ data: { name: "Cat", slug: "cat" } });
+    const category = await db.category.create({ data: { name: "Cat", slug: "cat", imageUrl: "https://example.com/cat.jpg" } });
+    subCategory = await db.subCategory.create({
+      data: { name: "Sub", slug: "sub", categoryId: category.id }
+    });
     const product = await db.product.create({
-      data: { categoryId: category.id, description: "Desc", imageUrl: "img", name: "Prod", storeId: store.id }
+      data: { categoryId: category.id, subCategoryId: subCategory.id, description: "Desc", imageUrl: "img", name: "Prod", storeId: store.id }
     });
 
     variant1 = await db.productVariant.create({

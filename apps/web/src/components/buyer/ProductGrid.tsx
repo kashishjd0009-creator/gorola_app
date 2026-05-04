@@ -11,7 +11,9 @@ import { useCartStore } from "@/store/cart.store";
 
 type ProductGridProps = {
   categoryId?: string;
+  subCategoryId?: string;
   storeId?: string;
+  search?: string;
 };
 
 type ProductListItem = {
@@ -41,11 +43,13 @@ type ProductPage = {
 
 async function fetchProducts({
   categoryId,
+  subCategoryId,
   storeId,
   search,
   cursor
 }: {
   categoryId?: string;
+  subCategoryId?: string;
   storeId?: string;
   search?: string;
   cursor?: string;
@@ -57,6 +61,7 @@ async function fetchProducts({
   const response = await api.get<ProductPageEnvelope>("/api/v1/products", {
     params: {
       categoryId,
+      subCategoryId,
       storeId,
       search,
       cursor,
@@ -75,8 +80,8 @@ async function fetchProducts({
 }
 
 export function ProductGrid(props: ProductGridProps): ReactElement {
-  const [searchInput, setSearchInput] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchInput, setSearchInput] = useState(props.search ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState(props.search ?? "");
   const addOrMergeLine = useCartStore((state) => state.addOrMergeLine);
   const setQty = useCartStore((state) => state.setQty);
   const lines = useCartStore((state) => state.lines);
@@ -95,12 +100,13 @@ export function ProductGrid(props: ProductGridProps): ReactElement {
   }, [searchInput]);
 
   const query = useInfiniteQuery({
-    queryKey: ["buyer-products", props.categoryId ?? null, props.storeId ?? null, debouncedSearch],
+    queryKey: ["buyer-products", props.categoryId ?? null, props.subCategoryId ?? null, props.storeId ?? null, debouncedSearch, props.search ?? null],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => {
       const search = debouncedSearch.length > 0 ? debouncedSearch : undefined;
       return fetchProducts({
         ...(props.categoryId !== undefined ? { categoryId: props.categoryId } : {}),
+        ...(props.subCategoryId !== undefined ? { subCategoryId: props.subCategoryId } : {}),
         ...(props.storeId !== undefined ? { storeId: props.storeId } : {}),
         ...(search !== undefined ? { search } : {}),
         ...(pageParam !== undefined ? { cursor: pageParam } : {})
@@ -287,12 +293,24 @@ export function ProductGrid(props: ProductGridProps): ReactElement {
           <article
             key={item.id}
             data-product-card="true"
-            className="rounded-2xl border border-gorola-pine/10 bg-white p-4 shadow-sm"
+            className="flex flex-col rounded-2xl border border-gorola-pine/10 bg-white p-4 shadow-sm"
           >
+            <div className="mb-3 h-32 w-full overflow-hidden rounded-xl bg-gorola-slate-mist/20">
+              <img
+                src={item.imageUrl}
+                alt={item.name}
+                className="h-full w-full object-cover transition-transform duration-500 hover:scale-110"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "https://picsum.photos/400/400?grayscale";
+                }}
+              />
+            </div>
             <p className="font-dm-sans text-base font-semibold text-gorola-charcoal">{item.name}</p>
             <p className="mt-1 font-dm-sans text-sm text-gorola-slate">{item.storeName}</p>
-            <p className="mt-2 font-dm-sans text-sm text-gorola-charcoal">Rs {item.price}</p>
-            <p className="mt-1 font-dm-sans text-xs text-gorola-slate">Unit: {item.unit}</p>
+            <div className="mt-auto pt-2">
+              <p className="font-dm-sans text-sm text-gorola-charcoal">Rs {item.price}</p>
+              <p className="mt-1 font-dm-sans text-xs text-gorola-slate">Unit: {item.unit}</p>
+            </div>
             {(() => {
               const line = lines.find(
                 (candidate) => candidate.productVariantId === item.highestPricedVariantId

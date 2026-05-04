@@ -27,6 +27,7 @@ async function cleanOrderHistoryGraph(db: PrismaClient): Promise<void> {
   await db.cart.deleteMany();
   await db.productVariant.deleteMany();
   await db.product.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
   await db.storeOwner.deleteMany();
   await db.advertisement.deleteMany();

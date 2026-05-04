@@ -4,6 +4,7 @@ import { Prisma, type PrismaClient, type Product } from "@prisma/client";
 export type CreateProductInput = {
   storeId: string;
   categoryId: string;
+  subCategoryId: string;
   name: string;
   description: string;
   imageUrl: string;
@@ -11,11 +12,12 @@ export type CreateProductInput = {
 };
 
 export type UpdateProductInput = Partial<
-  Pick<Product, "name" | "description" | "imageUrl" | "categoryId" | "isActive" | "isDeleted">
+  Pick<Product, "name" | "description" | "imageUrl" | "categoryId" | "subCategoryId" | "isActive" | "isDeleted">
 >;
 
 export type ListProductsInput = {
   categoryId?: string;
+  subCategoryId?: string;
   storeId?: string;
   search?: string;
   cursor?: string;
@@ -91,7 +93,7 @@ function isPrismaError(error: unknown, code: string): boolean {
 }
 
 export class ProductRepository {
-  public constructor(private readonly db: PrismaClient) {}
+  public constructor(private readonly db: PrismaClient) { }
 
   public async findById(
     id: string,
@@ -125,6 +127,7 @@ export class ProductRepository {
         data: {
           storeId: input.storeId,
           categoryId: input.categoryId,
+          subCategoryId: input.subCategoryId,
           name: input.name,
           description: input.description,
           imageUrl: input.imageUrl,
@@ -169,14 +172,15 @@ export class ProductRepository {
       isDeleted: false,
       isActive: true,
       ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
+      ...(input.subCategoryId !== undefined ? { subCategoryId: input.subCategoryId } : {}),
       ...(input.storeId !== undefined ? { storeId: input.storeId } : {}),
       ...(input.search !== undefined && input.search.length > 0
         ? {
-            name: {
-              contains: input.search,
-              mode: "insensitive"
-            }
+          name: {
+            contains: input.search,
+            mode: "insensitive"
           }
+        }
         : {})
     };
 
@@ -188,9 +192,9 @@ export class ProductRepository {
         include: productListInclude,
         ...(input.cursor !== undefined
           ? {
-              cursor: { id: input.cursor },
-              skip: 1
-            }
+            cursor: { id: input.cursor },
+            skip: 1
+          }
           : {})
       });
 

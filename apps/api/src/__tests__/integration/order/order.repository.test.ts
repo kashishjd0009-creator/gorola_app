@@ -35,6 +35,7 @@ async function cleanOrderIntegrationGraph(db: PrismaClient): Promise<void> {
   await db.offer.deleteMany();
   await db.discount.deleteMany();
   await db.store.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
 }
 
@@ -50,6 +51,7 @@ describe("OrderRepository", () => {
   let user: User;
   let store: Store;
   let category: Category;
+  let subCategory: { id: string };
   let product: Product;
   let variantA: ProductVariant;
   let variantB: ProductVariant;
@@ -63,10 +65,14 @@ describe("OrderRepository", () => {
       phone: "+911111111177",
       address: "Road"
     });
-    category = await categoryRepo.create({ slug: "order-cat", name: "Order Cat" });
+    category = await categoryRepo.create({ slug: "order-cat", name: "Order Cat", imageUrl: "https://example.com/cat.jpg" });
+    subCategory = await db.subCategory.create({
+      data: { slug: "order-sub", name: "Order Sub", categoryId: category.id }
+    });
     product = await productRepo.create({
       storeId: store.id,
       categoryId: category.id,
+      subCategoryId: subCategory.id,
       name: "Order Product",
       description: "d",
       imageUrl: "https://example.com/p.jpg"

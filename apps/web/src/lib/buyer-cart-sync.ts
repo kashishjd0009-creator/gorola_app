@@ -58,6 +58,29 @@ export async function syncBuyerCartFromServer(): Promise<void> {
   }
   const res = await api.get<CartGetEnvelope>("/api/v1/cart");
   const items = res.data.data?.items;
-  const lines = mapBuyerCartItemsToLines(items);
-  useCartStore.getState().replaceLines(lines);
+  const serverLines = mapBuyerCartItemsToLines(items);
+
+  const localLines = useCartStore.getState().lines;
+
+  // If server is empty but we have local items (guest cart), push them to server
+  if (serverLines.length === 0 && localLines.length > 0) {
+    for (const line of localLines) {
+      try {
+        await api.post("/api/v1/cart/items", {
+          productVariantId: line.productVariantId,
+          quantity: line.quantity
+        });
+      } catch (err) {
+        console.error("Failed to sync guest line to server:", err);
+      }
+    }
+    // No need to replaceLines yet, the next sync or local state is fine.
+    // But to be safe, let's re-fetch to get the authoritative IDs/prices from server.
+    const secondRes = await api.get<CartGetEnvelope>("/api/v1/cart");
+    const finalLines = mapBuyerCartItemsToLines(secondRes.data.data?.items);
+    useCartStore.getState().replaceLines(finalLines);
+    return;
+  }
+
+  useCartStore.getState().replaceLines(serverLines);
 }

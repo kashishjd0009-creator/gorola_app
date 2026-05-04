@@ -27,6 +27,7 @@ async function cleanOrderGraph(db: PrismaClient): Promise<void> {
   await db.cart.deleteMany();
   await db.productVariant.deleteMany();
   await db.product.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
   await db.storeOwner.deleteMany();
   await db.advertisement.deleteMany();
@@ -57,9 +58,12 @@ describe("Order Address Snapshoting", () => {
       data: { address: "Test Addr", description: "Test Desc", name: "Test Store", phone: "123" }
     });
 
-    const category = await db.category.create({ data: { name: "Cat", slug: "cat" } });
+    const category = await db.category.create({ data: { name: "Cat", slug: "cat", imageUrl: "https://example.com/cat.jpg" } });
+    const subCategory = await db.subCategory.create({
+      data: { name: "Sub", slug: "sub", categoryId: category.id }
+    });
     const product = await db.product.create({
-      data: { categoryId: category.id, description: "Desc", imageUrl: "img", name: "Prod", storeId: store.id }
+      data: { categoryId: category.id, subCategoryId: subCategory.id, description: "Desc", imageUrl: "img", name: "Prod", storeId: store.id }
     });
 
     variant = await db.productVariant.create({

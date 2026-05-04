@@ -28,6 +28,7 @@ async function clean(db: PrismaClient): Promise<void> {
   await db.offer.deleteMany();
   await db.discount.deleteMany();
   await db.store.deleteMany();
+  await db.subCategory.deleteMany();
   await db.category.deleteMany();
 }
 
@@ -72,6 +73,7 @@ describe("OrderService stock (integration)", () => {
   let user: User;
   let store: Store;
   let category: Category;
+  let subCategory: { id: string };
   let product: Product;
   let variant: ProductVariant;
 
@@ -84,10 +86,14 @@ describe("OrderService stock (integration)", () => {
       phone: "+911200000001",
       address: "Mall"
     });
-    category = await categoryRepo.create({ slug: "os-cat", name: "OS Cat" });
+    category = await categoryRepo.create({ slug: "os-cat", name: "OS Cat", imageUrl: "https://example.com/cat.jpg" });
+    subCategory = await db.subCategory.create({
+      data: { slug: "os-sub", name: "OS Sub", categoryId: category.id }
+    });
     product = await productRepo.create({
       storeId: store.id,
       categoryId: category.id,
+      subCategoryId: subCategory.id,
       name: "O Product",
       description: "d",
       imageUrl: "https://o.jpg"
@@ -150,6 +156,7 @@ describe("OrderService stock (integration)", () => {
     const otherProduct = await productRepo.create({
       storeId: otherStore.id,
       categoryId: category.id,
+      subCategoryId: subCategory.id,
       name: "Other P",
       description: "d",
       imageUrl: "x"

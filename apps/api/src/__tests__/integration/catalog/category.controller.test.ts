@@ -17,6 +17,7 @@ async function cleanCatalogIntegrationGraph(db: PrismaClient): Promise<void> {
   await db.user.deleteMany();
   await db.productVariant.deleteMany();
   await db.product.deleteMany();
+  await db.subCategory.deleteMany();
   await db.storeOwner.deleteMany();
   await db.advertisement.deleteMany();
   await db.offer.deleteMany();
@@ -38,13 +39,13 @@ describe("Category controller", () => {
 
   it("GET /api/v1/categories returns active categories in envelope", async () => {
     const groceries = await db.category.create({
-      data: { slug: "groceries", name: "Groceries", emoji: "🥬", displayOrder: 2, isActive: true }
+      data: { slug: "groceries", name: "Groceries", imageUrl: "https://example.com/groceries.jpg", displayOrder: 2, isActive: true }
     });
     const medical = await db.category.create({
-      data: { slug: "medical", name: "Medical", emoji: "💊", displayOrder: 1, isActive: true }
+      data: { slug: "medical", name: "Medical", imageUrl: "https://example.com/medical.jpg", displayOrder: 1, isActive: true }
     });
     await db.category.create({
-      data: { slug: "hidden", name: "Hidden", emoji: "🙈", displayOrder: 0, isActive: false }
+      data: { slug: "hidden", name: "Hidden", imageUrl: "https://example.com/hidden.jpg", displayOrder: 0, isActive: false }
     });
     const store = await db.store.create({
       data: {
@@ -54,11 +55,20 @@ describe("Category controller", () => {
         address: "Mall Road"
       }
     });
+
+    const grocSub = await db.subCategory.create({
+      data: { slug: "groc-sub", name: "Groc Sub", categoryId: groceries.id }
+    });
+    const medSub = await db.subCategory.create({
+      data: { slug: "med-sub", name: "Med Sub", categoryId: medical.id }
+    });
+
     await db.product.createMany({
       data: [
         {
           storeId: store.id,
           categoryId: groceries.id,
+          subCategoryId: grocSub.id,
           name: "Apple",
           description: "Fresh",
           imageUrl: "https://cdn.example.com/apple.jpg",
@@ -68,6 +78,7 @@ describe("Category controller", () => {
         {
           storeId: store.id,
           categoryId: groceries.id,
+          subCategoryId: grocSub.id,
           name: "Hidden Apple",
           description: "Inactive",
           imageUrl: "https://cdn.example.com/hidden-apple.jpg",
@@ -77,6 +88,7 @@ describe("Category controller", () => {
         {
           storeId: store.id,
           categoryId: medical.id,
+          subCategoryId: medSub.id,
           name: "Deleted Syrup",
           description: "Deleted",
           imageUrl: "https://cdn.example.com/deleted-syrup.jpg",
@@ -106,7 +118,7 @@ describe("Category controller", () => {
       data: Array<{
         slug: string;
         name: string;
-        emoji: string | null;
+        imageUrl: string | null;
         icon: string | null;
         displayOrder: number;
         isActive: boolean;
@@ -120,7 +132,7 @@ describe("Category controller", () => {
       {
         slug: "medical",
         name: "Medical",
-        emoji: "💊",
+        imageUrl: "https://example.com/medical.jpg",
         icon: null,
         displayOrder: 1,
         isActive: true,
@@ -129,7 +141,7 @@ describe("Category controller", () => {
       {
         slug: "groceries",
         name: "Groceries",
-        emoji: "🥬",
+        imageUrl: "https://example.com/groceries.jpg",
         icon: null,
         displayOrder: 2,
         isActive: true,

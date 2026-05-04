@@ -4,14 +4,14 @@ import type { Category, PrismaClient } from "@prisma/client";
 export type CreateCategoryInput = {
   slug: string;
   name: string;
-  emoji?: string | null;
+  imageUrl?: string | null;
   icon?: string | null;
   displayOrder?: number;
   isActive?: boolean;
 };
 
 export type UpdateCategoryInput = Partial<
-  Pick<Category, "slug" | "name" | "emoji" | "icon" | "displayOrder" | "isActive">
+  Pick<Category, "slug" | "name" | "imageUrl" | "icon" | "displayOrder" | "isActive">
 >;
 
 export type BuyerCategory = Category & {
@@ -28,7 +28,7 @@ function isPrismaError(error: unknown, code: string): boolean {
 }
 
 export class CategoryRepository {
-  public constructor(private readonly db: PrismaClient) {}
+  public constructor(private readonly db: PrismaClient) { }
 
   public async findById(
     id: string,
@@ -93,7 +93,7 @@ export class CategoryRepository {
         data: {
           slug: input.slug,
           name: input.name,
-          emoji: input.emoji ?? null,
+          imageUrl: input.imageUrl ?? null,
           icon: input.icon ?? null,
           displayOrder: input.displayOrder ?? 0,
           isActive: input.isActive ?? true

@@ -68,10 +68,14 @@ describe("Socket.IO Order Status Integration", () => {
       description: "Desc",
       phone: "+911234567890"
     });
-    const category = await categoryRepo.create({ name: "Cat", slug: `cat-${Date.now()}` });
+    const category = await categoryRepo.create({ name: "Cat", slug: `cat-${Date.now()}`, imageUrl: "https://example.com/cat.jpg" });
+    const subCategory = await db.subCategory.create({
+      data: { name: "Sub", slug: `sub-${Date.now()}`, categoryId: category.id }
+    });
     const product = await productRepo.create({
       name: "Prod",
       categoryId: category.id,
+      subCategoryId: subCategory.id,
       storeId: store.id,
       description: "D",
       imageUrl: "http://img.png"

@@ -40,26 +40,15 @@ describe("CategoryPage", () => {
     getMock.mockReset();
   });
 
-  it("resolves slug to categoryId and requests products with categoryId filter", async () => {
+  it("renders heading and passes slug to SubCategoryGrid", async () => {
     getMock.mockImplementation(async (url: string) => {
-      if (url === "/api/v1/categories") {
+      if (url === "/api/v1/categories/groceries/sub-categories") {
         return {
           data: {
             success: true,
             data: [
-              { id: "cat-groceries", slug: "groceries", name: "Groceries", emoji: "🥬", productCount: 1 }
+              { id: "s1", slug: "snacks", name: "Snacks", imageUrl: "https://example.com/snack.jpg" }
             ]
-          }
-        };
-      }
-      if (url === "/api/v1/products") {
-        return {
-          data: {
-            success: true,
-            data: {
-              items: [],
-              nextCursor: null
-            }
           }
         };
       }
@@ -69,66 +58,11 @@ describe("CategoryPage", () => {
     renderPage("/categories/groceries");
 
     expect(await screen.findByRole("heading", { name: "Groceries" })).toBeInTheDocument();
+    
     await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith(
-        "/api/v1/products",
-        expect.objectContaining({
-          params: expect.objectContaining({
-            categoryId: "cat-groceries"
-          })
-        })
-      );
+      expect(getMock).toHaveBeenCalledWith("/api/v1/categories/groceries/sub-categories");
     });
-  });
-
-  it("does not request unfiltered products before category id resolves", async () => {
-    let releaseCategories: () => void = () => {};
-    const categoriesWait = new Promise<void>((resolve) => {
-      releaseCategories = () => {
-        resolve();
-      };
-    });
-
-    getMock.mockImplementation(async (url: string) => {
-      if (url === "/api/v1/categories") {
-        await categoriesWait;
-        return {
-          data: {
-            success: true,
-            data: [{ id: "cat-medical", slug: "medical", name: "Medical", emoji: "💊", productCount: 1 }]
-          }
-        };
-      }
-      if (url === "/api/v1/products") {
-        return {
-          data: {
-            success: true,
-            data: {
-              items: [],
-              nextCursor: null
-            }
-          }
-        };
-      }
-      throw new Error(`Unexpected API call: ${url}`);
-    });
-
-    renderPage("/categories/medical");
-    expect(await screen.findByText("Resolving category...")).toBeInTheDocument();
-    expect(getMock).toHaveBeenCalledTimes(1);
-    expect(getMock).toHaveBeenCalledWith("/api/v1/categories");
-
-    releaseCategories();
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith(
-        "/api/v1/products",
-        expect.objectContaining({
-          params: expect.objectContaining({
-            categoryId: "cat-medical"
-          })
-        })
-      );
-    });
+    
+    expect(await screen.findByText("Snacks")).toBeInTheDocument();
   });
 });
