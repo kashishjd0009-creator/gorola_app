@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { AdvertisementBanner } from "@/components/buyer/AdvertisementBanner";
 import { CategoryGrid } from "@/components/buyer/CategoryGrid";
 import { HeroSection } from "@/components/buyer/HeroSection";
 
@@ -19,6 +20,8 @@ export function HomePage(_props: HomePageProps): ReactElement {
           <CategoryGrid />
         </div>
       </section>
+
+      <AdvertisementBanner />
     </div>
   );
 }

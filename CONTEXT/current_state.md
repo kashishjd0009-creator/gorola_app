@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-04
-- **Session Summary:** **Session 88 — Weather Mode Aesthetic Fix.** Hardened the "Weather Mode" UI shift by broadening CSS overrides to catch stubborn "Pine" and "Saffron/Amber" brand colors. Refined the `.weather-mode` selector to correctly target the `body` and children. Verified with 100% green `ci:quality` gate.
-- **Next Session Must Start With:** **Phase 2.17** — Store List Performance (Pagination).
+- **Session Summary:** **Session 91 — Advertisements Display.** Implemented the Advertisements backend API and frontend carousel. Added `GET /api/v1/promotions/advertisements` with active/approved filtering. Built a high-fidelity, auto-advancing carousel using Embla on the Home Page. Verified 100% green on all 336 API and 138 Web tests.
+- **Next Session Must Start With:** **Phase 2.18** — E2E Tests (Playwright).
 
 
 ---
@@ -20,7 +20,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                                                                                                            |
 | ------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub                                                                         |
-| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.16 done**, checkout, real-time status, saved addresses, order history, and weather mode shipped; next **2.17**. |
+| Phase 2 | Buyer Web Experience | 🟡 IN PROGRESS | **2.1–2.17 done**, checkout, real-time status, saved addresses, order history, advertisements and weather mode shipped; next **2.18 (E2E Tests)**. |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                                                                                                                           |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                                                                                                                           |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                                                                                                            |
@@ -114,17 +114,16 @@
 - **Session 83 (CI/CD Stabilization & Test Repair):** Resolved critical CI/CD failures caused by environment drift and foreign key constraints. Updated `api.ts` with a test-mode fallback to prevent `null` API instances in GitHub Actions. Repaired `cleanGraph` logic in `order.history.test.ts`, `order.rate.test.ts`, and `order.reorder.test.ts` to correctly order the deletion of `Advertisement`, `Offer`, and `Discount` records before `Store` records. Fixed "Ghost Feedback" UI bug in `order.controller.ts` by explicitly including `rating` fields in serialized responses. All quality gates are 100% green in both local and CI environments.
 - **Session 84 (Phase 2.15.2 Order Hardening & Address Snapshotting):** Implemented database-backed address snapshotting for orders. Refactored `OrderConfirmationPage` into a state-aware UI with 5 states (PLACED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED). Added dynamic delivery duration calculation and detailed address display block. Fixed flaky integration test cleanup logic in `order.history.test.ts` and `order.rate.test.ts` to include `Cart` and `CartItem` deletions. Verified with full quality gate pass.
 - **Session 85 (Scoped Mutation States & Vercel SPA Fix):** Resolved UI bug in `OrderHistoryPage` where multiple orders displayed simultaneous loading/disabled states during reorder or rating. Scoped mutation states to individual orders using `reorderMutation.variables`. Merged regression tests into the permanent `OrderHistoryPage.test.tsx` suite. Fixed SPA routing 404s on Vercel by adding a catch-all rewrite rule to `vercel.json`.
-- **Session 86 (Identity Hydration Fix):** Fixed bug where user's phone/name would revert to "Buyer" on page reload. Updated `TokenService` (Backend) to persist `name` in Redis alongside refresh tokens. Modified `rotateRefreshToken` to return the full user profile. Updated frontend `bootstrapBuyerAuthSession` to use `setBuyerSession` for full identity hydration during the startup refresh flow. Added regression tests in `buyer-token.service.test.ts`, `auth.service.test.ts`, `auth.controller.test.ts`, and `api.test.ts`.
-- **Session 87 (Weather Mode Implementation):** Implemented system-wide "Weather Mode" toggle controlled by a database feature flag. Created `FeatureFlagService` and `FeatureFlagController` following strict architecture. Implemented `useWeatherSync` polling hook (60s interval) and global CSS variable-driven UI shifts. Verified with TDD (Red-Green) and CI-level integration tests.
-- **Session 88 (Weather Mode Aesthetic Fix):** Resolved "stubborn green" issue by broadening CSS overrides in `globals.css`. Mapped Saffron/Amber accent tokens to Slate-Blue family when `.weather-mode` is active on `body`. Hardened selectors to ensure children correctly inherit theme shifts. Verified with full quality gate pass.
+- **Session 90 (Hero Section Final Polish):** Refined the Weather Mode Hero Section by shortening it to 85vh and darkening the background to Slate (matching the nav/location theme). Ensured high contrast for text and logo.
+- **Session 91 (Phase 2.17 Advertisements Display):** Implemented backend `GET /api/v1/promotions/advertisements` with active/approved/time-window filtering. Built `AdvertisementBanner` frontend carousel with Embla and auto-advance. Integrated banner into `HomePage`. Verified all quality gates GREEN.
 
 ---
 
 ## 🔨 In Progress Right Now
 
-**Current Task:** **Phase 2.17** — Store List Performance (Pagination) or Advertisements.
+**Current Task:** **Phase 2.18** — E2E Tests (Playwright).
 
-**Exact stopping point:** **Phase 2.16** complete: Weather Mode system-wide toggle implemented with polling sync and CSS transitions. All quality gates are 100% green.
+**Exact stopping point:** **Phase 2.17** complete: Advertisements API and frontend carousel implemented and integrated. All quality gates are 100% green.
 
 **Current Blocker:** None. All quality gates are 100% green.
 
@@ -783,19 +782,19 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.17 — Advertisements Display
 
-- [ ] API Contract Gate (mandatory for phase completion):
-  - [ ] Backend ads endpoint reachable at runtime: `GET /api/v1/promotions/advertisements`
-  - [ ] Backend integration tests cover approved/active/date-window filtering
-  - [ ] Route is registered in runtime app route graph
-  - [ ] Frontend tests validated against expected API envelope and carousel states
+- [x] API Contract Gate (mandatory for phase completion):
+  - [x] Backend ads endpoint reachable at runtime: `GET /api/v1/promotions/advertisements`
+  - [x] Backend integration tests cover approved/active/date-window filtering
+  - [x] Route is registered in runtime app route graph
+  - [x] Frontend tests validated against expected API envelope and carousel states
 
-- [ ] `src/components/buyer/AdvertisementBanner.tsx`
-  - [ ] Fetches `GET /api/v1/promotions/advertisements` (only approved, active, within date range)
-  - [ ] Carousel (Embla carousel) for multiple ads
-  - [ ] Shown on home page between categories and featured products
-  - [ ] Each ad: image, optional link
-  - [ ] Auto-advance every 5s, pause on hover
-- [ ] TESTS: renders active ads, skips unapproved/expired, carousel navigation
+- [x] `src/components/buyer/AdvertisementBanner.tsx`
+  - [x] Fetches `GET /api/v1/promotions/advertisements` (only approved, active, within date range)
+  - [x] Carousel (Embla carousel) for multiple ads
+  - [x] Shown on home page between categories and featured products
+  - [x] Each ad: image, optional link
+  - [x] Auto-advance every 5s, pause on hover
+- [x] TESTS: renders active ads, skips unapproved/expired, carousel navigation
 
 ### 2.18 — E2E Tests (Playwright)
 
@@ -1464,3 +1463,12 @@ _(Append new entries — never delete old ones)_
 - **Decision 022:** Switched to a "Color-Sweep" approach for theme shifting. Instead of only overriding primary variables, we now explicitly map the entire brand color spectrum (Pine, Saffron, Amber, Fog) to a cold Slate-Blue palette when in Weather Mode.
 - **Selector Hardening:** Fixed a selector mismatch where `body { ... }` was nested inside `.weather-mode`. Changed to `body.weather-mode` to ensure the body background and all inherited child variables update correctly.
 - **UI Consistency:** Explicitly targeted the `footer` and `nav` with specific overrides to prevent "stubborn" background colors caused by utility class specificity.
+
+**Session 89 (Hero Section Refinement):**
+- **UX Tuning:** Reduced `min-h-screen` to `min-h-[85vh]` in `HeroSection.tsx` to prevent the hero from occupying the entire viewport, improving scroll discoverability.
+- **Targeted Theming:** Switched Hero background to `bg-gorola-slate-mist` in weather mode, but preserved brand green/orange on buttons per user preference.
+
+**Session 90 (Slate Theme Harmonization):**
+- **Decision 023:** Aligned the Hero Section's weather mode background with the Navigation bar's Slate theme (`bg-gorola-slate`) to create a more cohesive and professional "atmospheric" look.
+- **Contrast Management:** Reverted hero text/logo to light variants (`gorola-fog`) for readability on the now-darker slate background.
+- **Logo Flexibility:** Refactored `GorolaMountainMark` to accept `color` props, removing hardcoded hex values and enabling theme-reactive SVG rendering.

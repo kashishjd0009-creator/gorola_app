@@ -23,8 +23,8 @@ import { BuyerCheckoutService } from "./modules/order/buyer-checkout.service.js"
 import { registerOrderRoutes } from "./modules/order/order.controller.js";
 import { OrderRepository } from "./modules/order/order.repository.js";
 import { OrderService } from "./modules/order/order.service.js";
-import { registerPromotionRoutes } from "./modules/promotion/discount.controller.js";
 import { DiscountRepository } from "./modules/promotion/discount.repository.js";
+import { registerPromotionRoutes } from "./modules/promotion/promotion.controller.js";
 import { UserRepository } from "./modules/user/user.repository.js";
 
 type RedisLikeRuntime = {

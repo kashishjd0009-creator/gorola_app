@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { getPrismaClient } from "../../lib/prisma.js";
 
+import { AdvertisementRepository } from "./advertisement.repository.js";
 import { DiscountRepository } from "./discount.repository.js";
 
 type SuccessEnvelope<T> = {
@@ -36,6 +37,20 @@ function success<T>(request: FastifyRequest, reply: FastifyReply, data: T): Succ
 
 export function registerPromotionRoutes(app: FastifyInstance): void {
   const discountRepo = new DiscountRepository(getPrismaClient());
+  const adRepo = new AdvertisementRepository(getPrismaClient());
+
+  app.get("/api/v1/promotions/advertisements", async (request, reply) => {
+    const ads = await adRepo.findActive();
+
+    const serializedAds = ads.map((ad) => ({
+      id: ad.id,
+      title: ad.title,
+      imageUrl: ad.imageUrl,
+      linkUrl: ad.linkUrl
+    }));
+
+    return success(request, reply, serializedAds);
+  });
 
   app.post("/api/v1/promotions/discounts/validate", async (request, reply) => {
     const parsed = validateDiscountSchema.safeParse(request.body);

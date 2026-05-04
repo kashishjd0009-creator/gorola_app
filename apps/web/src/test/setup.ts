@@ -29,6 +29,24 @@ Object.defineProperty(globalThis, "ResizeObserver", {
   value: ResizeObserverMock
 });
 
+class IntersectionObserverMock {
+  root = null;
+  rootMargin = "";
+  thresholds = [];
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+}
+
+Object.defineProperty(globalThis, "IntersectionObserver", {
+  writable: true,
+  configurable: true,
+  value: IntersectionObserverMock
+});
+
 if (globalThis.requestAnimationFrame === undefined) {
   globalThis.requestAnimationFrame = function (callback: (timestamp: number) => void): number {
     return setTimeout(() => {
