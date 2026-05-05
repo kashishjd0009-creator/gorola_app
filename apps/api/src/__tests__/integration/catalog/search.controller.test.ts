@@ -102,7 +102,10 @@ describe("Search controller", () => {
     expect(body.data.subCategories).toHaveLength(1); // Matches "Snacks"
     expect(body.data.products).toHaveLength(1); // Matches "Apple Snacks"
     
-    expect(body.data.subCategories[0]).toMatchObject({ name: "Snacks" });
+    expect(body.data.subCategories[0]).toMatchObject({ 
+      name: "Snacks",
+      categorySlug: "groceries"
+    });
     expect(body.data.products[0]).toMatchObject({ name: "Apple Snacks", price: "120.00", unit: "g" });
   });
 

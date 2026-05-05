@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-05
-- **Session Summary:** **Session 96 — UX Refinements & Wiring Hardening.** Completed W-011 (Product Detail Page Navigation). Enhanced the Product Detail Page with a premium 2-column layout and non-cropped images. Unified the "Add to Cart" behavior between grid and detail pages with real-time sync, including the ability to remove items by decreasing quantity to 0. Added item subtotal visibility in both the detail page and cart drawer for better price transparency.
-- **Next Session Must Start With:** Phase 2.19 — Wiring Hardening (W-012: Subcategory Search Results Route Fix).
+- **Session Summary:** **Session 96 — Catalog Wiring Hardening.** Completed W-011 (Product Detail Page Navigation) with premium UI and unified cart behavior. Completed W-012 (Subcategory Search Results Route Fix) by exposing `categorySlug` in search API and updating frontend navigation to the correct subcategory route. Verified both with strict TDD (integration + unit tests) and manual browser smoke tests.
+- **Next Session Must Start With:** Phase 2.19 — Wiring Hardening (W-013: Phone Numbers Logged as Plain Text).
 
 
 ---
@@ -921,22 +921,22 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 **Fix:** (1) Update `SearchRepository`/`SearchController` to include `categorySlug` on each subcategory item. (2) Update `SearchResultsPage` navigation to use the correct route.
 
-- [ ] **RED — Integration (`search.controller.test.ts`):**
-  - [ ] Test: `GET /api/v1/search?q=<term>` subcategory items include both `slug` AND `categorySlug` fields
-  - [ ] Run — confirm RED (`categorySlug` absent)
-- [ ] **GREEN — Backend (`search.repository.ts`, `search.controller.ts`):**
-  - [ ] Add `category { slug }` join to subcategory query
-  - [ ] Serialise `categorySlug: subCategory.category.slug` in response
-  - [ ] Run integration test — GREEN
-- [ ] **RED — Unit (`SearchResultsPage.test.tsx`):**
-  - [ ] Test: clicking a subcategory result calls `navigate('/categories/<categorySlug>/<subSlug>')`
-  - [ ] Run — confirm RED (currently navigates to `/search?q=...`)
-- [ ] **GREEN — Frontend (`SearchResultsPage.tsx`):**
-  - [ ] Add `categorySlug?: string` to `SearchResultItem` type
-  - [ ] Change `onClick` to `navigate('/categories/${sub.categorySlug}/${sub.slug}')`
-  - [ ] Fallback: if `categorySlug` is missing, navigate to `/search?q=${sub.name}` (safety net)
-  - [ ] Run unit test — GREEN
-- [ ] **Verification chain:** Search → click subcategory → lands on `/categories/groceries/dairy` → `SubCategoryPage` loads products correctly
+- [x] **RED — Integration (`search.controller.test.ts`):**
+  - [x] Test: `GET /api/v1/search?q=<term>` subcategory items include both `slug` AND `categorySlug` fields
+  - [x] Run — confirm RED (`categorySlug` absent)
+- [x] **GREEN — Backend (`search.repository.ts`, `search.controller.ts`):**
+  - [x] Add `category { slug }` join to subcategory query
+  - [x] Serialise `categorySlug: subCategory.category.slug` in response
+  - [x] Run integration test — GREEN
+- [x] **RED — Unit (`SearchResultsPage.test.tsx`):**
+  - [x] Test: clicking a subcategory result calls `navigate('/categories/<categorySlug>/<subSlug>')`
+  - [x] Run — confirm RED (currently navigates to `/search?q=...`)
+- [x] **GREEN — Frontend (`SearchResultsPage.tsx`):**
+  - [x] Add `categorySlug?: string` to `SearchResultItem` type
+  - [x] Change `onClick` to `navigate('/categories/${sub.categorySlug}/${sub.slug}')`
+  - [x] Fallback: if `categorySlug` is missing, navigate to `/search?q=${sub.name}` (safety net)
+  - [x] Run unit test — GREEN
+- [x] **Verification chain:** Search → click subcategory → lands on `/categories/groceries/dairy` → `SubCategoryPage` loads products correctly
 
 ---
 

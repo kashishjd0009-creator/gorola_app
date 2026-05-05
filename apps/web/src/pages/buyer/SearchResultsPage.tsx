@@ -10,6 +10,7 @@ type SearchResultItem = {
   id: string;
   name: string;
   slug?: string;
+  categorySlug?: string;
   imageUrl?: string | null;
   price?: string;
   unit?: string;
@@ -138,7 +139,13 @@ export function SearchResultsPage(): ReactElement {
                 {results.subCategories.map((sub) => (
                   <button
                     key={`sub-${sub.id}`}
-                    onClick={() => navigate(`/search?q=${sub.name}`)} // Simple approach for now
+                    onClick={() => {
+                      if (sub.categorySlug && sub.slug) {
+                        navigate(`/categories/${sub.categorySlug}/${sub.slug}`);
+                      } else {
+                        navigate(`/search?q=${sub.name}`);
+                      }
+                    }}
                     className="flex flex-col items-center justify-center rounded-2xl border border-gorola-pine/10 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
                   >
                     {sub.imageUrl ? (
