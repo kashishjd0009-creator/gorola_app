@@ -2,6 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import gsap from "gsap";
 import type { ReactElement } from "react";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { api } from "@/lib/api";
 import { enqueueCartVariantMutation } from "@/lib/cart-variant-mutation-queue";
@@ -18,6 +19,7 @@ type ProductGridProps = {
 
 type ProductListItem = {
   id: string;
+  productId: string;
   name: string;
   imageUrl: string;
   storeId: string;
@@ -295,17 +297,21 @@ export function ProductGrid(props: ProductGridProps): ReactElement {
             data-product-card="true"
             className="flex flex-col rounded-2xl border border-gorola-pine/10 bg-white p-4 shadow-sm"
           >
-            <div className="mb-3 h-32 w-full overflow-hidden rounded-xl bg-gorola-slate-mist/20">
-              <img
-                src={item.imageUrl}
-                alt={item.name}
-                className="h-full w-full object-cover transition-transform duration-500 hover:scale-110"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "https://picsum.photos/400/400?grayscale";
-                }}
-              />
-            </div>
-            <p className="font-dm-sans text-base font-semibold text-gorola-charcoal">{item.name}</p>
+            <Link to={`/products/${item.productId}`} className="group block cursor-pointer">
+              <div className="mb-3 h-32 w-full overflow-hidden rounded-xl bg-gorola-slate-mist/20">
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "https://picsum.photos/400/400?grayscale";
+                  }}
+                />
+              </div>
+              <p className="font-dm-sans text-base font-semibold text-gorola-charcoal group-hover:text-gorola-saffron transition-colors">
+                {item.name}
+              </p>
+            </Link>
             <p className="mt-1 font-dm-sans text-sm text-gorola-slate">{item.storeName}</p>
             <div className="mt-auto pt-2">
               <p className="font-dm-sans text-sm text-gorola-charcoal">Rs {item.price}</p>
@@ -322,7 +328,8 @@ export function ProductGrid(props: ProductGridProps): ReactElement {
                     <button
                       type="button"
                       aria-label={`Decrease ${item.name} quantity`}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const next = quantity - 1;
                         setQty(item.highestPricedVariantId, next);
                         syncQtyChange(item.highestPricedVariantId, next);
@@ -331,11 +338,14 @@ export function ProductGrid(props: ProductGridProps): ReactElement {
                     >
                       -
                     </button>
-                    <span className="min-w-4 text-center font-dm-sans text-sm text-gorola-charcoal">{quantity}</span>
+                    <span className="min-w-4 text-center font-dm-sans text-sm text-gorola-charcoal">
+                      {quantity}
+                    </span>
                     <button
                       type="button"
                       aria-label={`Increase ${item.name} quantity`}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const next = quantity + 1;
                         setQty(item.highestPricedVariantId, next);
                         syncQtyChange(item.highestPricedVariantId, next);
@@ -352,7 +362,8 @@ export function ProductGrid(props: ProductGridProps): ReactElement {
                 <button
                   type="button"
                   aria-label={`Add ${item.name} to cart`}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     addOrMergeLine({
                       productVariantId: item.highestPricedVariantId,
                       quantity: 1,

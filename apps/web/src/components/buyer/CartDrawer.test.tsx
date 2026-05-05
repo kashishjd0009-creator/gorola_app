@@ -81,7 +81,8 @@ describe("CartDrawer", () => {
     renderShell();
     expect(screen.getByText("Apple")).toBeInTheDocument();
     expect(screen.getByText("1kg")).toBeInTheDocument();
-    expect(screen.getByText("Rs 240.00")).toBeInTheDocument();
+    // Price appears twice: line item subtotal and cart subtotal
+    expect(screen.getAllByText("Rs 240.00")).toHaveLength(2);
     expect(screen.getByText("Rs 30.00")).toBeInTheDocument();
     expect(screen.getByText("Rs 270.00")).toBeInTheDocument();
   });

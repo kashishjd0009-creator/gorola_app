@@ -51,9 +51,11 @@ export function ProductDetailPage(): ReactElement {
   const { id } = useParams<{ id: string }>();
   const accessToken = useAuthStore((state) => state.accessToken);
   const addOrMergeLine = useCartStore((state) => state.addOrMergeLine);
+  const setCartQty = useCartStore((state) => state.setQty);
+  const cartLines = useCartStore((state) => state.lines);
   const containerRef = useRef<HTMLElement | null>(null);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
-  const [quantity, setQuantity] = useState(1);
+  const [localQuantity, setLocalQuantity] = useState(1);
 
   const query = useQuery({
     queryKey: ["buyer-product-detail", id ?? null],
@@ -65,9 +67,22 @@ export function ProductDetailPage(): ReactElement {
     }
   });
 
+  const variants = query.data?.variants ?? [];
+  const selected = variants[selectedVariantIndex];
+  const cartItem = cartLines.find((l) => l.productVariantId === selected?.id);
+  const quantityInCart = cartItem?.quantity ?? 0;
+  const prevQuantityInCart = useRef(quantityInCart);
+
+  useEffect(() => {
+    if (prevQuantityInCart.current > 0 && quantityInCart === 0) {
+      setLocalQuantity(1);
+    }
+    prevQuantityInCart.current = quantityInCart;
+  }, [quantityInCart]);
+
   useEffect(() => {
     setSelectedVariantIndex(0);
-    setQuantity(1);
+    setLocalQuantity(1);
   }, [query.data?.id]);
 
   useEffect(() => {
@@ -79,10 +94,10 @@ export function ProductDetailPage(): ReactElement {
       return;
     }
     if (selected.stockQty <= 0) {
-      setQuantity(0);
+      setLocalQuantity(0);
       return;
     }
-    setQuantity((current) => Math.min(Math.max(current, 1), selected.stockQty));
+    setLocalQuantity((current) => Math.min(Math.max(current, 1), selected.stockQty));
   }, [query.data, selectedVariantIndex]);
 
   useEffect(() => {
@@ -109,94 +124,169 @@ export function ProductDetailPage(): ReactElement {
     return <p className="font-dm-sans text-sm text-gorola-charcoal">Could not load product details</p>;
   }
 
-  const variants = query.data.variants;
-  const selected = variants[selectedVariantIndex] ?? variants[0];
+  const activeQuantity = quantityInCart > 0 ? quantityInCart : localQuantity;
   const maxQty = Math.max(selected?.stockQty ?? 0, 0);
-  const canAddToCart = selected !== undefined && selected.stockQty > 0 && quantity > 0;
+  const canAddToCart = selected !== undefined && selected.stockQty > 0 && localQuantity > 0;
+
+  const itemTotal = (Number(selected?.price ?? 0) * activeQuantity).toFixed(2);
 
   return (
-    <section ref={containerRef} className="space-y-4 rounded-2xl bg-white/70 p-6">
-      <h1 className="font-playfair text-3xl text-gorola-charcoal">{query.data.name}</h1>
-      <p className="font-dm-sans text-sm text-gorola-slate">{query.data.store.name}</p>
-      <p className="font-dm-sans text-sm text-gorola-slate">{query.data.store.phone}</p>
-      <p className="font-dm-sans text-sm text-gorola-charcoal">{query.data.description}</p>
-      <div className="flex flex-wrap gap-2">
-        {variants.map((variant, index) => (
-          <button
-            key={variant.id}
-            type="button"
-            onClick={() => {
-              setSelectedVariantIndex(index);
-            }}
-            className="rounded-full border border-gorola-pine/20 px-3 py-1 font-dm-sans text-sm text-gorola-charcoal"
-          >
-            {variant.label}
-          </button>
-        ))}
-      </div>
-      <p className="font-dm-sans text-base font-semibold text-gorola-charcoal">Rs {selected?.price ?? "0.00"}</p>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Decrease quantity"
-          onClick={() => {
-            setQuantity((current) => {
-              if (maxQty <= 0) {
-                return 0;
-              }
-              return Math.max(1, current - 1);
-            });
+    <section ref={containerRef} className="grid gap-8 rounded-3xl bg-white/80 p-8 shadow-xl md:grid-cols-2">
+      <div className="flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-gorola-slate-mist/10">
+        <img
+          src={query.data.imageUrl}
+          alt={query.data.name}
+          className="h-full w-full object-contain p-4"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = "https://picsum.photos/600/600?grayscale";
           }}
-          disabled={maxQty <= 0 || quantity <= 1}
-          className="h-8 w-8 rounded-full border border-gorola-pine/20 text-sm font-semibold"
-        >
-          -
-        </button>
-        <span className="font-dm-sans text-sm text-gorola-charcoal">{quantity}</span>
-        <button
-          type="button"
-          aria-label="Increase quantity"
-          onClick={() => {
-            if (maxQty <= 0) {
-              return;
-            }
-            setQuantity((current) => Math.min(current + 1, maxQty));
-          }}
-          disabled={maxQty <= 0 || quantity >= maxQty}
-          className="h-8 w-8 rounded-full border border-gorola-pine/20 text-sm font-semibold"
-        >
-          +
-        </button>
+        />
       </div>
-      <button
-        type="button"
-        aria-label="Add to cart"
-        onClick={() => {
-          if (selected === undefined || api === null || selected.stockQty <= 0 || quantity <= 0) {
-            return;
-          }
-          addOrMergeLine({
-            productVariantId: selected.id,
-            quantity,
-            productName: query.data.name,
-            unitPrice: Number(selected.price),
-            variantLabel: selected.label
-          });
-          if (accessToken === null) {
-            return;
-          }
-          void enqueueCartVariantMutation(selected.id, async () => {
-            await api!.post("/api/v1/cart/items", {
-              productVariantId: selected.id,
-              quantity
-            });
-          });
-        }}
-        disabled={!canAddToCart}
-        className="w-full rounded-full bg-gorola-saffron px-5 py-2 font-dm-sans text-sm font-semibold text-gorola-charcoal sm:w-auto"
-      >
-        Add to cart
-      </button>
+      <div className="flex flex-col space-y-4">
+        <div>
+          <h1 className="font-playfair text-4xl font-bold text-gorola-charcoal">{query.data.name}</h1>
+          <p className="mt-2 font-dm-sans text-lg font-medium text-gorola-pine">{query.data.store.name}</p>
+          <p className="font-dm-sans text-sm text-gorola-slate">{query.data.store.phone}</p>
+        </div>
+        
+        <div className="h-px w-full bg-gorola-slate-mist/30" />
+        
+        <p className="font-dm-sans text-base leading-relaxed text-gorola-charcoal/80">
+          {query.data.description}
+        </p>
+
+        <div className="flex flex-wrap gap-2 py-2">
+          {variants.map((variant, index) => (
+            <button
+              key={variant.id}
+              type="button"
+              onClick={() => {
+                setSelectedVariantIndex(index);
+              }}
+              className={`rounded-full border px-4 py-1.5 font-dm-sans text-sm transition-all duration-200 ${
+                selectedVariantIndex === index
+                  ? "border-gorola-saffron bg-gorola-saffron/10 text-gorola-charcoal font-semibold"
+                  : "border-gorola-pine/20 text-gorola-slate hover:border-gorola-pine/40"
+              }`}
+            >
+              {variant.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-auto space-y-6 pt-4">
+          <div className="flex items-baseline gap-3">
+            <p className="font-dm-sans text-3xl font-bold text-gorola-charcoal">
+              Rs {selected?.price ?? "0.00"}
+            </p>
+            {activeQuantity > 1 && (
+              <p className="font-dm-sans text-lg text-gorola-slate">
+                (Total: Rs {itemTotal})
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label="Decrease quantity"
+                onClick={() => {
+                  if (quantityInCart > 0) {
+                    const next = quantityInCart - 1;
+                    setCartQty(selected!.id, next);
+                    if (api !== null && accessToken !== null) {
+                      void enqueueCartVariantMutation(selected!.id, async () => {
+                        if (next <= 0) {
+                          await api!.delete(`/api/v1/cart/items/${selected!.id}`);
+                        } else {
+                          await api!.put(`/api/v1/cart/items/${selected!.id}`, {
+                            quantity: next
+                          });
+                        }
+                      });
+                    }
+                  } else {
+                    setLocalQuantity((current) => Math.max(1, current - 1));
+                  }
+                }}
+                disabled={maxQty <= 0 || (quantityInCart === 0 && localQuantity <= 1) || activeQuantity <= 0}
+                className="h-10 w-10 rounded-full border border-gorola-pine/20 text-lg font-semibold transition-colors hover:bg-gorola-pine/5 disabled:opacity-30"
+              >
+                -
+              </button>
+              <span className="min-w-[2rem] text-center font-dm-sans text-lg font-bold text-gorola-charcoal">
+                {activeQuantity}
+              </span>
+              <button
+                type="button"
+                aria-label="Increase quantity"
+                onClick={() => {
+                  if (quantityInCart > 0) {
+                    const next = quantityInCart + 1;
+                    if (next > maxQty) return;
+                    setCartQty(selected!.id, next);
+                    if (api !== null && accessToken !== null) {
+                      void enqueueCartVariantMutation(selected!.id, async () => {
+                        await api!.put(`/api/v1/cart/items/${selected!.id}`, {
+                          quantity: next
+                        });
+                      });
+                    }
+                  } else {
+                    setLocalQuantity((current) => Math.min(current + 1, maxQty));
+                  }
+                }}
+                disabled={maxQty <= 0 || activeQuantity >= maxQty}
+                className="h-10 w-10 rounded-full border border-gorola-pine/20 text-lg font-semibold transition-colors hover:bg-gorola-pine/5 disabled:opacity-30"
+              >
+                +
+              </button>
+            </div>
+
+            {quantityInCart === 0 ? (
+              <button
+                type="button"
+                aria-label="Add to cart"
+                onClick={() => {
+                  if (selected === undefined || api === null || selected.stockQty <= 0 || localQuantity <= 0) {
+                    return;
+                  }
+                  addOrMergeLine({
+                    productVariantId: selected.id,
+                    quantity: localQuantity,
+                    productName: query.data.name,
+                    unitPrice: Number(selected.price),
+                    variantLabel: selected.label
+                  });
+                  if (accessToken === null) {
+                    return;
+                  }
+                  void enqueueCartVariantMutation(selected.id, async () => {
+                    await api!.post("/api/v1/cart/items", {
+                      productVariantId: selected.id,
+                      quantity: localQuantity
+                    });
+                  });
+                }}
+                disabled={!canAddToCart}
+                className="flex-1 rounded-full bg-gorola-saffron px-8 py-3 font-dm-sans text-base font-bold text-gorola-charcoal shadow-lg transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 sm:flex-none"
+              >
+                Add to cart
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  useCartStore.getState().open();
+                }}
+                className="flex-1 rounded-full bg-gorola-pine px-8 py-3 font-dm-sans text-base font-bold text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-95 sm:flex-none"
+              >
+                View in Cart
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

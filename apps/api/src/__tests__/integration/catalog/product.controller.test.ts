@@ -141,6 +141,7 @@ describe("Product controller", () => {
         items: expect.arrayContaining([
           expect.objectContaining({
             id: expect.any(String),
+            productId: expect.any(String),
             name: expect.any(String),
             storeId: expect.any(String),
             storeName: expect.any(String),

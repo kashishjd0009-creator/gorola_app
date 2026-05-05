@@ -84,6 +84,11 @@ describe("ProductDetailPage", () => {
 
     renderPage();
     expect(await screen.findByRole("heading", { name: "Apple" })).toBeInTheDocument();
+    
+    const img = screen.getByAltText("Apple");
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("src", "https://cdn.example.com/apple.jpg");
+
     expect(screen.getByRole("button", { name: "500g" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "1kg" })).toBeInTheDocument();
     expect(screen.getByText("Rs 120.00")).toBeInTheDocument();
@@ -232,5 +237,46 @@ describe("ProductDetailPage", () => {
     expect(addButton).toBeDisabled();
     fireEvent.click(addButton);
     expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it("resets local quantity to 1 after item is removed from cart", async () => {
+    getMock.mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          id: "p1",
+          name: "Apple",
+          description: "Fresh apple",
+          imageUrl: "https://cdn.example.com/apple.jpg",
+          store: { id: "s1", name: "Peak Mart", phone: "+919111111111" },
+          variants: [{ id: "v1", label: "500g", price: "120.00", unit: "g", stockQty: 5 }]
+        }
+      }
+    });
+    postMock.mockResolvedValue({ data: { success: true } });
+
+    renderPage();
+    await screen.findByRole("heading", { name: "Apple" });
+
+    // 1. Set local quantity to 3 and add to cart
+    fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }));
+    fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }));
+    expect(screen.getByText("3")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
+
+    // 2. Button should now be "View in Cart" (or just verify the item is in cart)
+    expect(await screen.findByRole("button", { name: "View in Cart" })).toBeInTheDocument();
+
+    // 3. Decrease quantity to 0 (3 clicks)
+    const decreaseButton = screen.getByRole("button", { name: "Decrease quantity" });
+    fireEvent.click(decreaseButton);
+    fireEvent.click(decreaseButton);
+    fireEvent.click(decreaseButton);
+
+    // 4. Item should be removed, "Add to cart" button should reappear
+    expect(await screen.findByRole("button", { name: "Add to cart" })).toBeInTheDocument();
+
+    // 5. Verify local quantity is reset to 1, not stuck at 3 or 0
+    expect(screen.getByText("1")).toBeInTheDocument();
   });
 });

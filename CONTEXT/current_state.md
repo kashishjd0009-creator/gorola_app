@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-05
-- **Session Summary:** **Session 95 — Catalog Hardening & Cart Fix.** Resolved critical "Cart Wipe" bug during guest-to-user checkout transition by implementing reconciliation logic. Hardened all catalog grids (Category, SubCategory, Product) with visual asset (image) assertions in integration tests. Resolved foreign key constraint "hell" in API integration tests caused by the 3-tier hierarchy. Verified everything with `ci:quality` green.
-- **Next Session Must Start With:** **Phase 2.19** — Wiring Hardening (close all phantom-feature gaps before adding new features).
+- **Session Summary:** **Session 96 — UX Refinements & Wiring Hardening.** Completed W-011 (Product Detail Page Navigation). Enhanced the Product Detail Page with a premium 2-column layout and non-cropped images. Unified the "Add to Cart" behavior between grid and detail pages with real-time sync, including the ability to remove items by decreasing quantity to 0. Added item subtotal visibility in both the detail page and cart drawer for better price transparency.
+- **Next Session Must Start With:** Phase 2.19 — Wiring Hardening (W-012: Subcategory Search Results Route Fix).
 
 
 ---
@@ -893,25 +893,25 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 **Root cause:** `ProductDetailPage.tsx` and route `/products/:id` both exist. `ProductGrid.tsx` renders product cards with an "Add" button but zero `<Link>` elements. A buyer can never navigate to a product's detail page from the UI.
 
-**Fix:** Wrap each card's image + title in `<Link to={/products/${item.productId}}>`. Keep the "Add" button as a standalone `<button>` with `e.stopPropagation()`. Requires verifying the list API exposes `productId` (the `Product.id`, not a `ProductVariant.id`).
+**Fix:** Wrap each card's image + title in `<Link to={/products/${item.productId}}>`. Keep the "Add" button as a standalone `<button>` with `e.stopPropagation()`. Requires verifying the list API exposes `productId` (the `Product.id`, not a `ProductVariant.id`). Added product image to `ProductDetailPage` for improved aesthetics. Unified "Add to Cart" behavior across Grid and Detail pages with real-time sync and item-total transparency.
 
-- [ ] **RED — Unit (`ProductGrid.test.tsx`):**
-  - [ ] Test: each product card renders a link to `/products/<productId>`
-  - [ ] Test: clicking the "Add" button does NOT trigger navigation
-  - [ ] Run — confirm RED (no link found currently)
-- [ ] **RED — Integration (`product.controller.test.ts`):**
-  - [ ] Test: `GET /api/v1/products` items include a top-level `productId` field (the `Product.id`)
-  - [ ] Audit `listForBuyer()` — confirm whether current `id` on list items is the product id or a variant id
-  - [ ] Run — confirm RED if `productId` is absent from list response
-- [ ] **GREEN — Backend (`product.repository.ts`, `product.controller.ts`):**
-  - [ ] If current `id` on list items is a variant id, expose `productId: product.id` explicitly in the serialised response
-  - [ ] Run integration test — GREEN
-- [ ] **GREEN — Frontend (`ProductGrid.tsx`):**
-  - [ ] Add `productId: string` to the `ProductListItem` type
-  - [ ] Wrap card image + name in `<Link to={/products/${item.productId}}>`
-  - [ ] Add `e.stopPropagation()` to the "Add" `onClick`
-  - [ ] Run unit test — GREEN
-- [ ] **Verification chain:** Product grid → click card image/title → navigates to `/products/<id>` → `ProductDetailPage` renders with variants and "Add to cart"
+- [x] **RED — Unit (`ProductGrid.test.tsx`):**
+  - [x] Test: each product card renders a link to `/products/<productId>`
+  - [x] Test: clicking the "Add" button does NOT trigger navigation
+  - [x] Run — confirm RED (no link found currently)
+- [x] **RED — Integration (`product.controller.test.ts`):**
+  - [x] Test: `GET /api/v1/products` items include a top-level `productId` field (the `Product.id`)
+  - [x] Audit `listForBuyer()` — confirm whether current `id` on list items is the product id or a variant id
+  - [x] Run — confirm RED if `productId` is absent from list response
+- [x] **GREEN — Backend (`product.repository.ts`, `product.controller.ts`):**
+  - [x] If current `id` on list items is a variant id, expose `productId: product.id` explicitly in the serialised response
+  - [x] Run integration test — GREEN
+- [x] **GREEN — Frontend (`ProductGrid.tsx`):**
+  - [x] Add `productId: string` to the `ProductListItem` type
+  - [x] Wrap card image + name in `<Link to={/products/${item.productId}}>`
+  - [x] Add `e.stopPropagation()` to the "Add" `onClick`
+  - [x] Run unit test — GREEN
+- [x] **Verification chain:** Product grid → click card image/title → navigates to `/products/<id>` → `ProductDetailPage` renders with variants and "Add to cart"
 
 ---
 

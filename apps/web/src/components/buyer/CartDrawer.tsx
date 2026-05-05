@@ -96,8 +96,15 @@ export function CartDrawer(): ReactElement | null {
             <div className="space-y-4">
               {lines.map((line) => (
                 <article key={line.productVariantId} className="rounded-2xl border border-gorola-pine/10 p-4 shadow-sm">
-                  <p className="font-dm-sans text-sm font-bold text-gorola-charcoal">{line.productName ?? "Item"}</p>
-                  <p className="font-dm-sans text-xs text-gorola-slate">{line.variantLabel ?? "Variant"}</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-dm-sans text-sm font-bold text-gorola-charcoal">{line.productName ?? "Item"}</p>
+                      <p className="font-dm-sans text-xs text-gorola-slate">{line.variantLabel ?? "Variant"}</p>
+                    </div>
+                    <p className="font-dm-sans text-sm font-bold text-gorola-charcoal">
+                      Rs {((line.unitPrice ?? 0) * line.quantity).toFixed(2)}
+                    </p>
+                  </div>
                   <div className="mt-3 flex items-center gap-3">
                     <button
                       type="button"

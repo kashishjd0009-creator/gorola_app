@@ -205,6 +205,7 @@ export class ProductRepository {
       .filter((row) => row.variants.length > 0)
       .map((row) => ({
         id: row.id,
+        productId: row.id,
         name: row.name,
         imageUrl: row.imageUrl,
         storeId: row.store.id,
