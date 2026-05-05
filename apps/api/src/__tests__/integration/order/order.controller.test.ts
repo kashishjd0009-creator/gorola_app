@@ -570,4 +570,73 @@ describe("POST /api/v1/orders (buyer checkout)", () => {
     await server.close();
     delete process.env.GOROLA_TEST_OTP;
   });
+
+  it("honours X-Idempotency-Key to prevent duplicate order placement (W-014 RED)", async () => {
+    process.env.GOROLA_TEST_OTP = "111222";
+    // We need real Redis for this or a mock that we can check. 
+    // The plan says integration test should run — confirming RED.
+    // Since createServer({ disableRedis: true }) is used in other tests, 
+    // we'll see if the controller even looks at the header.
+    const server = createServer({
+      disableRedis: false, // Use real redis if available, or it will fallback to mock/fail if not configured
+      registerRoutes: registerAppRoutes
+    });
+    const { accessToken } = await getBuyerAccessToken(server, "+919988776099");
+
+    const addr = await db.address.create({
+      data: {
+        userId: userRow.id,
+        label: "Home",
+        landmarkDescription: "Near Clock Tower landmark area min ten"
+      }
+    });
+
+    const idempotencyKey = `key-${Date.now()}`;
+    const payload = {
+      addressId: addr.id,
+      addressMode: "saved",
+      paymentMethod: "COD"
+    };
+
+    // First request
+    await cartRepo.addItem(userRow.id, variant.id, 1);
+    const res1 = await server.inject({
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "x-idempotency-key": idempotencyKey
+      },
+      method: "POST",
+      payload,
+      url: "/api/v1/orders"
+    });
+    expect(res1.statusCode).toBe(200);
+    const order1 = (res1.json() as { data: { id: string } }).data.id;
+
+    // Second request (identical)
+    // In the current buggy state, this will try to place another order. 
+    // Since the cart is cleared by res1, res2 might fail with "Cart is empty" or create a second order if cart wasn't cleared.
+    // Actually, res1 clears the cart. So res2 should fail with 400 Cart Empty.
+    // IF idempotency worked, res2 would return the SAME order1.
+    const res2 = await server.inject({
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "x-idempotency-key": idempotencyKey
+      },
+      method: "POST",
+      payload,
+      url: "/api/v1/orders"
+    });
+
+    // In RED state, this will likely be 400 because cart is empty, or 200 with a NEW order if cart wasn't cleared (unlikely here).
+    // The goal is that it SHOULD be 200 and return the SAME order id.
+    expect(res2.statusCode).toBe(200);
+    const order2 = (res2.json() as { data: { id: string } }).data.id;
+    expect(order2).toBe(order1);
+
+    const orderCount = await db.order.count({ where: { userId: userRow.id } });
+    expect(orderCount).toBe(1);
+
+    await server.close();
+    delete process.env.GOROLA_TEST_OTP;
+  });
 });

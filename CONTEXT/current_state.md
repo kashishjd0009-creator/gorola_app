@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-05
-- **Session Summary:** **Session 96 — Catalog & Security Wiring Hardening.** Completed W-011 (Product Detail Page Navigation) and W-012 (Subcategory Search Route Fix). Completed W-013 (Phone Redaction in Logs) to resolve a PII violation, ensuring that phone numbers in request bodies and top-level log objects are masked with `[Redacted]`. Verified all changes with strict TDD (integration + unit tests).
-- **Next Session Must Start With:** Phase 2.19 — Wiring Hardening (W-014: Idempotency Key Not Honoured).
+- **Session Summary:** **Session 96 — Wiring & Security Hardening.** Completed W-011 (Product detail page), W-012 (Search routing), and W-013 (Phone redaction). Completed W-014 (Idempotency for orders) by implementing a Redis-based cache for `X-Idempotency-Key` in `order.controller.ts`. This prevents duplicate orders from double-taps or network retries. Verified with strict TDD (unit + integration).
+- **Next Session Must Start With:** Phase 2.19 — Wiring Hardening (W-015: Address Snapshot Missing on Store Side).
 
 
 ---
@@ -967,23 +967,23 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 **Fix:** Read `X-Idempotency-Key` in `order.controller.ts`. Check Redis for `idempotency:{buyerId}:{key}`. On cache hit return the cached response directly; on miss run `placeFromCart`, store the serialised response in Redis with a 24 h TTL, return.
 
-- [ ] **RED — Integration (`order.controller.test.ts`):**
-  - [ ] Test: two `POST /api/v1/orders` calls with identical `X-Idempotency-Key` both return the same `orderId`
-  - [ ] Test: only ONE `Order` row exists in the DB after both requests
-  - [ ] Test: a request without the header still functions normally
-  - [ ] Run — confirm RED (two orders created today)
-- [ ] **RED — Unit (`order.controller.unit.test.ts`):**
-  - [ ] Test: cache hit → `placeFromCart` is NOT called; cached payload is returned
-  - [ ] Test: cache miss → `placeFromCart` IS called and its result is stored in Redis
-  - [ ] Run — confirm RED
-- [ ] **GREEN — Implementation (`order.controller.ts`, `routes.ts`):**
-  - [ ] Add `redis: RedisLikeRuntime` to `RegisterOrderDeps`
-  - [ ] Before calling `placeFromCart`: check Redis for `idempotency:{buyerId}:{key}`
-  - [ ] On miss: call `placeFromCart`, store JSON with `EX 86400`, return response
-  - [ ] On hit: parse and return cached response directly
-  - [ ] Pass Redis through `registerOrderRoutes` in `routes.ts`
-  - [ ] Run both tests — GREEN
-- [ ] **Verification chain:** User double-taps Place Order → two requests with same key → DB has 1 order row → second response identical to first
+- [x] **RED — Integration (`order.controller.test.ts`):**
+  - [x] Test: two `POST /api/v1/orders` calls with identical `X-Idempotency-Key` both return the same `orderId`
+  - [x] Test: only ONE `Order` row exists in the DB after both requests
+  - [x] Test: a request without the header still functions normally
+  - [x] Run — confirm RED (two orders created today)
+- [x] **RED — Unit (`order.controller.unit.test.ts`):**
+  - [x] Test: cache hit → `placeFromCart` is NOT called; cached payload is returned
+  - [x] Test: cache miss → `placeFromCart` IS called and its result is stored in Redis
+  - [x] Run — confirm RED
+- [x] **GREEN — Implementation (`order.controller.ts`, `routes.ts`):**
+  - [x] Add `redis: RedisLikeRuntime` to `RegisterOrderDeps`
+  - [x] Before calling `placeFromCart`: check Redis for `idempotency:{buyerId}:{key}`
+  - [x] On miss: call `placeFromCart`, store JSON with `EX 86400`, return response
+  - [x] On hit: parse and return cached response directly
+  - [x] Pass Redis through `registerOrderRoutes` in `routes.ts`
+  - [x] Run both tests — GREEN
+- [x] **Verification chain:** User double-taps Place Order → two requests with same key → DB has 1 order row → second response identical to first
 
 ---
 

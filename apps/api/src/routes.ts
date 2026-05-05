@@ -130,7 +130,8 @@ export function registerAppRoutes(app: FastifyInstance): void {
     buyerCheckout,
     cart: checkoutCartRepo,
     orders: orderRepoOrders,
-    tokenVerifier: tokenService
+    tokenVerifier: tokenService,
+    redis
   });
 
   registerBuyerAddressRoutes(app, {

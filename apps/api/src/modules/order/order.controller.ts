@@ -93,6 +93,10 @@ type RegisterOrderDeps = {
   cart: CartRepository;
   orders: OrderRepository;
   tokenVerifier: AccessTokenVerifier;
+  redis: {
+    get: (key: string) => Promise<string | null>;
+    set: (key: string, value: string, mode: "EX", ttlSeconds: number) => Promise<void>;
+  } | null;
 };
 
 export function registerOrderRoutes(app: FastifyInstance, deps: RegisterOrderDeps): void {
@@ -115,8 +119,19 @@ export function registerOrderRoutes(app: FastifyInstance, deps: RegisterOrderDep
       if (!buyerId) {
         throw new UnauthorizedError("Buyer subject missing");
       }
+
+      const idempotencyKey = request.headers["x-idempotency-key"]?.toString();
+      const cacheKey = idempotencyKey ? `idempotency:${buyerId}:${idempotencyKey}` : null;
+
+      if (cacheKey && deps.redis) {
+        const cached = await deps.redis.get(cacheKey);
+        if (cached) {
+          return reply.send(JSON.parse(cached));
+        }
+      }
+
       const placed = await deps.buyerCheckout.placeFromCart(buyerId, parsed);
-      return success(
+      const responsePayload = success(
         request,
         reply,
         serializeOrderResponse(placed.order, {
@@ -124,6 +139,13 @@ export function registerOrderRoutes(app: FastifyInstance, deps: RegisterOrderDep
           code: placed.appliedDiscountCode
         })
       );
+
+      if (cacheKey && deps.redis) {
+        // Cache for 24 hours
+        await deps.redis.set(cacheKey, JSON.stringify(responsePayload), "EX", 86400);
+      }
+
+      return responsePayload;
     }
   );
 
