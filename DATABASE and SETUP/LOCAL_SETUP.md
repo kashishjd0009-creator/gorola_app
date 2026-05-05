@@ -100,6 +100,7 @@ The app will be available at:
 ## 6. Database Management (Prisma Studio)
 
 To view and edit your local database data via a GUI, you can use Prisma Studio:
+(Note: This follows the env values inside apps/api/.env not the .env file in the root directory)
 
 ```powershell
 pnpm --filter @gorola/api exec prisma studio

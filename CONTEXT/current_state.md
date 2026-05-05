@@ -10,7 +10,7 @@
 
 - **Date:** 2026-05-05
 - **Session Summary:** **Session 95 — Catalog Hardening & Cart Fix.** Resolved critical "Cart Wipe" bug during guest-to-user checkout transition by implementing reconciliation logic. Hardened all catalog grids (Category, SubCategory, Product) with visual asset (image) assertions in integration tests. Resolved foreign key constraint "hell" in API integration tests caused by the 3-tier hierarchy. Verified everything with `ci:quality` green.
-- **Next Session Must Start With:** **Phase 2.19** — Profile Page & Saved Addresses.
+- **Next Session Must Start With:** **Phase 2.19** — Wiring Hardening (close all phantom-feature gaps before adding new features).
 
 
 ---
@@ -20,7 +20,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                                                                                                            |
 | ------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub                                                                         |
-| Phase 2 | Buyer Web Experience | ✅ COMPLETE    | **All items 2.1–2.18 complete**, including sub-categories, global search, and cart hardening. Transitioning to **Phase 2.19 (Profile Page)**. |
+| Phase 2 | Buyer Web Experience | 🔄 IN PROGRESS | **2.1–2.18 complete**. **Phase 2.19 (Wiring Hardening)** in progress — 8 phantom-feature gaps being closed before Profile Page (2.20). |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                                                                                                                           |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                                                                                                                           |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                                                                                                            |
@@ -880,25 +880,239 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ---
 
-### 2.19 — Profile Page
+### 2.19 — Wiring Hardening (Strict TDD — All Phantom Features Closed)
+
+> **Purpose:** A post-2.18 audit identified 8 features marked "complete" in the docs that are either unreachable, hardcoded, or entirely absent from the runtime. This phase closes every gap before any new feature work begins. No item is marked done until: (a) a RED test proves the bug exists, (b) a GREEN implementation makes it pass, AND (c) an integration test proves the full path through the live route graph. Writing only a mocked unit test and calling it done is **not acceptable** here.
+
+> [!IMPORTANT]
+> **TDD rule for this phase:** Every fix needs **at minimum** one unit/component test AND one integration test. The integration test must prove the full path: UI trigger → API route → service → DB → response → UI state.
+
+---
+
+#### W-011 — Product Detail Page Unreachable (No Navigation Links)
+
+**Root cause:** `ProductDetailPage.tsx` and route `/products/:id` both exist. `ProductGrid.tsx` renders product cards with an "Add" button but zero `<Link>` elements. A buyer can never navigate to a product's detail page from the UI.
+
+**Fix:** Wrap each card's image + title in `<Link to={/products/${item.productId}}>`. Keep the "Add" button as a standalone `<button>` with `e.stopPropagation()`. Requires verifying the list API exposes `productId` (the `Product.id`, not a `ProductVariant.id`).
+
+- [ ] **RED — Unit (`ProductGrid.test.tsx`):**
+  - [ ] Test: each product card renders a link to `/products/<productId>`
+  - [ ] Test: clicking the "Add" button does NOT trigger navigation
+  - [ ] Run — confirm RED (no link found currently)
+- [ ] **RED — Integration (`product.controller.test.ts`):**
+  - [ ] Test: `GET /api/v1/products` items include a top-level `productId` field (the `Product.id`)
+  - [ ] Audit `listForBuyer()` — confirm whether current `id` on list items is the product id or a variant id
+  - [ ] Run — confirm RED if `productId` is absent from list response
+- [ ] **GREEN — Backend (`product.repository.ts`, `product.controller.ts`):**
+  - [ ] If current `id` on list items is a variant id, expose `productId: product.id` explicitly in the serialised response
+  - [ ] Run integration test — GREEN
+- [ ] **GREEN — Frontend (`ProductGrid.tsx`):**
+  - [ ] Add `productId: string` to the `ProductListItem` type
+  - [ ] Wrap card image + name in `<Link to={/products/${item.productId}}>`
+  - [ ] Add `e.stopPropagation()` to the "Add" `onClick`
+  - [ ] Run unit test — GREEN
+- [ ] **Verification chain:** Product grid → click card image/title → navigates to `/products/<id>` → `ProductDetailPage` renders with variants and "Add to cart"
+
+---
+
+#### W-012 — Subcategory Click in Search Results Uses Wrong Route
+
+**Root cause:** `SearchResultsPage.tsx` line 141: `navigate('/search?q=${sub.name}')`. Clicking a subcategory result navigates back to search with its name as the query, not to `/categories/:categorySlug/:subSlug`. The search API also does not return `categorySlug` on subcategory results, so the correct URL cannot be built.
+
+**Fix:** (1) Update `SearchRepository`/`SearchController` to include `categorySlug` on each subcategory item. (2) Update `SearchResultsPage` navigation to use the correct route.
+
+- [ ] **RED — Integration (`search.controller.test.ts`):**
+  - [ ] Test: `GET /api/v1/search?q=<term>` subcategory items include both `slug` AND `categorySlug` fields
+  - [ ] Run — confirm RED (`categorySlug` absent)
+- [ ] **GREEN — Backend (`search.repository.ts`, `search.controller.ts`):**
+  - [ ] Add `category { slug }` join to subcategory query
+  - [ ] Serialise `categorySlug: subCategory.category.slug` in response
+  - [ ] Run integration test — GREEN
+- [ ] **RED — Unit (`SearchResultsPage.test.tsx`):**
+  - [ ] Test: clicking a subcategory result calls `navigate('/categories/<categorySlug>/<subSlug>')`
+  - [ ] Run — confirm RED (currently navigates to `/search?q=...`)
+- [ ] **GREEN — Frontend (`SearchResultsPage.tsx`):**
+  - [ ] Add `categorySlug?: string` to `SearchResultItem` type
+  - [ ] Change `onClick` to `navigate('/categories/${sub.categorySlug}/${sub.slug}')`
+  - [ ] Fallback: if `categorySlug` is missing, navigate to `/search?q=${sub.name}` (safety net)
+  - [ ] Run unit test — GREEN
+- [ ] **Verification chain:** Search → click subcategory → lands on `/categories/groceries/dairy` → `SubCategoryPage` loads products correctly
+
+---
+
+#### W-013 — Phone Numbers Logged as Plain Text (PII Violation)
+
+**Root cause:** `rules_and_spec.md §7`: *"Phone numbers in logs: mask to +91\*\*\*\*\*1234."* `logger.ts` `REDACT_PATHS` only covers `password` and `authorization`. All OTP flow log entries expose full phone numbers in plain text.
+
+**Fix:** Add phone-related field paths to `REDACT_PATHS` in `logger.ts`.
+
+- [ ] **RED — Unit (`logger.test.ts`):**
+  - [ ] Test: a Pino log entry with `{ phone: '+919876543210' }` outputs `[Redacted]` for the phone field
+  - [ ] Test: a log entry with `{ body: { phone: '+919876543210' } }` also masks the nested phone
+  - [ ] Run — confirm RED
+- [ ] **GREEN — Implementation (`logger.ts`):**
+  - [ ] Add `"phone"`, `"*.phone"`, `"body.phone"`, `"req.body.phone"` to `REDACT_PATHS`
+  - [ ] Run unit test — GREEN
+- [ ] **RED — Integration (`server.request-logging.test.ts`):**
+  - [ ] Test: `POST /api/v1/auth/buyer/send-otp` with `{ phone: '+919876543210' }` — capture the Pino log stream and assert the literal string `+919876543210` does NOT appear in any log line
+  - [ ] Run — confirm RED
+- [ ] **GREEN:** Logger change alone is sufficient — run integration test — GREEN
+- [ ] **Verification chain:** OTP request → Fastify logs request body → phone field shows `[Redacted]` in log output
+
+---
+
+#### W-014 — Idempotency Key Not Honoured on POST /api/v1/orders
+
+**Root cause:** `rules_and_spec.md §4`: *"All POST endpoints for orders and payments MUST accept and honor X-Idempotency-Key header."* `order.controller.ts` ignores this header. A user who double-taps "Place Order" or whose network retries the request creates duplicate orders.
+
+**Fix:** Read `X-Idempotency-Key` in `order.controller.ts`. Check Redis for `idempotency:{buyerId}:{key}`. On cache hit return the cached response directly; on miss run `placeFromCart`, store the serialised response in Redis with a 24 h TTL, return.
+
+- [ ] **RED — Integration (`order.controller.test.ts`):**
+  - [ ] Test: two `POST /api/v1/orders` calls with identical `X-Idempotency-Key` both return the same `orderId`
+  - [ ] Test: only ONE `Order` row exists in the DB after both requests
+  - [ ] Test: a request without the header still functions normally
+  - [ ] Run — confirm RED (two orders created today)
+- [ ] **RED — Unit (`order.controller.unit.test.ts`):**
+  - [ ] Test: cache hit → `placeFromCart` is NOT called; cached payload is returned
+  - [ ] Test: cache miss → `placeFromCart` IS called and its result is stored in Redis
+  - [ ] Run — confirm RED
+- [ ] **GREEN — Implementation (`order.controller.ts`, `routes.ts`):**
+  - [ ] Add `redis: RedisLikeRuntime` to `RegisterOrderDeps`
+  - [ ] Before calling `placeFromCart`: check Redis for `idempotency:{buyerId}:{key}`
+  - [ ] On miss: call `placeFromCart`, store JSON with `EX 86400`, return response
+  - [ ] On hit: parse and return cached response directly
+  - [ ] Pass Redis through `registerOrderRoutes` in `routes.ts`
+  - [ ] Run both tests — GREEN
+- [ ] **Verification chain:** User double-taps Place Order → two requests with same key → DB has 1 order row → second response identical to first
+
+---
+
+#### W-015 — Rider Interface HTTP Stubs Not Registered (spec §12)
+
+**Root cause:** `rules_and_spec.md §12` requires these 4 routes registered and returning 501:
+`POST /api/v1/rider/auth/login`, `GET /api/v1/rider/orders/active`, `PUT /api/v1/rider/orders/:id/status`, `PUT /api/v1/rider/location`. Neither these routes nor the `/rider` Socket.IO namespace exist anywhere in the runtime.
+
+**Fix:** Register all 4 stubs in `routes.ts` and add the `/rider` Socket.IO namespace stub in `socket.ts`.
+
+- [ ] **RED — Integration (`rider.routes.test.ts` — new file):**
+  - [ ] Test: `POST /api/v1/rider/auth/login` → 501 with error code `NOT_IMPLEMENTED`
+  - [ ] Test: `GET /api/v1/rider/orders/active` → 501
+  - [ ] Test: `PUT /api/v1/rider/orders/any-id/status` → 501
+  - [ ] Test: `PUT /api/v1/rider/location` → 501
+  - [ ] Run — confirm RED (404 currently for all)
+- [ ] **GREEN — Implementation (`routes.ts`):**
+  - [ ] Add `registerRiderStubRoutes(app)` — each of the 4 routes returns `reply.status(501).send({ success: false, error: { code: 'NOT_IMPLEMENTED', message: 'Rider interface deferred to Phase 5' } })`
+  - [ ] Call it inside `registerAppRoutes`
+  - [ ] Run tests — GREEN
+- [ ] **Verification chain:** Any future rider client hits an endpoint → clear 501 with code → no ambiguous 404; Phase 5 only needs to fill in the bodies
+
+---
+
+#### W-016 — StockMovementType Enum Missing REFILL / ADJUSTMENT / INITIAL
+
+**Root cause:** `rules_and_spec.md §13` defines 5 types: `SALE`, `CANCELLATION_RESTORE`, `REFILL`, `ADJUSTMENT`, `INITIAL`. `schema.prisma` only has `SALE` and `CANCELLATION_RESTORE`. Restocking and manual adjustments cannot be recorded.
+
+**Fix:** Migration to add the 3 missing enum values.
+
+- [ ] **RED — Integration (`stock-movement.repository.test.ts`):**
+  - [ ] Test: can create `StockMovement` with `type: 'REFILL'`
+  - [ ] Test: can create `StockMovement` with `type: 'ADJUSTMENT'`
+  - [ ] Test: can create `StockMovement` with `type: 'INITIAL'`
+  - [ ] Run — confirm RED (Prisma type/runtime error)
+- [ ] **GREEN — Migration:**
+  - [ ] Add `REFILL`, `ADJUSTMENT`, `INITIAL` to `StockMovementType` enum in `schema.prisma`
+  - [ ] `pnpm --filter @gorola/api prisma migrate dev --name add-stock-movement-types`
+  - [ ] Apply migration to test DB: `pnpm --filter @gorola/api prisma:migrate:test-db`
+  - [ ] Run integration tests — GREEN
+- [ ] **Verification chain:** Store panel records a REFILL on restock → stock movement history shows correct enum value
+
+---
+
+#### W-017 — ProductVariant Missing lowStockThreshold / isLowStock / isInStock Fields
+
+**Root cause:** `rules_and_spec.md §13` requires `lowStockThreshold Int @default(5)`, `isLowStock Boolean @default(false)`, `isInStock Boolean @default(true)` on every `ProductVariant`. None exist in `schema.prisma`. The buyer API cannot filter OOS variants; the store dashboard cannot alert on low stock.
+
+**Fix:** Migration to add 3 fields. Update `decrementStock` / `incrementStock` in `variant.repository.ts` to set these flags atomically in the same DB call.
+
+- [ ] **RED — Integration (`variant.repository.test.ts`):**
+  - [ ] Test: new `ProductVariant` defaults: `isInStock: true`, `isLowStock: false`, `lowStockThreshold: 5`
+  - [ ] Test: `decrementStock` bringing `stockQty` to 0 also sets `isInStock: false`
+  - [ ] Test: `decrementStock` bringing `stockQty <= lowStockThreshold` sets `isLowStock: true`
+  - [ ] Test: `incrementStock` bringing `stockQty > 0` restores `isInStock: true`
+  - [ ] Test: `incrementStock` bringing `stockQty > lowStockThreshold` restores `isLowStock: false`
+  - [ ] Run — confirm RED
+- [ ] **GREEN — Migration + Implementation:**
+  - [ ] Add 3 fields to `ProductVariant` in `schema.prisma`
+  - [ ] `pnpm --filter @gorola/api prisma migrate dev --name add-variant-stock-flags`
+  - [ ] Apply to test DB
+  - [ ] Update `decrementStock`: after atomic decrement, compute and update `isInStock` and `isLowStock` in the same Prisma `$transaction`
+  - [ ] Update `incrementStock` (used in cancellation restore): same pattern
+  - [ ] Run integration tests — GREEN
+- [ ] **RED — Integration (`product.controller.test.ts`):**
+  - [ ] Test: `GET /api/v1/products/:id` variant payload includes `isInStock` field
+  - [ ] Test: a variant with `isInStock: false` is still visible in the detail response but marked clearly (buyer sees "Out of Stock")
+  - [ ] Run — confirm RED (field absent from response)
+- [ ] **GREEN — Backend (`product.repository.ts`, `product.controller.ts`):**
+  - [ ] Include `isInStock`, `isLowStock`, `lowStockThreshold` in variant select/return shape for both list and detail endpoints
+  - [ ] Run integration tests — GREEN
+- [ ] **Verification chain:** Stock → 0 → `isInStock: false` → buyer card disabled → checkout stock check rejects it
+
+---
+
+#### W-018 — OTPLog Prisma Model Contradicts "Redis Only" Spec
+
+**Root cause:** `current_state.md §1.2` documents OTPLog as *"Redis, not DB."* But `schema.prisma` defines `model OTPLog { ... }`, creating a real `otp_logs` DB table. Zero application code reads or writes this table via Prisma. It's dead schema noise that contradicts the architecture.
+
+**Fix:** Remove `model OTPLog` from `schema.prisma`. Create a migration to drop the table. Verify OTP flow still works (it uses Redis exclusively).
+
+- [ ] **Pre-check:** `grep -r "prisma.oTPLog\|prisma.oTPlog\|db.oTPLog" apps/api/src` — must return zero results in application code (test cleanup calls are acceptable)
+- [ ] **GREEN — Schema + Migration (this one has no RED — it's a deletion):**
+  - [ ] Remove `model OTPLog { ... }` block from `schema.prisma`
+  - [ ] `pnpm --filter @gorola/api prisma migrate dev --name remove-otp-log-table`
+  - [ ] Apply to test DB
+  - [ ] Run `pnpm --filter @gorola/api typecheck` — if any app code referenced `prisma.oTPLog`, it now fails (catching the bug)
+- [ ] **Integration test (`auth.controller.test.ts` — existing):**
+  - [ ] Test: full OTP send → verify flow (`POST /api/v1/auth/buyer/send-otp` then `POST /api/v1/auth/buyer/verify-otp`) still works end-to-end after migration
+  - [ ] Existing tests cover this — run them after migration and confirm GREEN
+- [ ] **Verification chain:** `schema.prisma` has no `OTPLog`; `prisma generate` removes the `db.oTPLog` accessor; `otp_logs` table dropped; full OTP auth flow passes
+
+---
+
+#### Phase 2.19 Quality Gate (ALL must be green before marking done)
+
+- [ ] Every RED test was confirmed failing BEFORE any implementation started
+- [ ] Every GREEN implementation confirmed by the failing test now passing
+- [ ] `pnpm --filter @gorola/api lint` — clean
+- [ ] `pnpm --filter @gorola/api typecheck` — clean
+- [ ] `pnpm --filter @gorola/web lint` — clean
+- [ ] `pnpm --filter @gorola/web typecheck` — clean
+- [ ] `pnpm ci:quality` — full pipeline GREEN
+- [ ] Manual smoke: click product card image → navigates to `/products/:id` ✓
+- [ ] Manual smoke: search → click subcategory result → lands on `/categories/:cat/:sub` ✓
+- [ ] Manual smoke: double-click Place Order → only one order in DB ✓
+- [ ] Manual smoke: tail API logs during OTP request → no plain-text phone numbers in output ✓
+
+---
+
+### 2.20 — Profile Page
 
 > Details to be added by the user.
 
 ---
 
-### 2.20 — UI Overhaul
+### 2.21 — UI Overhaul
 
 > Details to be added by the user.
 
 ---
 
-### 2.21 — (Reserved)
+### 2.22 — (Reserved)
 
 > Details to be added by the user.
 
 ---
 
-### 2.22 — E2E Tests (Playwright)
+### 2.23 — E2E Tests (Playwright)
 
 - [ ] `tests/e2e/buyer-journey.spec.ts`:
   - [ ] Browse home page → categories load
