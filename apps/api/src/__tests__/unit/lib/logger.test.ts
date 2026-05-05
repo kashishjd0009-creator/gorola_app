@@ -94,6 +94,29 @@ describe("getLogger (singleton)", () => {
     expect(text).not.toContain("hunter2");
     expect(text).not.toContain("abcd");
   });
+
+  it("redacts PII phone numbers from log objects (W-013 RED)", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.LOG_LEVEL = "info";
+    const stream = new PassThrough();
+    resetLoggerForTests({ stream, forceJson: true });
+
+    getLogger().info(
+      { 
+        phone: "+919876543210", 
+        body: { phone: "+919876543211" },
+        req: { body: { phone: "+919876543212" } }
+      },
+      "pii check"
+    );
+
+    const [line] = await readJsonLines(stream, 1, 2000);
+    const text = (line as string).toString();
+    expect(text).not.toContain("+919876543210");
+    expect(text).not.toContain("+919876543211");
+    expect(text).not.toContain("+919876543212");
+    expect(text).toContain("[Redacted]");
+  });
 });
 
 describe("buildLogger config", () => {

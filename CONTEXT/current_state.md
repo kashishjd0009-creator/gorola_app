@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-05
-- **Session Summary:** **Session 96 — Catalog Wiring Hardening.** Completed W-011 (Product Detail Page Navigation) with premium UI and unified cart behavior. Completed W-012 (Subcategory Search Results Route Fix) by exposing `categorySlug` in search API and updating frontend navigation to the correct subcategory route. Verified both with strict TDD (integration + unit tests) and manual browser smoke tests.
-- **Next Session Must Start With:** Phase 2.19 — Wiring Hardening (W-013: Phone Numbers Logged as Plain Text).
+- **Session Summary:** **Session 96 — Catalog & Security Wiring Hardening.** Completed W-011 (Product Detail Page Navigation) and W-012 (Subcategory Search Route Fix). Completed W-013 (Phone Redaction in Logs) to resolve a PII violation, ensuring that phone numbers in request bodies and top-level log objects are masked with `[Redacted]`. Verified all changes with strict TDD (integration + unit tests).
+- **Next Session Must Start With:** Phase 2.19 — Wiring Hardening (W-014: Idempotency Key Not Honoured).
 
 
 ---
@@ -946,18 +946,18 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 **Fix:** Add phone-related field paths to `REDACT_PATHS` in `logger.ts`.
 
-- [ ] **RED — Unit (`logger.test.ts`):**
-  - [ ] Test: a Pino log entry with `{ phone: '+919876543210' }` outputs `[Redacted]` for the phone field
-  - [ ] Test: a log entry with `{ body: { phone: '+919876543210' } }` also masks the nested phone
-  - [ ] Run — confirm RED
-- [ ] **GREEN — Implementation (`logger.ts`):**
-  - [ ] Add `"phone"`, `"*.phone"`, `"body.phone"`, `"req.body.phone"` to `REDACT_PATHS`
-  - [ ] Run unit test — GREEN
-- [ ] **RED — Integration (`server.request-logging.test.ts`):**
-  - [ ] Test: `POST /api/v1/auth/buyer/send-otp` with `{ phone: '+919876543210' }` — capture the Pino log stream and assert the literal string `+919876543210` does NOT appear in any log line
-  - [ ] Run — confirm RED
-- [ ] **GREEN:** Logger change alone is sufficient — run integration test — GREEN
-- [ ] **Verification chain:** OTP request → Fastify logs request body → phone field shows `[Redacted]` in log output
+- [x] **RED — Unit (`logger.test.ts`):**
+  - [x] Test: a Pino log entry with `{ phone: '+919876543210' }` outputs `[Redacted]` for the phone field
+  - [x] Test: a log entry with `{ body: { phone: '+919876543210' } }` also masks the nested phone
+  - [x] Run — confirm RED
+- [x] **GREEN — Implementation (`logger.ts`):**
+  - [x] Add `"phone"`, `"*.phone"`, `"body.phone"`, `"req.body.phone"` to `REDACT_PATHS`
+  - [x] Run unit test — GREEN
+- [x] **RED — Integration (`server.request-logging.test.ts`):**
+  - [x] Test: `POST /api/v1/auth/buyer/send-otp` with `{ phone: '+919876543210' }` — capture the Pino log stream and assert the literal string `+919876543210` does NOT appear in any log line
+  - [x] Run — confirm RED
+- [x] **GREEN:** Logger change alone is sufficient — run integration test — GREEN
+- [x] **Verification chain:** OTP request → Fastify logs request body → phone field shows `[Redacted]` in log output
 
 ---
 

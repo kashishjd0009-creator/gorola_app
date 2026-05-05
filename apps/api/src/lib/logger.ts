@@ -8,7 +8,11 @@ const REDACT_PATHS = [
   "headers.authorization",
   "req.headers.authorization",
   "req.headers.cookie",
-  "authorization"
+  "authorization",
+  "phone",
+  "*.phone",
+  "body.phone",
+  "req.body.phone"
 ];
 
 export type LoggerResetTestOptions = {

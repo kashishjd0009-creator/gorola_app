@@ -79,4 +79,42 @@ describe("server request logging", () => {
     expect(typeof line.responseTimeMs).toBe("number");
     expect(line.responseTimeMs).toBeGreaterThanOrEqual(0);
   });
+
+  it("redacts PII phone numbers from request body logs (W-013 RED)", async () => {
+    const stream = new PassThrough();
+    const parts: string[] = [];
+    stream.on("data", (chunk: Buffer) => {
+      parts.push(chunk.toString("utf8"));
+    });
+
+    const server = createServer({
+      disableRedis: true,
+      pinoTestStream: stream,
+      registerRoutes: (app) => {
+        app.post("/api/v1/auth/buyer/send-otp", async (req, reply) => {
+          req.log.info({ body: req.body }, "Manual body log");
+          return reply.send({ success: true });
+        });
+      }
+    });
+    servers.push(server);
+
+    const testPhone = "+919876543210";
+    await server.inject({
+      method: "POST",
+      url: "/api/v1/auth/buyer/send-otp",
+      payload: { phone: testPhone }
+    });
+
+    await new Promise<void>((resolve) => {
+      setImmediate(() => {
+        setImmediate(resolve);
+      });
+    });
+
+    const logText = parts.join("");
+    // Assert the literal phone number does NOT appear anywhere in the logs
+    expect(logText).not.toContain(testPhone);
+    expect(logText).toContain("[Redacted]");
+  });
 });
