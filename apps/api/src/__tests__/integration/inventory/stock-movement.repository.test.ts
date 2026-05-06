@@ -195,6 +195,59 @@ describe("StockMovementRepository", () => {
         })
       ).rejects.toBeInstanceOf(NotFoundError);
     });
+
+    it("records a REFILL correctly", async () => {
+      const m = await repo.create({
+        storeId: store.id,
+        productVariantId: variant.id,
+        orderId: null, // Refill doesn't need an order
+        type: "REFILL",
+        quantity: 10,
+        stockQtyBefore: 5,
+        stockQtyAfter: 15
+      });
+      expect(m.type).toBe("REFILL");
+      expect(m.stockQtyAfter).toBe(15);
+    });
+
+    it("records an ADJUSTMENT (increase) correctly", async () => {
+      const m = await repo.create({
+        storeId: store.id,
+        productVariantId: variant.id,
+        orderId: null,
+        type: "ADJUSTMENT",
+        quantity: 2,
+        stockQtyBefore: 15,
+        stockQtyAfter: 17
+      });
+      expect(m.type).toBe("ADJUSTMENT");
+    });
+
+    it("records an ADJUSTMENT (decrease) correctly", async () => {
+      const m = await repo.create({
+        storeId: store.id,
+        productVariantId: variant.id,
+        orderId: null,
+        type: "ADJUSTMENT",
+        quantity: 3,
+        stockQtyBefore: 17,
+        stockQtyAfter: 14
+      });
+      expect(m.type).toBe("ADJUSTMENT");
+    });
+
+    it("records an INITIAL correctly", async () => {
+      const m = await repo.create({
+        storeId: store.id,
+        productVariantId: variant.id,
+        orderId: null,
+        type: "INITIAL",
+        quantity: 50,
+        stockQtyBefore: 0,
+        stockQtyAfter: 50
+      });
+      expect(m.type).toBe("INITIAL");
+    });
   });
 
   describe("findByVariantId and findByOrderId", () => {

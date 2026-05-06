@@ -37,6 +37,9 @@ enum ActorRole {
 enum StockMovementType {
   SALE
   CANCELLATION_RESTORE
+  REFILL
+  ADJUSTMENT
+  INITIAL
 }
 
 model User {
@@ -182,7 +185,7 @@ model ProductVariant {
 model StockMovement {
   id               String            @id @default(cuid())
   productVariantId String
-  orderId          String
+  orderId          String?
   type             StockMovementType
   /// Units moved; always positive. Interpret with `type` (SALE = deduction, CANCELLATION_RESTORE = restock).
   quantity         Int
@@ -190,7 +193,7 @@ model StockMovement {
   stockQtyAfter    Int
   createdAt        DateTime          @default(now())
   productVariant   ProductVariant    @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
-  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order            Order?            @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([productVariantId, createdAt])
   @@index([orderId, createdAt])

@@ -4,7 +4,7 @@ import { type Prisma, type PrismaClient, type StockMovement, type StockMovementT
 export type CreateStockMovementInput = {
   storeId: string;
   productVariantId: string;
-  orderId: string;
+  orderId: string | null;
   type: StockMovementType;
   /** Units moved; always > 0. */
   quantity: number;
@@ -45,6 +45,37 @@ export class StockMovementRepository {
     ) {
       throw new ValidationError(
         "CANCELLATION_RESTORE movement: stockQtyAfter must equal stockQtyBefore + quantity",
+        {
+          type: input.type,
+          stockQtyBefore: input.stockQtyBefore,
+          stockQtyAfter: input.stockQtyAfter,
+          quantity: input.quantity
+        }
+      );
+    }
+
+    if (input.type === "REFILL" && input.stockQtyAfter !== input.stockQtyBefore + input.quantity) {
+      throw new ValidationError("REFILL movement: stockQtyAfter must equal stockQtyBefore + quantity", {
+        type: input.type,
+        stockQtyBefore: input.stockQtyBefore,
+        stockQtyAfter: input.stockQtyAfter,
+        quantity: input.quantity
+      });
+    }
+    if (input.type === "INITIAL" && input.stockQtyAfter !== input.stockQtyBefore + input.quantity) {
+      throw new ValidationError("INITIAL movement: stockQtyAfter must equal stockQtyBefore + quantity", {
+        type: input.type,
+        stockQtyBefore: input.stockQtyBefore,
+        stockQtyAfter: input.stockQtyAfter,
+        quantity: input.quantity
+      });
+    }
+    if (
+      input.type === "ADJUSTMENT" &&
+      Math.abs(input.stockQtyAfter - input.stockQtyBefore) !== input.quantity
+    ) {
+      throw new ValidationError(
+        "ADJUSTMENT movement: quantity must match the absolute difference between before and after",
         {
           type: input.type,
           stockQtyBefore: input.stockQtyBefore,
