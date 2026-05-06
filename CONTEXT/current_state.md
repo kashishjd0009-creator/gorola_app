@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-06
-- **Session Summary:** **Session 101 — Schema Hardening (OTPLog Removal).** Completed **W-018** (OTPLog Removal). Removed redundant Prisma model to align with Redis-only architecture. Verified with 507 tests green.
-- **Next Session Must Start With:** Phase 2.19 — Wiring Hardening (W-019: Cart Sync Stale authority logic refinement / Phase 2.20 Profile Page).
+- **Session Summary:** **Session 102 — Profile Page Implementation.** Completed Phase 2.20. Implemented `PUT /api/v1/account/profile` backend, premium `ProfilePage.tsx` with GSAP animations, and wired navigation. 514 tests green.
+- **Next Session Must Start With:** Phase 2.21 — UI Overhaul.
 
 
 ---
@@ -20,7 +20,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                                                                                                            |
 | ------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub                                                                         |
-| Phase 2 | Buyer Web Experience | 🔄 IN PROGRESS | **2.1–2.18 complete**. **Phase 2.19 (Wiring Hardening)** in progress — W-011 to W-018 complete. Full quality gate GREEN. |
+| Phase 2 | Buyer Web Experience | 🔄 IN PROGRESS | **2.1–2.20 complete**. Full quality gate GREEN. |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                                                                                                                           |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                                                                                                                           |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                                                                                                            |
@@ -28,6 +28,8 @@
 ---
 
 ## ✅ Completed Tasks (Append only — never delete)
+
+
 
 - **Session 1 (Phase 1.1 Setup):** Initialized `GoRola_app` monorepo structure and base tooling (pnpm workspace, strict TypeScript, ESLint flat config, Prettier, `.env.example`, dotenv-safe startup config, package scaffolding, local git init with `main`/`develop` branches).
 - **Session 3 (Phase 1.3 User repository):** Vitest + Prisma integration tests for `UserRepository`; `getPrismaClient` singleton; `DATABASE_URL_TEST` documented in `.env.example`.
@@ -116,7 +118,7 @@
 - **Session 85 (Scoped Mutation States & Vercel SPA Fix):** Resolved UI bug in `OrderHistoryPage` where multiple orders displayed simultaneous loading/disabled states during reorder or rating. Scoped mutation states to individual orders using `reorderMutation.variables`. Merged regression tests into the permanent `OrderHistoryPage.test.tsx` suite. Fixed SPA routing 404s on Vercel by adding a catch-all rewrite rule to `vercel.json`.
 - **Session 90 (Hero Section Final Polish):** Refined the Weather Mode Hero Section by shortening it to 85vh and darkening the background to Slate (matching the nav/location theme). Ensured high contrast for text and logo.
 - **Session 91 (Phase 2.17 Advertisements Display):** Implemented backend `GET /api/v1/promotions/advertisements` with active/approved/time-window filtering. Built `AdvertisementBanner` frontend carousel with Embla and auto-advance. Integrated banner into `HomePage`. Verified all quality gates GREEN. Manually verified the banner renders correctly in the browser with live data from Prisma Studio.
-- **Session 92 (Roadmap Restructuring):** Corrected a roadmap naming error (E2E Tests was incorrectly listed as next phase). Restructured Phase 2 roadmap: inserted new Phases 2.18 (Sub-categories & Global Search), 2.19 (Profile Page), 2.20 (UI Overhaul), 2.21 (Reserved), and moved E2E Tests to Phase 2.22. Designed and documented the full Phase 2.18 spec: new `SubCategory` DB table, nullable `subCategoryId` on `Product`, 4 new API endpoints (`GET /categories/:slug/sub-categories`, `GET /products` with `subCategoryId` filter, `GET /search?q=`), new frontend pages (`SubCategoryGrid`, `SubCategoryPage`, `SearchResultsPage`), and updated router. Identified root cause of broken search: the `/search` route currently renders a placeholder page, not a real search results component.
+- **Session 92 (Roadmap Restructuring):** Corrected a roadmap naming error (E2E Tests was incorrectly listed as next phase). Restructured Phase 2 roadmap: inserted new Phases 2.18 (Sub-categories & Global Search), 2.19 (Wiring Hardening), 2.20 (Profile Page), 2.21 (UI Overhaul), and moved E2E Tests to Phase 2.22. Designed and documented the full Phase 2.18 spec: new `SubCategory` DB table, nullable `subCategoryId` on `Product`, 4 new API endpoints (`GET /categories/:slug/sub-categories`, `GET /products` with `subCategoryId` filter, `GET /search?q=`), new frontend pages (`SubCategoryGrid`, `SubCategoryPage`, `SearchResultsPage`), and updated router. Identified root cause of broken search: the `/search` route currently renders a placeholder page, not a real search results component.
 - **Session 93 (Hierarchy Integration and Search):** Completed backend subcategory schema updates, added SubCategory to Prisma schema, resolved all typecheck and integration test failures. Completed frontend updates with `SubCategoryGrid` and `SearchResultsPage`. Ensured seed files use required dummy data.
 - **Session 94 (Sub-category Finalization & Image Fix):** Verified and fixed product image rendering in `ProductGrid.tsx` with hover-zoom and fallback logic. Documented "Constraint Hell" in `subcategory_mandatory_column.md`.
 - **Session 95 (Hardening & Cart Fix):** Resolved critical "Cart Wipe" bug during checkout transition via reconciliation logic in `buyer-cart-sync.ts`. Hardened catalog grids with image assertions. Fixed API integration test cleanup logic for all modules to handle new hierarchy. Verified with full `ci:quality` green (339 API, 143 web tests). Updated production Railway database with fresh schema and your 3 custom advertisement images.
@@ -125,18 +127,20 @@
 - **Session 98 (Phase 2.19 W-016 Stock Movement Types):** Expanded `StockMovementType` enum in `schema.prisma` to include `REFILL`, `ADJUSTMENT`, and `INITIAL`. Made `StockMovement.orderId` optional to support non-order-related inventory changes. Implemented comprehensive validation in `StockMovementRepository` for new types. Verified with new integration tests and full CI quality gate (499 tests green).
 - **Session 99 (Phase 2.19 W-017 ProductVariant Stock Flags):** Added `lowStockThreshold`, `isLowStock`, and `isInStock` fields to `ProductVariant`. Updated `decrementStock` and `incrementStock` in `ProductVariantRepository` to maintain flags atomically. Exposed flags in Buyer API (`ProductRepository`). Verified with 30 targeted tests and full CI quality gate (505 tests green).
 - **Session 100 (Cart Wipe Bug Fix):** Investigated and reproduced a race condition in `syncBuyerCartFromServer` that caused the cart to zero out on checkout transition. Implemented `waitForAllCartMutations` barrier and hardened reconciliation to preserve local state on push failures. Added `buyer-cart-sync.hardening.test.ts` to main suite. Verified with 507 tests green.
+- **Session 101 (Phase 2.19 W-018 OTPLog Removal):** Removed redundant `OTPLog` model from `schema.prisma`. Generated and applied migration to drop `otp_logs` table. Verified Redis-only OTP flow consistency with integration tests and full CI quality gate (507 tests green).
+- **Session 102 (Phase 2.20 Profile Page Implementation):** Completed Phase 2.20. Implemented `PUT /api/v1/account/profile` backend, premium `ProfilePage.tsx` with GSAP animations, and wired navigation. 514 tests green.
 
 ---
 
 ## 🔨 In Progress Right Now
 
-- **Session 101 (Phase 2.19 W-018 OTPLog Removal):** Removed redundant `OTPLog` model from `schema.prisma`. Generated and applied migration to drop `otp_logs` table. Verified Redis-only OTP flow consistency with integration tests and full CI quality gate (507 tests green).
+- None. All current tasks complete.
 
 ---
 
-**Current Task:** **Phase 2.19** — Wiring Hardening (**W-018 Complete**).
+**Current Task:** **Phase 2.21** — UI Overhaul.
 
-**Exact stopping point:** W-011 to W-018 100% complete. Full CI quality gate GREEN (507 tests).
+**Exact stopping point:** Phase 2.20 (Profile Page) 100% complete. Full CI quality gate GREEN (514 tests).
 
 **Current Blocker:** None.
 
@@ -1095,7 +1099,7 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 - [x] `pnpm --filter @gorola/api typecheck` — clean
 - [x] `pnpm --filter @gorola/web lint` — clean
 - [x] `pnpm --filter @gorola/web typecheck` — clean
-- [x] `pnpm ci:quality` — full pipeline GREEN (507 tests)
+- [x] `pnpm ci:quality` — full pipeline GREEN (514 tests)
 - [x] Manual smoke: click product card image → navigates to `/products/:id` ✓
 - [x] Manual smoke: search → click subcategory result → lands on `/categories/:cat/:sub` ✓
 - [x] Manual smoke: double-click Place Order → only one order in DB ✓
@@ -1105,7 +1109,48 @@ _(Phase 1 is complete. Track Phase 2 items below; **2.1 is complete**.)_
 
 ### 2.20 — Profile Page
 
-> Details to be added by the user.
+> **API Contract Gate (mandatory for phase completion):**
+> - Required backend endpoints (`PUT /api/v1/account/profile` or similar) are implemented.
+> - Backend integration tests verify endpoint contract and access control.
+> - Endpoint routes are registered in runtime app route graph.
+> - Frontend tests verify expected API envelope + loading/empty/error states + GSAP animations.
+
+#### Phase 2.20 — Profile Button and Page Layout
+
+**Root cause / Goal:**
+Currently, `/profile` is a placeholder page. The user needs a central hub to view their phone number, access their Order History and Saved Addresses, and optionally update their personal details (Name). The Profile button in the top navigation needs to link to this hub. The Orders section, which is currently outside, needs to be linked from within this Profile page to improve the buyer experience.
+
+**Fix / Approach:**
+Update `BuyerNav` to make the Profile button navigate to `/profile`. Create `ProfilePage.tsx` under `pages/buyer/` that renders the user's phone number, a form to update their name, and navigational links to `/account/orders` and `/account/addresses`. Create a backend endpoint `PUT /api/v1/account/profile` to handle name updates. Ensure the new page utilizes the existing GSAP animation system and Lenis smooth scrolling hooks.
+
+---
+
+- [x] **RED — Integration (`user.controller.test.ts`):**
+  - [x] Test: `PUT /api/v1/account/profile` with valid `{ name: "New Name" }` payload updates the user in the database and returns the updated `name`.
+  - [x] Test: `PUT /api/v1/account/profile` rejects requests from unauthenticated users with a 401.
+  - [x] **Run — confirm RED (endpoint does not exist).**
+
+- [x] **GREEN — Backend (Repository → Controller → Routes):**
+  - [x] [Repository] Verify or add `update` method in `user.repository.ts` that allows updating the `name` field based on `userId`.
+  - [x] [Controller] Create `modules/user/user.controller.ts` with the `PUT /api/v1/account/profile` endpoint, ensuring it uses `requireAuth` and `requireRole('BUYER')`.
+  - [x] [Routes] Register the new user routes in `routes.ts` under the main API router.
+  - [x] Run integration test — **confirm GREEN**.
+
+- [x] **RED — Unit / Component (`ProfilePage.test.tsx`):**
+  - [x] Test: Component renders the user's phone number retrieved from `useAuthStore`.
+  - [x] Test: Component renders navigation links pointing to `/account/orders` and `/account/addresses`.
+  - [x] Test: Submitting a new name in the form calls `PUT /api/v1/account/profile`, shows a success toast, and updates the `name` in `useAuthStore`.
+  - [x] **Run — confirm RED (the component currently renders a placeholder or does not exist).**
+
+- [x] **GREEN — Frontend (Types → Component):**
+  - [x] [Types] Ensure the API client types support the profile update request and response payload.
+  - [x] [Component] Implement `ProfilePage.tsx`. Add `useGorolaMotion` hook and create a GSAP entrance animation timeline (e.g., fading up the title, form, and links staggeredly).
+  - [x] [Component] In `BuyerNav.tsx`, change the Profile button/label to act as a `<Link to="/profile">` when authenticated.
+  - [x] [Component] Style the page using GoRola tokens (e.g., `--gorola-pine`, `--gorola-saffron`) and ensure Lenis scrolling works flawlessly.
+  - [x] Run unit test — **confirm GREEN**.
+
+- [x] **Verification chain:**
+  - [x] User clicks Profile button in nav → Browser navigates to `/profile` → User sees their phone number and links to Orders and Addresses → User types a new name and submits → Backend updates the database → UI reflects the updated name and shows a success message → ✅ Done.
 
 ---
 
@@ -1700,7 +1745,14 @@ _(Append new entries — never delete old ones)_
 - **Resilient Reconciliation:** Hardened the sync logic to preserve local items if a server push fails (e.g., network timeout during guest-to-buyer migration).
 - **Checkout Guard:** Added an optimization to `CheckoutPage` to skip re-syncing if the local SPA cart is already populated, eliminating the race window entirely.
 - **Verification:** Created `buyer-cart-sync.hardening.test.ts` simulating stale responses and push failures. Full CI gate: 507 tests green.
+
 **Session 101 (Phase 2.19 W-018 OTPLog Removal):**
 - **Architecture Alignment:** Removed the `OTPLog` model from `schema.prisma` to resolve a contradiction with the architecture spec (§1.2), which specifies Redis as the single source of truth for OTP logs and rate limiting.
 - **Cleanup Migration:** Successfully dropped the `otp_logs` table. Verified that no application code (or test code) relied on this table via a monorepo-wide grep and full typecheck.
 - **Verification:** Confirmed that the `send-otp` and `verify-otp` integration tests pass using the existing Redis-backed logic. Full CI gate is 100% green with 507 tests.
+
+**Session 102 (Phase 2.20 Profile Page Implementation):**
+- **Backend Infrastructure:** Implemented `PUT /api/v1/account/profile` with Zod validation and authentication guards.
+- **Frontend Hub:** Created premium `ProfilePage.tsx` featuring GSAP entrance animations and Lenis smooth scrolling.
+- **Navigation:** Updated `BuyerNav.tsx` to link identity labels to the profile hub and integrated navigational links to Orders and Addresses.
+- **Verification:** Verified with 3 integration tests (backend) and 4 unit tests (frontend). Full CI quality gate: 514 tests green.

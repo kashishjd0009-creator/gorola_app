@@ -97,9 +97,12 @@ export function BuyerNav(): ReactElement {
 
         {role === "BUYER" ? (
           <div className="inline-flex items-center gap-2">
-            <span className="hidden rounded-full border border-white/20 px-3 py-2 text-sm text-gorola-fog md:inline">
+            <Link
+              to="/profile"
+              className="hidden rounded-full border border-white/20 px-3 py-2 text-sm text-gorola-fog md:inline hover:bg-white/10 transition-colors"
+            >
               {buyerLabel}
-            </span>
+            </Link>
             <Link
               to="/account/orders"
               className="inline-flex items-center gap-1 rounded-full border border-white/30 px-3 py-2 text-sm text-gorola-fog hover:bg-white/10"

@@ -27,6 +27,7 @@ import { OrderRepository } from "./modules/order/order.repository.js";
 import { OrderService } from "./modules/order/order.service.js";
 import { DiscountRepository } from "./modules/promotion/discount.repository.js";
 import { registerPromotionRoutes } from "./modules/promotion/promotion.controller.js";
+import { registerUserRoutes } from "./modules/user/user.controller.js";
 import { UserRepository } from "./modules/user/user.repository.js";
 
 type RedisLikeRuntime = {
@@ -174,6 +175,11 @@ export function registerAppRoutes(app: FastifyInstance): void {
         throw new NotImplementedError("Store owner auth runtime wiring pending");
       }
     }
+  });
+
+  registerUserRoutes(app, {
+    userRepository: userRepo,
+    tokenVerifier: tokenService
   });
 
   registerRiderStubRoutes(app);

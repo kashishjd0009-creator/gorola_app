@@ -18,6 +18,7 @@ import { LoginPage } from "@/pages/buyer/LoginPage";
 import { OrderConfirmationPage } from "@/pages/buyer/OrderConfirmationPage";
 import { OrderHistoryPage } from "@/pages/buyer/OrderHistoryPage";
 import { ProductDetailPage } from "@/pages/buyer/ProductDetailPage";
+import { ProfilePage } from "@/pages/buyer/ProfilePage";
 import { SavedAddressesPage } from "@/pages/buyer/SavedAddressesPage";
 import { SearchResultsPage } from "@/pages/buyer/SearchResultsPage";
 import { SubCategoryPage } from "@/pages/buyer/SubCategoryPage";
@@ -133,7 +134,7 @@ export function App(): ReactElement {
           element={
             <ProtectedRoute>
               <BuyerLayout>
-                <PlaceholderPage title="Profile" />
+                <ProfilePage />
               </BuyerLayout>
             </ProtectedRoute>
           }
