@@ -123,7 +123,7 @@ describe("buyer routes", () => {
 
     expect(screen.getByText("Restoring your session...")).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Profile" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Your Profile" })).toBeInTheDocument();
     });
     expect(screen.queryByRole("heading", { name: "Verify OTP" })).not.toBeInTheDocument();
   });
@@ -185,8 +185,7 @@ describe("buyer routes", () => {
         <App />
       </MemoryRouter>
     );
-    expect(screen.getByRole("heading", { name: "Profile" })).toBeInTheDocument();
-    expect(screen.getByText("This page is not ready yet.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your Profile" })).toBeInTheDocument();
     profileRender.unmount();
 
     const noRoleStoreRender = render(

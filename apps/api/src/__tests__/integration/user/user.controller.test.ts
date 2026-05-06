@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// @ts-expect-error - will be created in next step
 import { registerUserRoutes } from "../../../modules/user/user.controller.js";
 import { createServer } from "../../../server.js";
 
