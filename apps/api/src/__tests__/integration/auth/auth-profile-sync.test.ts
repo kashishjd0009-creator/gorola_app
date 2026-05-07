@@ -10,6 +10,7 @@ describe("Regression: Profile Persistence (Session Sync)", () => {
   const prisma = getPrismaClient();
 
   beforeAll(async () => {
+    process.env.GOROLA_TEST_OTP = "123456";
     app = createServer({
       disableRedis: true, // Uses in-memory fallback defined in routes.ts
       registerRoutes: (server) => registerAppRoutes(server)
@@ -18,6 +19,7 @@ describe("Regression: Profile Persistence (Session Sync)", () => {
   });
 
   afterAll(async () => {
+    delete process.env.GOROLA_TEST_OTP;
     await app.close();
   });
 

@@ -9,7 +9,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-08
-- **Session Summary:** **Session 111 — Profile Persistence Bug Fix.** Resolved a bug where user name updates would revert on page reload. Re-engineered the `AuthService` refresh flow to perform a database lookup for the latest user profile before issuing new tokens. Added a dedicated regression test and verified full CI quality gate (GREEN).
+- **Session Summary:** **Session 112 — CI Stabilization & Regression Hardening.** Hardened the profile persistence regression test by forcing deterministic OTP generation (`GOROLA_TEST_OTP`). Verified full monorepo stability with a successful CI quality gate run (All 523 tests passing).
 - **Next Session Must Start With:** Phase 2.23 — E2E Tests (Playwright).
 
 
@@ -138,6 +138,7 @@
 - **Session 109 (Hero Messaging Refinement):** Finalized the Hero section's random messaging pool by removing generic marketing and redundant lines from both Normal and Weather modes. Headings are now limited to 3 curated options per mode.
 - **Session 110 (Production UI Polish):** Fixed Hero name hydration flicker and removed default browser focus rings from navigation elements.
 - **Session 111 (Profile Persistence Fix):** Resolved name-reversion-on-reload bug by decoupling token rotation from profile snapshots. Refactored `AuthService` to sync with the database during refresh.
+- **Session 112 (CI Stabilization):** Hardened regression tests against CI environment discrepancies by enforcing deterministic OTP generation. verified 100% test pass rate.
 
 ---
 
@@ -149,7 +150,7 @@
 
 **Current Task:** **Phase 2.23** — E2E Tests (Playwright).
 
-**Exact stopping point:** Session 111 (Persistence Fix) complete. Full CI quality gate GREEN.
+**Exact stopping point:** Session 112 (CI Stabilization) complete. Full CI quality gate GREEN.
 
 **Current Blocker:** None.
 
@@ -1863,3 +1864,9 @@ _(Append new entries — never delete old ones)_
 - **Wiring**: Integrated the new flow into `routes.ts` and verified that name updates now persist across reloads and session expirations.
 - **Regression Testing**: Implemented `auth-profile-sync.test.ts` to programmatically verify that profile updates are preserved through the refresh handshake. Updated `HeroSection.test.tsx` and other unit tests to align with the new auth architecture.
 - **CI Readiness**: Successfully executed the full `pnpm ci:quality` gate, confirming 100% pass rate for linting, typechecking, unit tests, and integration tests monorepo-wide. Full CI quality gate: GREEN.
+**Session 112 (CI Stabilization & Regression Hardening):**
+- **CI Troubleshooting**: Investigated a `401 Unauthorized` failure in the CI pipeline for the newly added `auth-profile-sync.test.ts`. Identified that the CI environment lacked deterministic OTP configuration, causing hardcoded test inputs to fail against random codes.
+- **Test Hardening**: Modified `auth-profile-sync.test.ts` to explicitly set `GOROLA_TEST_OTP` during the test lifecycle. This ensures reliable, deterministic behavior in isolated CI environments without affecting global state.
+- **UI Test Maintenance**: Updated `HeroSection.test.tsx` to align with the new auth bootstrap gating (`isBootstrapPending`) and refined the random messaging pools in tests to match production copy.
+- **Final Verification**: Executed a full monorepo-wide `ci:quality` run. Confirmed 100% success across all quality gates (Linting, Typechecking, Vitest Integration, and Production Build).
+- **Quality Status**: All 523 tests (API & Web) are GREEN. CI status: GREEN.
