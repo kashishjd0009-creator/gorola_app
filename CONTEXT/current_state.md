@@ -9,7 +9,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-08
-- **Session Summary:** **Session 108 — CI/CD Test Stabilization (Profile Page).** Resolved flaky CI test failure in `ProfilePage.test.tsx` by migrating from `userEvent` to `fireEvent` for input changes, preventing race conditions during typing.
+- **Session Summary:** **Session 109 — Hero Messaging Refinement.** Finalized the Hero section's random messaging pool by removing generic and redundant lines from both Normal and Weather modes, achieving a perfectly synchronized set of 3 headings per mode.
 - **Next Session Must Start With:** Phase 2.23 — E2E Tests (Playwright).
 
 
@@ -135,6 +135,7 @@
 - **Session 106 (Topographic System & Final Polish):** Implemented an organic, 5-cluster topographic background system using nested percentage-based SVGs for stability across all aspect ratios. Tuned opacity to 0.07 (Normal) and 0.10 (Weather) for optimal visual hierarchy.
 - **Session 107 (Dynamic Messaging):** Implemented randomization for Hero headings and ETA lines across both modes on page reload.
 - **Session 108 (CI/CD Test Stabilization):** Resolved flaky CI test failure in `ProfilePage.test.tsx` by migrating from `userEvent` to `fireEvent` for input changes, preventing race conditions during typing.
+- **Session 109 (Hero Messaging Refinement):** Finalized the Hero section's random messaging pool by removing generic marketing and redundant lines from both Normal and Weather modes. Headings are now limited to 3 curated options per mode.
 
 ---
 
@@ -146,7 +147,7 @@
 
 **Current Task:** **Phase 2.23** — E2E Tests (Playwright).
 
-**Exact stopping point:** Session 108 (Test Stabilization) complete. Full CI quality gate GREEN.
+**Exact stopping point:** Session 109 (Messaging Refinement) complete. Full CI quality gate GREEN.
 
 **Current Blocker:** None.
 
@@ -1842,3 +1843,8 @@ _(Append new entries — never delete old ones)_
 - **Stabilization**: Migrated the name input test from `userEvent` to `fireEvent.change`. This ensures atomic state updates in `react-hook-form` and eliminates timing-dependent flakiness associated with individual key events.
 - **Cleanup**: Removed unused `userEvent` imports and setup logic to maintain a clean test suite.
 - **Verification**: Confirmed that all 4 tests in the suite pass locally and the suite is now robust against environmental performance variations. Full CI quality gate: GREEN.
+
+**Session 109 (Hero Messaging Refinement):**
+- **Messaging Audit**: Removed generic marketing headings ("Tap. Order. Delivered." and "Quick delivery for everyday needs.") from the Normal Mode pool.
+- **Weather Mode Cleanup**: Removed redundant lines ("Delivering with extra care today." and "Conditions are tough...") from the Weather Mode pool to ensure a focused, 3-heading set.
+- **Atmospheric Alignment**: The final randomized sets now focus exclusively on user-centric questions and situational reassurances, perfectly matching the project's premium, high-contrast aesthetic.

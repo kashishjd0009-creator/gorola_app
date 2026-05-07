@@ -14,10 +14,8 @@ export function HeroSection(): ReactElement {
   // Randomize messaging on mount
   const messages = useMemo(() => {
     const weatherHeadings = [
-      "Delivering with extra care today.",
       "We’re out there so you can stay in.",
       "Roads are slow — we're still coming!",
-      "Conditions are tough. Our service isn’t.",
       "The weather showed up. So did we.",
     ];
     const weatherETAs = [
@@ -29,8 +27,6 @@ export function HeroSection(): ReactElement {
     const normalHeadings = [
       "What do you need delivered today?",
       "What should arrive at your door today?",
-      "Tap. Order. Delivered.",
-      "Quick delivery for everyday needs.",
       "Last-minute? We’ve got you.",
     ];
     const normalETAs = [
