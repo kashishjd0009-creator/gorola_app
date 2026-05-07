@@ -9,7 +9,6 @@ import { useWeatherStore } from "@/store/weather.store";
 export function HeroSection(): ReactElement {
   const isWeatherMode = useWeatherStore((s) => s.isWeatherMode);
   const name = useAuthStore((s) => s.name);
-  const role = useAuthStore((s) => s.role);
   const isBootstrapPending = useAuthStore((s) => s.isBootstrapPending);
   const rootRef = useRef<HTMLElement | null>(null);
 
@@ -60,8 +59,8 @@ export function HeroSection(): ReactElement {
   const displayName = useMemo(() => {
     if (isBootstrapPending) return "...";
     if (name && name.trim().length > 0) return name.trim();
-    return role === "BUYER" ? "..." : "Mussoorie";
-  }, [name, role, isBootstrapPending]);
+    return "Mussoorie";
+  }, [name, isBootstrapPending]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
