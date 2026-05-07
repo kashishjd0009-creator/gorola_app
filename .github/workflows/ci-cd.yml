@@ -75,7 +75,7 @@ jobs:
   # Fails the workflow if lint / tests / build fail. Deploy jobs *depend* on this
   # (needs: [ci, ...]) so nothing deploys to prod without a green CI.
   ci:
-    name: lint · typecheck · test · build
+    name: audit · lint · typecheck · test · build
     runs-on: ubuntu-latest
     timeout-minutes: 25
     # Scoped to this job only (do *not* use workflow-level env: — deploy jobs would inherit test DB vars in logs / env)
@@ -132,6 +132,10 @@ jobs:
       - name: Build @gorola/shared
         run: pnpm --filter @gorola/shared build
 
+      # Audit dependencies for high/critical vulnerabilities
+      - name: Security audit
+        run: pnpm security:audit
+
       # Small wait so Prisma does not connect before TCP is listening on 127.0.0.1:5432 / :6379
       - name: Wait for service ports (host-published)
         shell: bash
@@ -158,7 +162,7 @@ jobs:
         run: pnpm --filter @gorola/api exec prisma migrate deploy
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint -- --max-warnings=0
 
       - name: Typecheck
         run: pnpm typecheck

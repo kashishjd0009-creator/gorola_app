@@ -910,3 +910,30 @@ Implement a "Push-on-Empty" reconciliation strategy in `buyer-cart-sync.ts`:
 **Alternatives Considered:**
 1. **Aggressive Merge:** Always sum local + server quantities. Rejected: Risk of exceeding stock limits silently and creates complex race conditions.
 2. **Clear Local Always:** Rejected: Caused the original bug.
+
+---
+
+## [DECISION-031] CI/CD Security Hardening (Backend Scrutiny vs. Frontend/Test Exclusions)
+
+**Date:** 2026-05-07
+**Status:** Accepted
+
+**Context:**
+The GoRola monorepo uses `eslint-plugin-security` to detect common Node.js vulnerabilities. However, applying these rules indiscriminately across the entire monorepo caused significant "noise" (false positives) in the React frontend and Vitest suites, where the server-side attack vectors (like path traversal or server memory injection) are physically impossible or contextually irrelevant.
+
+**Decision:**
+1. **Enforce Strict Quality Gates:** Updated `ci:quality` to use `--max-warnings=0`. Any warning now breaks the build.
+2. **Backend Strictness:** Keep security rules 100% active for `apps/api`. Silencing is only allowed via `// eslint-disable-next-line` on verified, line-by-line false positives.
+3. **Frontend & Test Exclusions:** Explicitly disable security rules in `eslint.config.ts` for all files matching `apps/web/**` and `**/*.test.ts`.
+
+**Rationale:**
+- **Risk Mitigation:** The Backend (`apps/api`) is the only environment where these vulnerabilities (path traversal, server-side object injection) present a real threat. Strict, line-level auditing ensures the server remains a fortress.
+- **Eliminating Alert Fatigue:** Frontend React code runs in a client browser and has no server access. Forcing backend rules onto the frontend leads to "alert fatigue," where developers learn to ignore security warnings because they are "always false."
+- **Focus:** By removing the noise in the frontend and tests, we ensure that when a security warning *does* appear in the backend, it receives immediate and high-priority attention from the team.
+
+**Tradeoffs:**
+- Frontend code is no longer scanned for these specific security rules. However, React and Vite have their own built-in protections for frontend-specific threats like XSS (via JSX auto-escaping).
+
+**Alternatives Considered:**
+1. **Line-by-line silencing for the whole repo:** Rejected. Adding 50+ disable comments in React components just to handle basic state access is unmaintainable and reduces developer velocity without adding security value.
+2. **Disable the plugin entirely:** Rejected. We need the protection for the backend API.

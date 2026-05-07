@@ -41,7 +41,17 @@ export default [
     rules: {
       "security/detect-object-injection": "off",
       "security/detect-non-literal-fs-filename": "off",
-      "security/detect-possible-timing-attacks": "off"
+      "security/detect-possible-timing-attacks": "off",
+      "security/detect-non-literal-regexp": "off"
+    }
+  },
+  {
+    files: ["apps/web/**/*.ts", "apps/web/**/*.tsx"],
+    rules: {
+      "security/detect-object-injection": "off",
+      "security/detect-non-literal-fs-filename": "off",
+      "security/detect-possible-timing-attacks": "off",
+      "security/detect-non-literal-regexp": "off"
     }
   }
 ];
