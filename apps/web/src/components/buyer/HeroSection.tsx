@@ -9,6 +9,7 @@ import { useWeatherStore } from "@/store/weather.store";
 export function HeroSection(): ReactElement {
   const isWeatherMode = useWeatherStore((s) => s.isWeatherMode);
   const name = useAuthStore((s) => s.name);
+  const role = useAuthStore((s) => s.role);
   const isBootstrapPending = useAuthStore((s) => s.isBootstrapPending);
   const rootRef = useRef<HTMLElement | null>(null);
 
@@ -52,9 +53,15 @@ export function HeroSection(): ReactElement {
   if (hour >= 5 && hour < 12) greeting = "Good morning";
   else if (hour >= 12 && hour < 17) greeting = "Good afternoon";
 
-  const displayName = isBootstrapPending
-    ? "..."
-    : (name && name.trim().length > 0 ? name.trim() : "Mussoorie");
+  // Fallback logic: 
+  // 1. Show '...' while checking session.
+  // 2. If logged in but name is missing (rare), show '...' to avoid Mussoorie flicker.
+  // 3. If confirmed anonymous (role is null), show 'Mussoorie'.
+  const displayName = useMemo(() => {
+    if (isBootstrapPending) return "...";
+    if (name && name.trim().length > 0) return name.trim();
+    return role === "BUYER" ? "..." : "Mussoorie";
+  }, [name, role, isBootstrapPending]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {

@@ -9,7 +9,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-08
-- **Session Summary:** **Session 112 — CI Stabilization & Regression Hardening.** Hardened the profile persistence regression test by forcing deterministic OTP generation (`GOROLA_TEST_OTP`). Verified full monorepo stability with a successful CI quality gate run (All 523 tests passing).
+- **Session Summary:** **Session 113 — UI Polish & Hydration Stabilization.** Fixed a production-only blue focus ring bug by removing an aggressive global CSS selector. Resolved a hydration flicker in the Hero greeting where "Mussoorie" would flash before the user's name during session bootstrap.
 - **Next Session Must Start With:** Phase 2.23 — E2E Tests (Playwright).
 
 
@@ -139,6 +139,7 @@
 - **Session 110 (Production UI Polish):** Fixed Hero name hydration flicker and removed default browser focus rings from navigation elements.
 - **Session 111 (Profile Persistence Fix):** Resolved name-reversion-on-reload bug by decoupling token rotation from profile snapshots. Refactored `AuthService` to sync with the database during refresh.
 - **Session 112 (CI Stabilization):** Hardened regression tests against CI environment discrepancies by enforcing deterministic OTP generation. verified 100% test pass rate.
+- **Session 113 (UI Polish & Hydration):** Fixed production blue ring bug via global CSS cleanup and eliminated "Mussoorie" hydration flicker in HeroSection.
 
 ---
 
@@ -150,7 +151,7 @@
 
 **Current Task:** **Phase 2.23** — E2E Tests (Playwright).
 
-**Exact stopping point:** Session 112 (CI Stabilization) complete. Full CI quality gate GREEN.
+**Exact stopping point:** Session 113 (UI Polish) complete. Full CI quality gate GREEN.
 
 **Current Blocker:** None.
 
@@ -1870,3 +1871,8 @@ _(Append new entries — never delete old ones)_
 - **UI Test Maintenance**: Updated `HeroSection.test.tsx` to align with the new auth bootstrap gating (`isBootstrapPending`) and refined the random messaging pools in tests to match production copy.
 - **Final Verification**: Executed a full monorepo-wide `ci:quality` run. Confirmed 100% success across all quality gates (Linting, Typechecking, Vitest Integration, and Production Build).
 - **Quality Status**: All 523 tests (API & Web) are GREEN. CI status: GREEN.
+**Session 113 (UI Polish & Hydration Stabilization):**
+- **Blue Ring Fix**: Identified that an aggressive global `*` selector in `globals.css` was applying `outline-ring/50` to every element, causing conflicts with `focus:outline-none` and triggering browser-default blue rings in production. Replaced with a targeted `:focus-visible` rule.
+- **Hydration Flicker Fix**: Resolved an issue where "Mussoorie" (the guest fallback) would flash before the user's name during the authentication handshake. Refined the `displayName` logic in `HeroSection.tsx` to remain in a neutral state (`...`) until the bootstrap process explicitly confirms either a name or an anonymous role.
+- **Reasoning**: Discrepancies between local and production were traced to CSS minification/bundling order and faster JS execution in production, which exposed the global selector conflict and the hydration race condition.
+- **Final Verification**: Verified that all 523 monorepo tests remain GREEN after the component refactor. CI status: GREEN.
