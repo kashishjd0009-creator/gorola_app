@@ -1,4 +1,4 @@
-import { Clock, LogOut, MapPin, Search, ShoppingCart, UserRound } from "lucide-react";
+import { LogOut, MapPin, Search, ShoppingCart, UserRound } from "lucide-react";
 import type { KeyboardEvent, ReactElement } from "react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
