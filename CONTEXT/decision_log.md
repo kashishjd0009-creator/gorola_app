@@ -922,7 +922,7 @@ Implement a "Push-on-Empty" reconciliation strategy in `buyer-cart-sync.ts`:
 The GoRola monorepo uses `eslint-plugin-security` to detect common Node.js vulnerabilities. However, applying these rules indiscriminately across the entire monorepo caused significant "noise" (false positives) in the React frontend and Vitest suites, where the server-side attack vectors (like path traversal or server memory injection) are physically impossible or contextually irrelevant.
 
 **Decision:**
-1. **Enforce Strict Quality Gates:** Updated `ci:quality` to use `--max-warnings=0`. Any warning now breaks the build.
+1. **Enforce Strict Quality Gates:** Updated `ci:quality` and GitHub workflows to use `pnpm lint --max-warnings 0`. Any warning now breaks the build.
 2. **Backend Strictness:** Keep security rules 100% active for `apps/api`. Silencing is only allowed via `// eslint-disable-next-line` on verified, line-by-line false positives.
 3. **Frontend & Test Exclusions:** Explicitly disable security rules in `eslint.config.ts` for all files matching `apps/web/**` and `**/*.test.ts`.
 

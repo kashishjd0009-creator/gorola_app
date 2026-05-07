@@ -9,7 +9,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-07
-- **Session Summary:** **Session 103 — CI/CD Security Hardening.** Hardened pipeline by enabling strict linting (`--max-warnings=0`) and silencing false-positives line-by-line in the backend. Resolved `ip-address` and `hono` vulnerabilities via `pnpm.overrides`. Authored `ISSUES GUIDE/security_linting_and_audits.md` to document the security posture and maintenance strategy.
+- **Session Summary:** **Session 103 — CI/CD Security Hardening.** Hardened pipeline by enabling strict linting (`pnpm lint --max-warnings 0`) and silencing false-positives line-by-line in the backend. Resolved `ip-address` and `hono` vulnerabilities via `pnpm.overrides`. Authored `ISSUES GUIDE/security_linting_and_audits.md` to document the security posture and maintenance strategy.
 - **Next Session Must Start With:** Phase 2.21 — UI Overhaul.
 
 
@@ -129,7 +129,7 @@
 - **Session 100 (Cart Wipe Bug Fix):** Investigated and reproduced a race condition in `syncBuyerCartFromServer` that caused the cart to zero out on checkout transition. Implemented `waitForAllCartMutations` barrier and hardened reconciliation to preserve local state on push failures. Added `buyer-cart-sync.hardening.test.ts` to main suite. Verified with 507 tests green.
 - **Session 101 (Phase 2.19 W-018 OTPLog Removal):** Removed redundant `OTPLog` model from `schema.prisma`. Generated and applied migration to drop `otp_logs` table. Verified Redis-only OTP flow consistency with integration tests and full CI quality gate (507 tests green).
 - **Session 102 (Phase 2.20 Profile Page Implementation):** Completed Phase 2.20. Implemented `PUT /api/v1/account/profile` backend, premium `ProfilePage.tsx` with GSAP animations, and wired navigation. 514 tests green.
-- **Session 103 (CI/CD Security Hardening):** Integrated `eslint-plugin-security`. Hardened `ci:quality` to fail on ANY warning (`--max-warnings=0`). Resolved `ip-address` and `hono` vulnerabilities via root-level overrides. Audited and silenced backend false-positives line-by-line while excluding the frontend/tests from irrelevant Node-specific rules. Created comprehensive security maintenance guide. Full CI green with 514 tests.
+- **Session 103 (CI/CD Security Hardening):** Integrated `eslint-plugin-security`. Hardened `ci:quality` to fail on ANY warning (`pnpm lint --max-warnings 0`). Resolved `ip-address` and `hono` vulnerabilities via root-level overrides. Audited and silenced backend false-positives line-by-line while excluding the frontend/tests from irrelevant Node-specific rules. Created comprehensive security maintenance guide. Full CI green with 514 tests.
 ---
 
 ## 🔨 In Progress Right Now
@@ -1760,6 +1760,6 @@ _(Append new entries — never delete old ones)_
 **Session 103 (CI/CD Security Hardening):**
 - **Decision 031:** Configured `eslint-plugin-security` to run strictly line-by-line on the backend API, but entirely bypass the frontend (`apps/web`) and test files. This establishes a clean "Secure Baseline" without generating false-positive noise from React's client-side object interactions.
 - **Dependency Audit:** Resolved security vulnerabilities in `ip-address` (moderate) and `hono` (moderate) using documented `pnpm.overrides`. The `hono` override specifically addresses the Body Limit Bypass and HTML Injection vulnerabilities published in May 2026.
-- **Strict Linting Enforcement:** Updated the `ci:quality` pipeline script to enforce `--max-warnings=0`. This forces developers to address new warnings immediately, preventing the accumulation of technical debt or ignored security risks.
+- **Strict Linting Enforcement:** Updated the `ci:quality` pipeline script and GitHub workflow to enforce zero warnings using `pnpm lint --max-warnings 0`. Fixed a syntax error where a double-dash (`--`) caused ESLint to fail recursive workspace checks. This ensures the "Zero-Warning" policy is strictly enforced across the full monorepo.
 - **Documentation:** Authored `ISSUES GUIDE/security_linting_and_audits.md` to document the team's methodology for handling dependency audits and ESLint false positives securely.
 - **JSON Comments:** Implemented the `_pnpm_overrides_comments` root-level object in `package.json` to store informative notes for the security overrides, circumventing `pnpm`'s restriction on inline comments within the `overrides` block.

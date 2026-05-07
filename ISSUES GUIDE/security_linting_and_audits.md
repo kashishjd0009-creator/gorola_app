@@ -75,7 +75,7 @@ By silencing our known false-positives across the codebase, we established a "Se
 
 Because of this, we were able to update the CI pipeline script in `package.json` to enforce strict linting:
 ```json
-"ci:quality": "... pnpm lint -- --max-warnings=0 ..."
+"ci:quality": "... pnpm lint --max-warnings 0 ..."
 ```
 
 **What this means for developers:**
