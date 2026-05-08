@@ -1,5 +1,5 @@
 import { LogOut, MapPin, Search, ShoppingCart, UserRound } from "lucide-react";
-import type { KeyboardEvent, ReactElement } from "react";
+import type { FormEvent, ReactElement } from "react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -44,13 +44,12 @@ export function BuyerNav(): ReactElement {
     }
   }
 
-  const handleEnter = (event: KeyboardEvent<HTMLInputElement>): void => {
-    if (event.key !== "Enter") {
-      return;
-    }
+  const handleSearchSubmit = (event: FormEvent): void => {
+    event.preventDefault();
     const query = search.trim();
     navigate(query.length > 0 ? `/search?q=${encodeURIComponent(query)}` : "/search");
   };
+
 
   return (
     <nav
@@ -68,28 +67,29 @@ export function BuyerNav(): ReactElement {
             <span aria-label="GoRola mountain logo">
               <GorolaMountainMark />
             </span>
-            <span className="font-playfair text-xl tracking-wide">GoRola</span>
+            <span className="font-playfair text-xl tracking-wide hidden sm:block">GoRola</span>
           </Link>
 
-          <div className="flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-gorola-fog">
+          <div className="hidden sm:flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-gorola-fog">
             <MapPin size={14} className="text-gorola-saffron" />
-            <span className="hidden sm:inline">Kulri, Mussoorie</span>
+            <span>Kulri, Mussoorie</span>
           </div>
         </div>
 
-        {/* Center: Fluid Search */}
-        <div className="relative flex flex-1 items-center">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="relative flex flex-1 items-center"
+        >
           <Search size={15} className="pointer-events-none absolute left-3 text-white/60" />
           <input
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
             }}
-            onKeyDown={handleEnter}
             placeholder="Search products"
             className="w-full rounded-xl border border-white/20 bg-white/10 py-2 pl-9 pr-3 text-sm text-gorola-fog outline-none transition-all placeholder:text-white/60 focus:bg-white/15 focus:border-white/30"
           />
-        </div>
+        </form>
 
         {/* Right: Cart & Profile */}
         <div className="flex shrink-0 items-center gap-3">

@@ -149,4 +149,15 @@ describe("HeroSection", () => {
     unmount();
     expect(revertSpy).toHaveBeenCalledOnce();
   });
+
+  it("applies responsive layout classes to the ETA banner for mobile support", () => {
+    render(<HeroSection />);
+    const etaBanner = screen.getByRole("status");
+    
+    // Check for wrapping support and mobile-optimized width/alignment
+    expect(etaBanner).not.toHaveClass("whitespace-nowrap");
+    expect(etaBanner).toHaveClass("flex", "w-full", "sm:inline-flex", "sm:w-fit");
+    expect(etaBanner).toHaveClass("text-[11px]", "sm:text-sm");
+    expect(etaBanner).toHaveClass("gap-2", "sm:gap-3");
+  });
 });

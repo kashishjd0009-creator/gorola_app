@@ -132,18 +132,19 @@ export function HeroSection(): ReactElement {
 
           <div
             className={cn(
-              "hero-eta inline-flex items-center gap-3 rounded-full px-4 py-2 text-sm font-medium transition-colors bg-white/10 text-gorola-fog"
+              "hero-eta flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[11px] font-medium text-gorola-fog transition-colors sm:inline-flex sm:w-fit sm:gap-3 sm:text-sm",
+              "w-full"
             )}
             role="status"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <span className="hero-pulse h-2 w-2 rounded-full bg-gorola-amber" />
               <span className="font-bold text-white">
                 {isWeatherMode ? "45-55 mins" : "25-35 mins"}
               </span>
             </div>
-            <span className="h-4 w-px bg-white/20" aria-hidden />
-            <span className="opacity-80">
+            <div className="w-px self-stretch bg-white/20" aria-hidden />
+            <span className="opacity-80 whitespace-normal leading-tight">
               {isWeatherMode ? messages.weatherETA : messages.normalETA}
             </span>
           </div>

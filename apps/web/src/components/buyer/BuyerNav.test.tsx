@@ -172,4 +172,28 @@ describe("BuyerNav", () => {
       });
     });
   });
+
+  it("wraps search input in a form for mobile keyboard support", () => {
+    render(
+      <MemoryRouter>
+        <BuyerNav />
+      </MemoryRouter>
+    );
+    const input = screen.getByPlaceholderText(/Search/i);
+    const form = input.closest("form");
+    expect(form).toBeInTheDocument();
+  });
+
+  it("hides branding and location pill on mobile screens", () => {
+    render(
+      <MemoryRouter>
+        <BuyerNav />
+      </MemoryRouter>
+    );
+    const branding = screen.getByText(/GoRola/i);
+    const locationPill = screen.getByText(/Kulri, Mussoorie/i).closest("div");
+
+    expect(branding).toHaveClass("hidden", "sm:block");
+    expect(locationPill).toHaveClass("hidden", "sm:flex");
+  });
 });
