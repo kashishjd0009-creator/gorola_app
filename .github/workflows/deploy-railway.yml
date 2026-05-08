@@ -1,0 +1,101 @@
+# =============================================================================
+# REUSABLE WORKFLOW: deploy-railway.yml
+# =============================================================================
+#
+# PURPOSE
+#   Uploads and builds the API service on Railway via the official CLI.
+#   Called by staging.yml (staging environment) and production.yml (production).
+#   Railway's GitHub auto-deploy is intentionally DISCONNECTED from the repo —
+#   GitHub Actions is the sole deploy trigger, giving per-branch control.
+#
+# INPUTS
+#   environment     — "staging" | "production"
+#                     Passed to `railway up --environment` and used to select
+#                     the correct GitHub Environment (and its secrets).
+#
+# SECRETS REQUIRED (see SECRETS.md for how to obtain each)
+#   RAILWAY_TOKEN       — Project-scoped token for this environment
+#   RAILWAY_SERVICE_ID  — UUID of the API service (not the project ID)
+#                         Set these per GitHub Environment so staging and prod
+#                         each get their own token + service ID.
+#
+# HOW TO CALL THIS
+#   jobs:
+#     deploy-railway:
+#       uses: ./.github/workflows/deploy-railway.yml
+#       with:
+#         environment: staging      # or production
+#       secrets: inherit
+#
+# KNOWN ISSUE — Railway log-streaming transient failure
+#   Railway CLI can exit non-zero with "Failed to stream build logs" even when
+#   the deploy itself succeeded. The step below retries once (after 30 s) only
+#   for this specific message so CI doesn't false-negative. Real deploy errors
+#   (non-matching output) still fail immediately.
+# =============================================================================
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "'staging' or 'production'"
+
+jobs:
+  deploy-railway:
+    name: deploy · Railway · ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # GitHub Environment activates environment-scoped secrets and optional
+    # protection rules (e.g. manual approval gate before production).
+    environment: ${{ inputs.environment }}
+
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli@latest
+
+      # Deploy to the Railway environment matching this workflow's input.
+      # Label format: "<branch> <short-sha>" for traceability in the Railway dashboard.
+      # Retry logic: catches the known log-streaming flake; non-transient errors exit immediately.
+      - name: Deploy to ${{ inputs.environment }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MSG="${GITHUB_REF_NAME} ${GITHUB_SHA:0:7}"
+
+          set +e
+          DEPLOY_OUTPUT="$(railway up --ci \
+            --environment "${{ inputs.environment }}" \
+            --message "$MSG" \
+            --service "$RAILWAY_SERVICE_ID" 2>&1)"
+          DEPLOY_EXIT=$?
+          set -e
+
+          echo "$DEPLOY_OUTPUT"
+
+          if [ "$DEPLOY_EXIT" -eq 0 ]; then
+            exit 0
+          fi
+
+          # Retry once for the known transient log-streaming error.
+          if [[ "$DEPLOY_OUTPUT" == *"Failed to stream build logs"* ]]; then
+            echo "Railway log streaming failed; retrying once in 30s..."
+            sleep 30
+            railway up --ci \
+              --environment "${{ inputs.environment }}" \
+              --message "$MSG (retry)" \
+              --service "$RAILWAY_SERVICE_ID"
+            exit 0
+          fi
+
+          # Any other error is a real failure — propagate it.
+          exit "$DEPLOY_EXIT"

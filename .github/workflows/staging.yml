@@ -1,0 +1,92 @@
+# =============================================================================
+# PIPELINE: staging.yml  (develop branch → staging environment)
+# =============================================================================
+#
+# TRIGGERS
+#   • Push to `develop`             — full CI + deploy (if paths matched)
+#   • PR targeting `develop`        — CI + paths only, no deploy
+#   • Manual "Run workflow" button  — full CI + deploy unconditionally
+#
+# FLOW
+#   ci (quality gate) ──┐
+#                       ├──▶ deploy-vercel  (staging, if vercel paths changed)
+#   paths (diff) ───────┘
+#                       └──▶ deploy-railway (staging, if railway paths changed)
+#
+#   ci and paths run in parallel (they do not depend on each other).
+#   Deploy jobs wait for BOTH to succeed before starting.
+#   On PRs, the deploy jobs' `if:` condition filters them out — only CI runs.
+#
+# ENVIRONMENTS
+#   Uses GitHub Environments named "staging".
+#   Each deploy job activates that environment to pull environment-scoped
+#   secrets (VERCEL_TOKEN, VERCEL_PROJECT_ID, RAILWAY_TOKEN, RAILWAY_SERVICE_ID).
+#   See SECRETS.md for full setup instructions.
+#
+# CONCURRENCY
+#   A new push to `develop` cancels any in-progress staging run on the same
+#   branch — saves minutes and avoids stale deploys racing each other.
+# =============================================================================
+
+name: Staging
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: staging-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Quality gate — must pass before any deploy runs
+  # ---------------------------------------------------------------------------
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # Diff — detect which parts of the monorepo changed (cheap, runs in parallel)
+  # ---------------------------------------------------------------------------
+  paths:
+    uses: ./.github/workflows/paths.yml
+
+  # ---------------------------------------------------------------------------
+  # Deploy frontend to Vercel staging (Preview deploy, not --prod)
+  # Skipped on PRs. On workflow_dispatch, skips the path check (deploy always).
+  # ---------------------------------------------------------------------------
+  deploy-vercel:
+    needs: [ci, paths]
+    if: >
+      success() &&
+      github.ref == 'refs/heads/develop' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'workflow_dispatch' || needs.paths.outputs.vercel == 'true')
+    uses: ./.github/workflows/deploy-vercel.yml
+    with:
+      environment: staging
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # Deploy backend to Railway staging environment
+  # Skipped on PRs. On workflow_dispatch, skips the path check (deploy always).
+  # ---------------------------------------------------------------------------
+  deploy-railway:
+    needs: [ci, paths]
+    if: >
+      success() &&
+      github.ref == 'refs/heads/develop' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'workflow_dispatch' || needs.paths.outputs.railway == 'true')
+    uses: ./.github/workflows/deploy-railway.yml
+    with:
+      environment: staging
+    secrets: inherit

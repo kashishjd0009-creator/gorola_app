@@ -1,0 +1,130 @@
+# =============================================================================
+# REUSABLE WORKFLOW: ci.yml
+# =============================================================================
+#
+# PURPOSE
+#   Shared quality gate used by both staging.yml and production.yml.
+#   Runs: install → security audit → build shared pkg → Prisma → lint →
+#         typecheck → tests → full build.
+#   Both Postgres 15 and Redis 7 are spun up as service containers so Prisma
+#   migrations and any integration tests that need a real DB/cache work here.
+#
+# HOW TO CALL THIS
+#   jobs:
+#     ci:
+#       uses: ./.github/workflows/ci.yml
+#       secrets: inherit          # passes all repo secrets down if needed
+#
+# NOTE
+#   env: vars are scoped to this job only intentionally — deploy jobs must NOT
+#   inherit test-DB connection strings (they would appear in their logs/env).
+# =============================================================================
+
+on:
+  workflow_call:   # only callable from other workflows, never triggered directly
+
+jobs:
+  ci:
+    name: audit · lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # Scoped to this job only — do NOT hoist to workflow level.
+    # Deploy jobs (deploy-vercel / deploy-railway) must not inherit test DB vars.
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
+      DATABASE_URL_TEST: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
+      DIRECT_URL: "postgresql://postgres:postgres@127.0.0.1:5432/gorola_test?schema=public&sslmode=disable"
+      REDIS_URL: "redis://127.0.0.1:6379"
+      NODE_ENV: test
+
+    # Real Postgres 15 + Redis 7 — same major versions as prod intent.
+    # Steps connect via 127.0.0.1 (host-published ports), not the container hostname.
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gorola_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm version comes from root package.json "packageManager" field.
+      # Do NOT set `version:` here — let the action read it from the manifest.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # @gorola/shared compiles to dist/ — api and web typecheck both need that output.
+      - name: Build @gorola/shared
+        run: pnpm --filter @gorola/shared build
+
+      # Fail fast on high/critical vulnerabilities before doing any heavier work.
+      - name: Security audit
+        run: pnpm security:audit
+
+      # Small wait so Prisma does not attempt to connect before TCP is listening.
+      # Service containers publish to 127.0.0.1 on the VM host, not the container hostname.
+      - name: Wait for service ports (host-published)
+        shell: bash
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            (echo >/dev/tcp/127.0.0.1/5432) 2>/dev/null && { echo "Postgres ready on 127.0.0.1:5432"; break; }
+            echo "Waiting for 127.0.0.1:5432... ($i/30)"
+            sleep 1
+            if [ "$i" -eq 30 ]; then echo "Postgres not ready after 30s"; exit 1; fi
+          done
+          for i in $(seq 1 15); do
+            (echo >/dev/tcp/127.0.0.1/6379) 2>/dev/null && { echo "Redis ready on 127.0.0.1:6379"; break; }
+            echo "Waiting for 127.0.0.1:6379... ($i/15)"
+            sleep 1
+            if [ "$i" -eq 15 ]; then echo "Redis not ready after 15s"; exit 1; fi
+          done
+
+      # Generate Prisma client and run migrations against the test DB service above.
+      - name: Prisma — generate
+        run: pnpm --filter @gorola/api exec prisma generate
+
+      - name: Prisma — migrate (test DB)
+        run: pnpm --filter @gorola/api exec prisma migrate deploy
+
+      - name: Lint
+        run: pnpm lint --max-warnings 0
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

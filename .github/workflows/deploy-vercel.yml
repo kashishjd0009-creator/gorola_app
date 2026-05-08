@@ -1,0 +1,70 @@
+# =============================================================================
+# REUSABLE WORKFLOW: deploy-vercel.yml
+# =============================================================================
+#
+# PURPOSE
+#   Deploys the buyer-web Vite app to Vercel via the official CLI.
+#   Called by staging.yml (preview deploy) and production.yml (--prod deploy).
+#
+# INPUTS
+#   environment     — "staging" | "production"
+#                     Controls whether --prod flag is passed to the CLI and
+#                     which GitHub Environment (and its secrets) are activated.
+#
+# SECRETS REQUIRED (see SECRETS.md for how to obtain each)
+#   VERCEL_TOKEN      — Vercel account/team API token
+#   VERCEL_ORG_ID     — Team ID that owns the project
+#   VERCEL_PROJECT_ID — Project ID of the buyer-web app
+#                       Use separate Vercel projects for staging vs prod,
+#                       each with its own VERCEL_PROJECT_ID, set per
+#                       GitHub Environment (staging / production).
+#
+# HOW TO CALL THIS
+#   jobs:
+#     deploy-vercel:
+#       uses: ./.github/workflows/deploy-vercel.yml
+#       with:
+#         environment: staging      # or production
+#       secrets: inherit
+# =============================================================================
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "'staging' or 'production'"
+
+jobs:
+  deploy-vercel:
+    name: deploy · Vercel · ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # GitHub Environment activates environment-scoped secrets and protection
+    # rules (e.g. required reviewers before production deploys).
+    # Create these in: Repo → Settings → Environments → New environment.
+    environment: ${{ inputs.environment }}
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      # --prod targets the Production deployment on Vercel (custom domain, no preview URL).
+      # Without --prod, Vercel creates a Preview deployment — used for staging.
+      - name: Deploy to ${{ inputs.environment }}
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            vercel deploy --prod --yes
+          else
+            vercel deploy --yes
+          fi

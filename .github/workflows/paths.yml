@@ -1,0 +1,83 @@
+# =============================================================================
+# REUSABLE WORKFLOW: paths.yml
+# =============================================================================
+#
+# PURPOSE
+#   Detects which parts of the monorepo changed in a push/PR so that deploy
+#   jobs only run when relevant files are touched. Runs cheaply in parallel
+#   with the `ci` job — it has no installs, just a git diff.
+#
+# OUTPUTS
+#   vercel   — "true" if any Vercel-related path changed, "false" otherwise
+#   railway  — "true" if any Railway-related path changed, "false" otherwise
+#
+# HOW TO CALL THIS
+#   jobs:
+#     paths:
+#       uses: ./.github/workflows/paths.yml
+#
+#   Then in a deploy job:
+#     needs: [ci, paths]
+#     if: needs.paths.outputs.vercel == 'true'   # or railway
+#
+# EDITING THE FILTER LISTS
+#   Keep these aligned with Railway's watch paths and the Vercel app tree.
+#   Both groups include shared root files (lockfile, tsconfig, this workflow
+#   file itself) so a dependency bump triggers both deploys.
+# =============================================================================
+
+on:
+  workflow_call:   # only callable from other workflows
+    outputs:
+      vercel:
+        description: "'true' if Vercel-related files changed"
+        value: ${{ jobs.paths.outputs.vercel }}
+      railway:
+        description: "'true' if Railway-related files changed"
+        value: ${{ jobs.paths.outputs.railway }}
+
+jobs:
+  paths:
+    name: path filters (for CD)
+    runs-on: ubuntu-latest
+
+    outputs:
+      vercel: ${{ steps.filter.outputs.vercel }}
+      railway: ${{ steps.filter.outputs.railway }}
+
+    steps:
+      # Full history so dorny/paths-filter can diff against the right base on
+      # both PRs (two-dot diff) and direct pushes (three-dot diff vs merge base).
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Which paths changed?
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          # Inside each group, any ONE match sets the output to "true" (OR logic).
+          # A file in both groups can trigger both deploys independently.
+          filters: |
+            vercel:
+              - 'apps/web/**'
+              - 'packages/ui/**'
+              - 'packages/shared/**'
+              - 'vercel.json'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+              - 'tsconfig.base.json'
+              - '.github/workflows/**'
+            railway:
+              - 'apps/api/**'
+              - 'packages/shared/**'
+              - 'railway.toml'
+              - 'nixpacks.toml'
+              - 'Procfile'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+              - 'tsconfig.base.json'
+              - '.github/workflows/**'

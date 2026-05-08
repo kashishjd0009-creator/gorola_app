@@ -1,0 +1,93 @@
+# =============================================================================
+# PIPELINE: production.yml  (main branch → production environment)
+# =============================================================================
+#
+# TRIGGERS
+#   • Push to `main`                — full CI + deploy (if paths matched)
+#   • PR targeting `main`           — CI + paths only, no deploy
+#   • Manual "Run workflow" button  — full CI + deploy unconditionally
+#
+# FLOW
+#   ci (quality gate) ──┐
+#                       ├──▶ deploy-vercel  (production --prod, if vercel paths changed)
+#   paths (diff) ───────┘
+#                       └──▶ deploy-railway (production env, if railway paths changed)
+#
+#   ci and paths run in parallel (they do not depend on each other).
+#   Deploy jobs wait for BOTH to succeed before starting.
+#   On PRs, the deploy jobs' `if:` condition filters them out — only CI runs.
+#
+# ENVIRONMENTS
+#   Uses GitHub Environments named "production".
+#   You can add a required-reviewers protection rule on this environment so
+#   every production deploy needs a manual approval before it proceeds:
+#   Repo → Settings → Environments → production → Required reviewers.
+#   See SECRETS.md for full secrets setup.
+#
+# CONCURRENCY
+#   A new push to `main` cancels any in-progress production run — avoids two
+#   deploys racing and potentially leaving prod in a mixed state.
+# =============================================================================
+
+name: Production
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Quality gate — must pass before any deploy runs
+  # ---------------------------------------------------------------------------
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # Diff — detect which parts of the monorepo changed (cheap, runs in parallel)
+  # ---------------------------------------------------------------------------
+  paths:
+    uses: ./.github/workflows/paths.yml
+
+  # ---------------------------------------------------------------------------
+  # Deploy frontend to Vercel production (--prod flag, live domain)
+  # Skipped on PRs. On workflow_dispatch, skips the path check (deploy always).
+  # ---------------------------------------------------------------------------
+  deploy-vercel:
+    needs: [ci, paths]
+    if: >
+      success() &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'workflow_dispatch' || needs.paths.outputs.vercel == 'true')
+    uses: ./.github/workflows/deploy-vercel.yml
+    with:
+      environment: production
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # Deploy backend to Railway production environment
+  # Skipped on PRs. On workflow_dispatch, skips the path check (deploy always).
+  # ---------------------------------------------------------------------------
+  deploy-railway:
+    needs: [ci, paths]
+    if: >
+      success() &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'workflow_dispatch' || needs.paths.outputs.railway == 'true')
+    uses: ./.github/workflows/deploy-railway.yml
+    with:
+      environment: production
+    secrets: inherit
