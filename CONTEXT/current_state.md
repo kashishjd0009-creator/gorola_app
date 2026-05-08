@@ -9,8 +9,8 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-08
-- **Session Summary:** **Session 113 — UI Polish & Hydration Stabilization.** Fixed a production-only blue focus ring bug by removing an aggressive global CSS selector. Resolved a hydration flicker in the Hero greeting where "Mussoorie" would flash before the user's name during session bootstrap.
-- **Next Session Must Start With:** Phase 2.23 — E2E Tests (Playwright).
+- **Session Summary:** **Session 114 — Mobile UI Refinement Planning.** Conducted a thorough responsiveness audit on iPhone SE (375px). Identified and planned fixes for navbar search bar squashing, unreliable mobile keyboard search submission, and Hero section banner wrapping.
+- **Next Session Must Start With:** Phase 2.22 — Mobile UI Refinement (iPhone SE Support).
 
 
 ---
@@ -20,7 +20,7 @@
 | Phase   | Name                 | Status         | Notes                                                                                                                                                                                                                                            |
 | ------- | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase 1 | NFR Foundation       | ✅ COMPLETE    | 1.8 **CI+CD** in **`ci-cd.yml`** (Vercel + Railway on `main`, path-gated), 1.9 hosting config, **1.10** smoke + secrets. Optional: 1.8 coverage / branch rules in GitHub                                                                         |
-| Phase 2 | Buyer Web Experience | 🔄 IN PROGRESS | **2.1–2.21 complete**. Full quality gate GREEN. |
+| Phase 2 | Buyer Web Experience | 🔄 IN PROGRESS | **2.1–2.21 complete. Phase 2.22 planned.** |
 | Phase 3 | Store Owner Panel    | 🔴 NOT STARTED | After Phase 2 complete                                                                                                                                                                                                                           |
 | Phase 4 | Admin Panel          | 🔴 NOT STARTED | After Phase 3 complete                                                                                                                                                                                                                           |
 | Phase 5 | Rider Interface      | ⏸️ DEFERRED    | Stubs only in Phase 1                                                                                                                                                                                                                            |
@@ -140,6 +140,7 @@
 - **Session 111 (Profile Persistence Fix):** Resolved name-reversion-on-reload bug by decoupling token rotation from profile snapshots. Refactored `AuthService` to sync with the database during refresh.
 - **Session 112 (CI Stabilization):** Hardened regression tests against CI environment discrepancies by enforcing deterministic OTP generation. verified 100% test pass rate.
 - **Session 113 (UI Polish & Hydration):** Fixed production blue ring bug via global CSS cleanup and eliminated "Mussoorie" hydration flicker in HeroSection.
+- **Session 114 (Mobile UI Refinement Planning):** Performed a detailed UI audit for small screens (375px). Created a TDD-based implementation plan (W-020, W-021) to resolve navbar crowding, search form accessibility, and hero banner layout stability.
 
 ---
 
@@ -149,9 +150,9 @@
 
 ---
 
-**Current Task:** **Phase 2.23** — E2E Tests (Playwright).
+**Current Task:** **Phase 2.22** — Mobile UI Refinement (iPhone SE Support).
 
-**Exact stopping point:** Session 113 (UI Polish) complete. Full CI quality gate GREEN.
+**Exact stopping point:** Session 114 (Planning) complete. Implementation plan approved.
 
 **Current Blocker:** None.
 
@@ -1218,9 +1219,19 @@ The current UI needs a refresh to feel more personalized, compact, and intuitive
 
 ---
 
-### 2.22 — (Reserved)
+### 2.22 — Mobile UI Refinement (iPhone SE Support)
 
-> Details to be added by the user.
+- [ ] **W-020 — BuyerNav Mobile Visibility & Keyboard Support**
+  - [ ] RED: Search input wrapped in a `<form>` element in tests.
+  - [ ] RED: Form submission triggers `navigate` with correct query in tests.
+  - [ ] GREEN: Hide "GoRola" text and Location Pill on screens < `sm`.
+  - [ ] GREEN: Implement `<form onSubmit={handleSearchSubmit}>` for native mobile "Go" support.
+- [ ] **W-021 — Hero ETA Banner One-Line Layout**
+  - [ ] RED: ETA banner children lack `whitespace-nowrap` or appropriate mobile text size in tests.
+  - [ ] GREEN: Adjust banner `gap-2`, `text-xs` (or smaller), and `whitespace-nowrap` for mobile screens.
+- [ ] **Verification chain:**
+  - [ ] Open site on iPhone SE (375px) → Search bar is full-width (logo only) → Search "apples" → Correct navigation.
+  - [ ] Open site on iPhone SE → Hero banner is exactly one line.
 
 ---
 
@@ -1876,3 +1887,10 @@ _(Append new entries — never delete old ones)_
 - **Hydration Flicker Fix**: Resolved an issue where "Mussoorie" (the guest fallback) would flash before the user's name during the authentication handshake. Refined the `displayName` logic in `HeroSection.tsx` to remain in a neutral state (`...`) until the bootstrap process explicitly confirms either a name or an anonymous role. Further refined to ensure that authenticated users who haven't saved a name properly fallback to "Mussoorie" instead of staying stuck on "...".
 - **Reasoning**: Discrepancies between local and production were traced to CSS minification/bundling order and faster JS execution in production, which exposed the global selector conflict and the hydration race condition.
 - **Final Verification**: Verified that all 523 monorepo tests remain GREEN after the component refactor. CI status: GREEN.
+
+**Session 114 (Mobile UI Refinement Planning):**
+- **Responsiveness Audit**: Conducted a thorough investigation of the UI on iPhone SE (375px). Identified specific layout "crowding" in the `BuyerNav` where the search bar was being squashed to ~60px, and wrapping issues in the `HeroSection` ETA banner.
+- **Search Accessibility Decision**: Diagnosed that the search "Go" button failure on mobile is due to reliance on `onKeyDown` instead of standard form submission. Decided to wrap the search input in a `<form>` to natively support mobile OS keyboard triggers.
+- **Visual Hierarchy Decision**: Decided to hide secondary branding text ("GoRola") and the location pill on mobile (`hidden sm:block/flex`) to prioritize functional real estate for the search bar.
+- **Hero Banner Stability**: Decided to apply `whitespace-nowrap`, reduced mobile font sizes (`text-xs`), and tighter gaps (`gap-2`) to the ETA banner to maintain a premium single-line "status pill" look on small screens.
+- **Heading Decision**: Confirmed with the user to keep the main Hero heading large (`text-4xl`/`text-3xl`) and wrapping on mobile to preserve its "Big" impact, rather than shrinking it to an insignificant single line.
