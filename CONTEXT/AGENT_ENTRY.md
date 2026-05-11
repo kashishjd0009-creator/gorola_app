@@ -1,4 +1,4 @@
-# GoRola — Agent Entry Point
+﻿# GoRola — Agent Entry Point
 > **READ THIS FILE FIRST. Every session. No exceptions.**
 > This is your north star. It tells you exactly what to read, in what order, and how to work on this project.
 
@@ -21,13 +21,26 @@ You are an expert full-stack TypeScript engineer working on **GoRola** — a pre
 Read these files in this order at the start of each session:
 
 ### 1. `current_state.md` ← START HERE, EVERY SESSION
-**What it tells you:** Where we are RIGHT NOW. What's done, what's in progress, what's next.
-**When to update:** End of every session — update the "In Progress", "Completed", and "Last Updated" sections.
+**What it tells you:** The master index. Overall phase status, what's in progress, environment keys, URLs, session notes.
+**When to update:** End of every session — update "In Progress Right Now", "Last Updated", and append to "Session Notes".
 **Key sections:**
 - "In Progress Right Now" → your starting point
-- "Phase X Checklist" → track task-by-task completion
+- "Phase File Navigation" → tells you which file to open next
 - "Known Issues & Blockers" → things that will bite you
 - "Session Notes" → history of decisions made mid-session
+
+### 1b. Phase Files ← READ YOUR ACTIVE PHASE FILE AFTER `current_state.md`
+**The detailed checklists AND your session stopping point live here — not in `current_state.md`:**
+
+| File | Contains | When to read |
+|------|----------|--------------|
+| `phase1_2_state.md` | Phase 1 & 2 checklists + **own `📍 Last Updated`** + all session history | When working on Phase 2.23 (E2E). **Locks after 2.23 complete.** |
+| `phase3_4_state.md` | Phase 3 & 4 checklists with TDD steps + backend controllers + **own `📍 Last Updated`** | When starting Phase 3 or 4 |
+| `phase5_state.md` | Phase 5 (Rider Interface) checklist + **own `📍 Last Updated`** | When starting Phase 5 |
+
+**Each phase file has a `## 📍 Last Updated` block near the top.** This is your exact stopping point — read it right after the Phase Status table.
+
+**When to update phase files:** At the end of every session — update the `## 📍 Last Updated` block (date, summary, next task, blocker), mark completed checklist items `[x]`, and append to `## Session Notes` at the bottom.
 
 ### 2. `rules_and_spec.md` ← INTERNALIZE ONCE, REFERENCE ALWAYS
 **What it tells you:** Every non-negotiable rule. TDD rules, architecture rules, security rules, API design rules, naming conventions.
@@ -67,29 +80,38 @@ Read these files in this order at the start of each session:
 ## Starting a New Session: The 5-Minute Ritual
 
 ```
-1. Read current_state.md → find "In Progress Right Now" and "Next Session Must Start With"
-2. Skim the relevant checklist section (Phase 1.X, Phase 2.X, etc.)
-3. If starting a brand new feature: read the relevant section of rules_and_spec.md
-4. If confused about where code lives: check architecture.md Module Map
-5. Begin work from the exact stopping point documented in current_state.md
+1. Read current_state.md → check Overall Phase Status table to confirm active phases
+2. Open the phase file for your active phase (phase1_2_state.md / phase3_4_state.md / phase5_state.md)
+3. Read the phase file's "📍 Last Updated" block at the top → this is your exact stopping point
+4. Skim the relevant checklist section in that phase file
+5. If starting a brand new feature: read the relevant section of rules_and_spec.md
+6. If confused about where code lives: check architecture.md Module Map
+7. Begin work from the stopping point in the phase file — NOT from current_state.md
 ```
 
 ---
 
 ## Ending a Session: The Mandatory Checklist
 
-Before closing Cursor, ALWAYS update `current_state.md`:
+Before closing, ALWAYS do ALL of these:
 
 ```
-□ Update "Last Updated" date
-□ Write "Session Summary" (2-3 sentences: what was accomplished)
-□ Move completed items from "In Progress" to "Completed Tasks" section
-□ Update "In Progress Right Now" with the exact stopping point
-□ Write "Next Session Must Start With" — be specific enough that a different agent can pick up
-□ Add any "Known Issues & Blockers" discovered this session
-□ Add any "Session Notes" for decisions made (if significant, also add to decision_log.md)
-□ Update "Test Coverage Status" table if tests were written
-□ Update "Environment & Keys Status" if any new keys were set up
+─── WRITE TO YOUR PHASE FILE (do this every session) ───────────────────────
+□ Update the "📍 Last Updated" block at the TOP of your phase file:
+    □ Date (today)
+    □ Session Summary (2-3 sentences: what was accomplished)
+    □ Next Session Must Start With (specific enough for a different agent to pick up)
+    □ In Progress Right Now (exact file + task)
+    □ Current Blocker (or "None")
+□ Mark completed checklist items [x] in your phase file
+□ Append phase-specific decisions to "Session Notes" at the BOTTOM of your phase file
+□ Update "Test Coverage Status" in current_state.md if total test count changed
+
+─── WRITE TO current_state.md ONLY IF (rare events) ────────────────────────
+□ A phase changed status → update "Overall Phase Status" table + "Phase File Navigation" table
+□ A new environment variable was added → update "Environment & Keys Status"
+□ A cross-cutting architectural decision was made → append to "Cross-Cutting Architectural Decisions"
+□ A new Known Issue/Blocker was discovered that affects multiple phases → update "Known Issues & Blockers"
 ```
 
 ---
