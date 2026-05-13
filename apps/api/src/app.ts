@@ -11,6 +11,7 @@ export async function startApp(): Promise<void> {
   const host = process.env.HOST ?? "0.0.0.0";
 
   await startTelemetry();
+  console.log('[DEBUG] API server starting with DATABASE_URL:', process.env.DATABASE_URL);
   try {
     await warmupExternalConnections();
   } catch (err: unknown) {

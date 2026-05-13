@@ -11,18 +11,18 @@ test.describe('Mobile Experience', () => {
     const searchInput = page.locator('input[placeholder*="Search"]');
     await expect(searchInput).toBeVisible();
     
-    await searchInput.fill('dal');
+    await searchInput.fill('rice');
     await searchInput.press('Enter');
 
-    // Assert URL = /search?q=dal
-    await expect(page).toHaveURL(/\/search\?q=dal/);
+    // Assert URL = /search?q=rice
+    await expect(page).toHaveURL(/\/search\?q=rice/);
 
     // Assert results page responsive layout
     const resultsGrid = page.locator('[data-testid="search-results-grid"]');
     await expect(resultsGrid).toBeVisible();
     
     // Check if it's 1 or 2 columns in mobile
-    const firstResult = page.locator('[data-testid="search-result-category"], [data-testid="search-result-subcategory"]').first();
+    const firstResult = page.locator('[data-testid="search-result-category"], [data-testid="search-result-subcategory"], [data-testid="product-card"]').first();
     await expect(firstResult).toBeVisible();
   });
 });

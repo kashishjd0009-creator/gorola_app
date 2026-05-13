@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ProductGrid } from "@/components/buyer/ProductGrid";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
 
 type SearchResultItem = {
   id: string;
@@ -40,6 +41,7 @@ async function fetchSearchResults(query: string): Promise<SearchResult | null> {
 }
 
 export function SearchResultsPage(): ReactElement {
+  const isBootstrapPending = useAuthStore((s) => s.isBootstrapPending);
   const [searchParams, setSearchParams] = useSearchParams();
   const queryParam = searchParams.get("q") ?? "";
   const [searchInput, setSearchInput] = useState(queryParam);
@@ -50,7 +52,7 @@ export function SearchResultsPage(): ReactElement {
   }, [queryParam]);
 
   const searchQuery = useQuery({
-    enabled: api !== null && queryParam.trim().length > 0,
+    enabled: !isBootstrapPending && api !== null && queryParam.trim().length > 0,
     queryKey: ["buyer-search", queryParam],
     queryFn: () => fetchSearchResults(queryParam)
   });

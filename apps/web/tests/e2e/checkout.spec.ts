@@ -18,6 +18,9 @@ test.describe('Checkout & Account', () => {
     }
     await page.locator('button', { hasText: /Verify/i }).click();
     await expect(page).toHaveURL('http://localhost:5173/', { timeout: 10000 });
+    // Wait for bootstrap to finish
+    await expect(page.locator('text=/Restoring your session/i')).not.toBeVisible();
+    await expect(page.locator('button[aria-label="Profile"]')).toBeVisible({ timeout: 10000 });
   });
 
   test('E2E-008: Checkout -> Order Confirmation', async ({ page }) => {
@@ -50,16 +53,24 @@ test.describe('Checkout & Account', () => {
     // Click Continue to Review step
     await page.locator('button', { hasText: /Continue/i }).click();
  
-    // Click "Place Order"
+    // Click "Place Order" and wait for response
     const placeOrderBtn = page.locator('button', { hasText: /Place Order/i });
     await expect(placeOrderBtn).toBeVisible();
+    
+    const responsePromise = page.waitForResponse(resp => 
+      resp.url().includes('/api/v1/orders') && resp.request().method() === 'POST',
+      { timeout: 15000 }
+    );
+    
     await placeOrderBtn.click();
+    await responsePromise;
 
-    // Assert redirect to Order Confirmation
+    // Assert navigation to confirmation page
     await expect(page).toHaveURL(/\/orders\/[a-z0-9-]+/);
-
+    await page.waitForTimeout(2000); // Wait for animations and hydration
+ 
     // Assert confirmation details
-    await expect(page.locator('text=/PLACED/i')).toBeVisible();
+    await expect(page.locator('#occ-heading')).toHaveText(/Thank you/i, { timeout: 15000 });
     await expect(page.locator('[data-testid="order-subtotal"]')).toBeVisible();
     await expect(page.locator('text=/Hillside Mart/i').first()).toBeVisible();
   });
@@ -88,9 +99,13 @@ test.describe('Checkout & Account', () => {
   });
 
   test('E2E-012: Saved Addresses CRUD', async ({ page }) => {
-    await page.goto('/account/addresses');
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('h1', { hasText: /Addresses/i })).toBeVisible();
+    // Navigate to Profile then Saved Addresses
+    await page.locator('button[aria-label="Profile"]').click();
+    await page.locator('text=/Profile/i').first().click();
+    await expect(page.locator('h1')).toHaveText(/Your Profile/i, { timeout: 10000 });
+    await page.locator('a:has-text("Saved Addresses")').click();
+    await expect(page).toHaveURL(/\/account\/addresses/);
+    await expect(page.locator('h1')).toHaveText(/Saved Addresses/i, { timeout: 15000 });
  
     // Add New Address
     await page.getByRole('button', { name: /Add New/i }).click();

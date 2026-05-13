@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
 
 type Address = {
   id: string;
@@ -46,9 +47,10 @@ export function SavedAddressesPage(): ReactElement {
   const [isDefault, setIsDefault] = useState(false);
   const [mapCoords, setMapCoords] = useState<MapCoordinates | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const isBootstrapPending = useAuthStore((s) => s.isBootstrapPending);
 
   const { data: addresses, isLoading, error } = useQuery({
-    enabled: api !== null,
+    enabled: !isBootstrapPending,
     queryFn: async () => {
       const response = await api!.get<{ data?: { addresses: Address[] } }>("/api/v1/addresses");
       return response.data.data?.addresses ?? [];

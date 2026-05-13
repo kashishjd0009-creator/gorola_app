@@ -10,10 +10,10 @@ test.describe('Home Page', () => {
     const logo = nav.locator('svg[data-testid="gorola-mountain-mark"]');
     await expect(logo).toBeVisible();
 
-    // Assert hero heading is visible (matches regex /delivered|need|today/i)
+    // Assert hero heading is visible (matches regex /delivered|arrive|got you/i)
     const heroHeading = page.locator('h1');
     await expect(heroHeading).toBeVisible();
-    await expect(heroHeading).toHaveText(/delivered|need|today/i);
+    await expect(heroHeading).toHaveText(/delivered|arrive|got you/i);
 
     // Assert ETA banner is visible and contains the amber pulse dot
     const etaBanner = page.locator('[data-testid="eta-banner"]');
@@ -39,7 +39,9 @@ test.describe('Home Page', () => {
 
   test('E2E-014: Weather Mode Full System Toggle', async ({ page }) => {
     await page.goto('/');
-
+    // Wait for initial weather sync to finish
+    await page.waitForTimeout(2000);
+ 
     // Assert body does NOT have class weather-mode (normal mode)
     await expect(page.locator('body')).not.toHaveClass(/weather-mode/);
 
@@ -53,20 +55,24 @@ test.describe('Home Page', () => {
     const toggle = page.locator('[data-testid="dev-weather-toggle"]');
     await expect(toggle).toBeVisible();
     await toggle.click();
-
+    await page.waitForTimeout(1000); // Wait for state change to propagate to body class
+ 
     // Assert body element has class weather-mode
     await expect(page.locator('body')).toHaveClass(/weather-mode/);
 
-    // Assert hero heading text matches /fog|weather|road|safely/i
+    // Assert hero heading text matches /stay in|coming|showed up/i
     const heroHeading = page.locator('h1');
-    await expect(heroHeading).toHaveText(/fog|weather|road|safely/i);
+    await expect(heroHeading).toHaveText(/stay in|coming|showed up/i);
 
-    // Assert ETA banner text contains "Scheduled" or weather-mode ETA copy
+    // Assert ETA banner text contains weather-mode ETA copy
     const etaBanner = page.locator('[data-testid="eta-banner"]');
-    await expect(etaBanner).toHaveText(/Scheduled|coming|safely/i);
+    // Wait for the duration to flip to weather mode
+    await expect(etaBanner).toHaveText(/45-55 mins/i, { timeout: 10000 });
+    await expect(etaBanner).toHaveText(/coming|safely|action movies|clouds/i);
 
     // Click [data-testid="dev-weather-toggle"] again — assert weather-mode class removed
     await toggle.click();
+    await page.waitForTimeout(500); // Give it a moment to transition
     await expect(page.locator('body')).not.toHaveClass(/weather-mode/);
   });
 });

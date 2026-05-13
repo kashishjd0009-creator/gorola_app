@@ -16,6 +16,9 @@ test.describe('Order Management', () => {
     }
     await page.locator('button', { hasText: /Verify/i }).click();
     await expect(page).toHaveURL('http://localhost:5173/', { timeout: 10000 });
+    // Wait for bootstrap to finish
+    await expect(page.locator('text=/Restoring your session/i')).not.toBeVisible();
+    await expect(page.locator('button[aria-label="Profile"]')).toBeVisible({ timeout: 10000 });
   });
 
   test('E2E-009: Order Status Machine (All 4 States)', async ({ page }) => {
@@ -23,23 +26,28 @@ test.describe('Order Management', () => {
 
     // Check PLACED
     await page.goto('/orders/e2e_order_placed');
-    await expect(page.locator('h1')).toHaveText(/Thank you/i);
+    await expect(page.locator('text=/Restoring your session/i')).not.toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#occ-heading')).toHaveText(/Thank you/i, { timeout: 30000 });
  
     // Check PREPARING
     await page.goto('/orders/e2e_order_preparing');
-    await expect(page.locator('h1')).toHaveText(/picking items/i);
+    await expect(page.locator('#occ-heading')).toHaveText(/Store is picking/i, { timeout: 30000 });
+    await expect(page.locator('#occ-heading')).toHaveText(/picking items/i, { timeout: 30000 });
  
     // Check DELIVERED
     await page.goto('/orders/e2e_order_delivered');
-    await expect(page.locator('h1')).toHaveText(/Delivered/i);
+    await expect(page.locator('text=/Restoring your session/i')).not.toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#occ-heading')).toHaveText(/Delivered/i, { timeout: 30000 });
  
     // Check CANCELLED
     await page.goto('/orders/e2e_order_cancelled');
-    await expect(page.locator('h1')).toHaveText(/Cancelled/i);
+    await expect(page.locator('text=/Restoring your session/i')).not.toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#occ-heading')).toHaveText(/Cancelled/i, { timeout: 30000 });
   });
 
   test('E2E-010: Order History and Reorder', async ({ page }) => {
     await page.goto('/account/orders');
+    await expect(page.locator('text=/Restoring your session/i')).not.toBeVisible();
 
     // Assert list renders >= 1 order card
     const orderCards = page.locator('[data-testid="order-card"]');

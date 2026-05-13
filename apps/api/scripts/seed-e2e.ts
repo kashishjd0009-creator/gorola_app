@@ -26,18 +26,25 @@ async function main() {
     },
   });
 
-  // 2. Seed a test user for E2E
-  const testUser = await prisma.user.upsert({
-    where: { phone: "+919876543210" },
-    update: { isVerified: true },
-    create: {
-      phone: "+919876543210",
-      name: "E2E Tester",
-      isVerified: true,
-    },
-  });
+  // 2. Seed test users for E2E
+  const phones = ["+919876543210", "+919876543211", "+919876543212"];
+  const users = await Promise.all(phones.map(async (phone) => {
+    return prisma.user.upsert({
+      where: { phone },
+      update: { isVerified: true },
+      create: {
+        phone,
+        name: `E2E Tester ${phone.slice(-4)}`,
+        isVerified: true,
+      },
+    });
+  }));
 
-  // 3. Seed orders with different statuses
+  const user10 = users[0];
+  const user11 = users[1];
+  const user12 = users[2];
+
+  // 3. Seed orders for the main order test user (9876543212)
   const store = await prisma.store.findFirst({
     where: { id: "store_gorola_hillside_mart" },
   });
@@ -54,6 +61,17 @@ async function main() {
     throw new Error("Product variant not found. Please run regular seed first.");
   }
 
+  // Wipe existing E2E orders to ensure correct ownership
+  await prisma.orderItem.deleteMany({
+    where: { orderId: { startsWith: "e2e_order_" } }
+  });
+  await prisma.orderStatusHistory.deleteMany({
+    where: { orderId: { startsWith: "e2e_order_" } }
+  });
+  await prisma.order.deleteMany({
+    where: { id: { startsWith: "e2e_order_" } }
+  });
+
   const statuses: OrderStatus[] = [
     OrderStatus.PLACED,
     OrderStatus.PREPARING,
@@ -68,7 +86,7 @@ async function main() {
       update: { status },
       create: {
         id: orderId,
-        userId: testUser.id,
+        userId: user12.id,
         storeId: store.id,
         status,
         subtotal: 500,

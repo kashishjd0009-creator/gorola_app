@@ -28,9 +28,10 @@ export function CheckoutPage(): ReactElement {
   const discountCode = useCartStore((s) => s.discountCode);
   const discountSavedAmount = useCartStore((s) => s.discountSavedAmount);
   const clearCart = useCartStore((s) => s.clear);
+  const isBootstrapPending = useAuthStore((s) => s.isBootstrapPending);
 
   const addressesQuery = useQuery({
-    enabled: api !== null,
+    enabled: !isBootstrapPending,
     queryFn: async () => {
       const response = await api!.get<{ data?: { addresses: AddrRow[] } }>(
         "/api/v1/addresses"

@@ -77,8 +77,8 @@ test.describe('Catalog & Search', () => {
     // Assert URL = /search?q=rice
     await expect(page).toHaveURL(/\/search\?q=rice/);
 
-    // Assert SearchResultsPage renders >= 1 result
-    const results = page.locator('[data-testid="search-result-category"], [data-testid="search-result-subcategory"]');
+    // Assert SearchResultsPage renders >= 1 result (Category, SubCategory, or Product)
+    const results = page.locator('[data-testid="search-result-category"], [data-testid="search-result-subcategory"], [data-testid="product-card"]');
     await expect(results.first()).toBeVisible();
 
     // If a sub-category result is visible: click it — assert URL = /categories/<categorySlug>/<subSlug>

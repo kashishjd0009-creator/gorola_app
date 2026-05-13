@@ -56,8 +56,14 @@ function getRuntimeRedis(app: FastifyInstance): RedisLikeRuntime {
 }
 
 function registerRiderStubRoutes(app: FastifyInstance): void {
-  const handler = async () => {
-    throw new NotImplementedError("Rider interface deferred to Phase 5");
+  const handler = async (_req: any, reply: any) => {
+    return reply.status(501).send({
+      success: false,
+      error: {
+        code: "NOT_IMPLEMENTED",
+        message: "Rider interface deferred to Phase 5"
+      }
+    });
   };
 
   app.post("/api/v1/rider/auth/login", handler);
