@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Order Management', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as Window & { isE2E?: boolean }).isE2E = true;
+    });
     // Log in
     await page.goto('/login');
     await page.locator('#buyer-phone').fill('9876543212');
@@ -15,7 +18,7 @@ test.describe('Order Management', () => {
       await page.waitForTimeout(100);
     }
     await page.locator('button', { hasText: /Verify/i }).click();
-    await expect(page).toHaveURL('http://localhost:5173/', { timeout: 10000 });
+    await expect(page).toHaveURL(/\/$/, { timeout: 10000 });
     // Wait for bootstrap to finish
     await expect(page.locator('text=/Restoring your session/i')).not.toBeVisible();
     await expect(page.locator('button[aria-label="Profile"]')).toBeVisible({ timeout: 10000 });
@@ -53,16 +56,36 @@ test.describe('Order Management', () => {
     const orderCards = page.locator('[data-testid="order-card"]');
     await expect(orderCards.first()).toBeVisible();
 
-    // Click "Reorder" on an order card
-    const firstReorderBtn = orderCards.first().locator('button', { hasText: /Reorder/i });
-    await firstReorderBtn.click();
-
-    // Assert cart drawer opens and count is updated
-    const cartDrawer = page.locator('aside', { hasText: /Your cart/i });
-    await expect(cartDrawer).toBeVisible();
-    
+    // 1. Capture initial count (if badge exists)
     const cartBadge = page.locator('[data-testid="cart-badge"]');
-    const count = await cartBadge.textContent();
-    expect(parseInt(count || '0')).toBeGreaterThanOrEqual(1);
+    let initialCount = 0;
+    if (await cartBadge.isVisible()) {
+      const txt = await cartBadge.textContent();
+      initialCount = parseInt(txt || '0');
+    }
+
+    // 2. Click "Reorder" and wait for both reorder and cart sync responses
+    const firstReorderBtn = orderCards.first().locator('button', { hasText: /Reorder/i });
+    const reorderResponse = page.waitForResponse(resp => 
+      resp.url().includes('/api/v1/orders/') && resp.url().includes('/reorder') && resp.request().method() === 'POST'
+    );
+    const cartSyncResponse = page.waitForResponse(resp => 
+      resp.url().includes('/api/v1/cart') && resp.request().method() === 'GET'
+    );
+    
+    await firstReorderBtn.click();
+    await reorderResponse;
+    await cartSyncResponse;
+
+    // 3. Assert cart drawer opens
+    const cartDrawer = page.locator('aside', { hasText: /Your cart/i });
+    await expect(cartDrawer).toBeVisible({ timeout: 15000 });
+    
+    // 4. Assert count has increased (using polling to handle state updates)
+    await expect(async () => {
+      const txt = await cartBadge.textContent();
+      const currentCount = parseInt(txt || '0');
+      expect(currentCount).toBeGreaterThan(initialCount);
+    }).toPass({ timeout: 15000 });
   });
 });

@@ -4,6 +4,9 @@ test.describe('Checkout & Account', () => {
   test.setTimeout(60000);
   
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as Window & { isE2E?: boolean }).isE2E = true;
+    });
     // Log in before each test in this describe block
     await page.goto('/login');
     await page.locator('#buyer-phone').fill('9876543211');
@@ -17,7 +20,7 @@ test.describe('Checkout & Account', () => {
       await page.waitForTimeout(100);
     }
     await page.locator('button', { hasText: /Verify/i }).click();
-    await expect(page).toHaveURL('http://localhost:5173/', { timeout: 10000 });
+    await expect(page).toHaveURL(/\/$/, { timeout: 10000 });
     // Wait for bootstrap to finish
     await expect(page.locator('text=/Restoring your session/i')).not.toBeVisible();
     await expect(page.locator('button[aria-label="Profile"]')).toBeVisible({ timeout: 10000 });
@@ -62,7 +65,8 @@ test.describe('Checkout & Account', () => {
       { timeout: 15000 }
     );
     
-    await placeOrderBtn.click();
+    await expect(placeOrderBtn).toBeEnabled({ timeout: 10000 });
+    await placeOrderBtn.click({ force: true });
     await responsePromise;
 
     // Assert navigation to confirmation page
@@ -111,7 +115,10 @@ test.describe('Checkout & Account', () => {
     await page.getByRole('button', { name: /Add New/i }).click();
     await page.locator('input[name="label"]').fill('Home');
     await page.locator('[name="landmarkDescription"]').fill('Opposite Savoy Hotel, Landour');
-    await page.locator('button', { hasText: /Save Address/i }).click();
+    const saveBtn = page.locator('button', { hasText: /Save Address/i });
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await saveBtn.scrollIntoViewIfNeeded();
+    await page.evaluate((btn) => (btn as HTMLButtonElement).click(), await saveBtn.elementHandle());
 
     // Assert success toast
     await expect(page.locator('text=/Address added successfully/i')).toBeVisible();

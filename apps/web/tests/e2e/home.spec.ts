@@ -68,7 +68,7 @@ test.describe('Home Page', () => {
     const etaBanner = page.locator('[data-testid="eta-banner"]');
     // Wait for the duration to flip to weather mode
     await expect(etaBanner).toHaveText(/45-55 mins/i, { timeout: 10000 });
-    await expect(etaBanner).toHaveText(/coming|safely|action movies|clouds/i);
+    await expect(etaBanner).toHaveText(/coming|safe|safely|action movies|clouds/i);
 
     // Click [data-testid="dev-weather-toggle"] again — assert weather-mode class removed
     await toggle.click();

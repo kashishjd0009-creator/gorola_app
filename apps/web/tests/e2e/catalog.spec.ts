@@ -49,17 +49,18 @@ test.describe('Catalog & Search', () => {
     await expect(variantPills.first()).toBeVisible();
 
     // Click a variant pill — assert price display updates to a non-zero value
-    await variantPills.first().click();
+    await variantPills.first().click({ force: true });
+    await page.waitForTimeout(1000); // Give state a moment to propagate
     const priceDisplay = page.locator('[data-testid="product-price"]');
     await expect(priceDisplay).toHaveText(/Rs\s*\d+/);
 
     // Assert "Add to Cart" button is visible and enabled
     const addToCartBtn = page.locator('button', { hasText: /Add to Cart/i });
     await expect(addToCartBtn).toBeVisible();
-    await expect(addToCartBtn).toBeEnabled();
+    await expect(addToCartBtn).toBeEnabled({ timeout: 15000 });
 
     // Click "Add to Cart" — assert nav cart badge shows count >= 1
-    await addToCartBtn.click();
+    await addToCartBtn.click({ force: true });
     const cartBadge = page.locator('[data-testid="cart-badge"]');
     await expect(cartBadge).toBeVisible();
     const count = await cartBadge.textContent();

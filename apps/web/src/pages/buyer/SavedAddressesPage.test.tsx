@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { MockInstance } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
 
 import { SavedAddressesPage } from "./SavedAddressesPage";
 
@@ -26,6 +26,7 @@ describe("SavedAddressesPage", () => {
   beforeEach(() => {
     queryClient.clear();
     vi.clearAllMocks();
+    useAuthStore.setState({ isBootstrapPending: false });
 
     apiGetSpy = vi.spyOn(api!, "get").mockResolvedValue({
       data: {
@@ -94,11 +95,10 @@ describe("SavedAddressesPage", () => {
   });
 
   it("opens add form and submits a new address", async () => {
-    const user = userEvent.setup();
     renderComponent();
 
     const addBtn = await screen.findByRole("button", { name: /Add New/i });
-    await user.click(addBtn);
+    fireEvent.click(addBtn);
 
     const dialogTitle = await screen.findByText("Add New Address");
     expect(dialogTitle).toBeInTheDocument();
@@ -107,10 +107,10 @@ describe("SavedAddressesPage", () => {
     const landmarkInput = screen.getByPlaceholderText("E.g. — near the red gate, behind Hotel Padmini");
     const saveBtn = screen.getByRole("button", { name: "Save Address" });
 
-    await user.type(labelInput, "Vacation");
-    await user.type(landmarkInput, "Near the beach 123");
+    fireEvent.change(labelInput, { target: { value: "Vacation" } });
+    fireEvent.change(landmarkInput, { target: { value: "Near the beach 123" } });
 
-    await user.click(saveBtn);
+    fireEvent.click(saveBtn);
 
     await waitFor(() => {
       expect(apiPostSpy).toHaveBeenCalledWith("/api/v1/addresses", expect.objectContaining({
@@ -122,7 +122,6 @@ describe("SavedAddressesPage", () => {
   });
 
   it("opens edit form and updates an existing address", async () => {
-    const user = userEvent.setup();
     renderComponent();
 
     await waitFor(() => {
@@ -130,20 +129,19 @@ describe("SavedAddressesPage", () => {
     });
 
     const menuBtns = screen.getAllByRole("button", { name: /Open menu/i });
-    await user.click(menuBtns[0]!); // Click on first address's menu
+    fireEvent.click(menuBtns[0]!); // Click on first address's menu
 
     const editBtn = await screen.findByRole("menuitem", { name: /Edit/i });
-    await user.click(editBtn);
+    fireEvent.click(editBtn);
 
     const dialogTitle = await screen.findByText("Edit Address");
     expect(dialogTitle).toBeInTheDocument();
 
     const labelInput = screen.getByDisplayValue("Home");
-    await user.clear(labelInput);
-    await user.type(labelInput, "Primary Home");
+    fireEvent.change(labelInput, { target: { value: "Primary Home" } });
 
     const saveBtn = screen.getByRole("button", { name: "Save Address" });
-    await user.click(saveBtn);
+    fireEvent.click(saveBtn);
 
     await waitFor(() => {
       expect(apiPutSpy).toHaveBeenCalledWith("/api/v1/addresses/addr1", expect.objectContaining({
@@ -154,7 +152,6 @@ describe("SavedAddressesPage", () => {
 
   it("deletes an address", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    const user = userEvent.setup();
     renderComponent();
 
     await waitFor(() => {
@@ -162,10 +159,10 @@ describe("SavedAddressesPage", () => {
     });
 
     const menuBtns = screen.getAllByRole("button", { name: /Open menu/i });
-    await user.click(menuBtns[0]!); // Click on first address's menu
+    fireEvent.click(menuBtns[0]!); // Click on first address's menu
 
     const deleteBtn = await screen.findByRole("menuitem", { name: /Delete/i });
-    await user.click(deleteBtn);
+    fireEvent.click(deleteBtn);
 
     await waitFor(() => {
       expect(apiDeleteSpy).toHaveBeenCalledWith("/api/v1/addresses/addr1");
@@ -173,7 +170,6 @@ describe("SavedAddressesPage", () => {
   });
 
   it("sets an address as default", async () => {
-    const user = userEvent.setup();
     renderComponent();
 
     await waitFor(() => {
@@ -181,10 +177,10 @@ describe("SavedAddressesPage", () => {
     });
 
     const menuBtns = screen.getAllByRole("button", { name: /Open menu/i });
-    await user.click(menuBtns[1]!); // Click on second address's menu (Work)
+    fireEvent.click(menuBtns[1]!); // Click on second address's menu (Work)
 
     const defaultBtn = await screen.findByRole("menuitem", { name: /Set as Default/i });
-    await user.click(defaultBtn);
+    fireEvent.click(defaultBtn);
 
     await waitFor(() => {
       expect(apiPutSpy).toHaveBeenCalledWith("/api/v1/addresses/addr2/default");

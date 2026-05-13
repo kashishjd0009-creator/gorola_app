@@ -13,8 +13,8 @@ import { useParams } from "react-router-dom";
 import { useOrderSocket } from "@/hooks/useOrderSocket";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useWeatherStore } from "@/store/weather.store";
 import { useAuthStore } from "@/store/auth.store";
+import { useWeatherStore } from "@/store/weather.store";
 
 
 export type BuyerOrderConfirmationItem = {
@@ -58,10 +58,6 @@ export type BuyerOrderDetail = {
   total: string;
 };
 
-export type OrderConfirmationEnvelope = {
-  data?: BuyerOrderDetail;
-  success?: boolean;
-};
 
 function formatPayment(method: string): string {
   if (method === "COD") return "Cash on delivery";
@@ -263,18 +259,15 @@ export function OrderConfirmationPage(): ReactElement {
   const isBootstrapPending = useAuthStore((s) => s.isBootstrapPending);
   const isWeatherMode = useWeatherStore((s) => s.isWeatherMode);
  
-  console.log('[DEBUG] OrderConfirmationPage render', { id, isBootstrapPending, hasApi: api !== null });
  
   const query = useQuery({
     enabled: !isBootstrapPending && id !== undefined,
     queryKey: ["buyer-order-confirmation", id ?? null],
     queryFn: async (): Promise<BuyerOrderDetail> => {
-      console.log('[DEBUG] OrderConfirmationPage queryFn start', { id });
-      const response = await api!.get<OrderConfirmationEnvelope>(
+      const response = await api!.get<{ success: boolean; data: BuyerOrderDetail }>(
         `/api/v1/orders/${id}`
       );
       const payload = response.data;
-      console.log('[DEBUG] OrderConfirmationPage response', { success: payload.success, data: !!payload.data });
       if (payload.success !== true || payload.data === undefined) {
         throw new Error("Invalid order confirmation response");
       }
@@ -411,9 +404,9 @@ export function OrderConfirmationPage(): ReactElement {
         </div>
       ) : null}
 
-      {query.isSuccess && query.data?.data ? (
+      {query.isSuccess && query.data ? (
         (() => {
-          const order = query.data.data;
+          const order = query.data;
           const discountAmount = order.discount?.amount ?? "0.00";
 
           const weatherPulse =

@@ -27,7 +27,7 @@ test.describe('Authentication', () => {
     await page.locator('button', { hasText: /Verify/i }).click();
 
     // Assert redirect to /
-    await expect(page).toHaveURL('http://localhost:5173/', { timeout: 10000 });
+    await expect(page).toHaveURL(/\/$/, { timeout: 10000 });
 
     // Assert nav shows Profile icon (not Login text)
     await expect(page.locator('button[aria-label="Profile"]')).toBeVisible();
@@ -48,7 +48,7 @@ test.describe('Authentication', () => {
       await page.waitForTimeout(100);
     }
     await page.locator('button', { hasText: /Verify/i }).click();
-    await expect(page).toHaveURL('http://localhost:5173/', { timeout: 10000 });
+    await expect(page).toHaveURL(/\/$/, { timeout: 10000 });
 
     // Reload the page
     await page.reload();
