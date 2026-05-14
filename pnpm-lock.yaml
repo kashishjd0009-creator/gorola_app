@@ -280,6 +280,9 @@ importers:
       axios-mock-adapter:
         specifier: ^2.1.0
         version: 2.1.0(axios@1.15.2)
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       jsdom:
         specifier: ^29.1.0
         version: 29.1.0(@noble/hashes@1.8.0)

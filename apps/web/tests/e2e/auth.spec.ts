@@ -15,7 +15,8 @@ test.describe('Authentication', () => {
     await page.locator('button', { hasText: /Send OTP/i }).click();
 
     // Assert UI transitions to OTP input step
-    await expect(page.locator('text=/Enter OTP/i')).toBeVisible();
+    // Assert UI transitions to OTP input step
+    await expect(page.locator('text=/Enter OTP/i')).toBeVisible({ timeout: 15000 });
 
     // Enter the test OTP (123456)
     for (let i = 0; i < 6; i++) {

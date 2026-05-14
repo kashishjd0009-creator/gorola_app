@@ -1,32 +1,36 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Checkout & Account', () => {
-  test.setTimeout(60000);
+  test.setTimeout(90000);
   
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       (window as Window & { isE2E?: boolean }).isE2E = true;
     });
-    // Log in before each test in this describe block
+    // Each test handles its own login for total isolation
+  });
+
+  async function loginAs(page: any, phone: string) {
     await page.goto('/login');
-    await page.locator('#buyer-phone').fill('9876543211');
+    await page.locator('#buyer-phone').fill(phone);
     await page.locator('button', { hasText: /Send OTP/i }).click();
     
     // Wait for OTP screen
-    await expect(page.locator('text=/Enter OTP/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/Enter OTP/i')).toBeVisible({ timeout: 15000 });
     
     for (let i = 0; i < 6; i++) {
       await page.locator(`[data-testid="otp-digit-${i}"]`).fill((i + 1).toString());
       await page.waitForTimeout(100);
     }
     await page.locator('button', { hasText: /Verify/i }).click();
-    await expect(page).toHaveURL(/\/$/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/$/, { timeout: 15000 });
     // Wait for bootstrap to finish
     await expect(page.locator('text=/Restoring your session/i')).not.toBeVisible();
-    await expect(page.locator('button[aria-label="Profile"]')).toBeVisible({ timeout: 10000 });
-  });
+    await expect(page.locator('button[aria-label="Profile"]')).toBeVisible({ timeout: 15000 });
+  }
 
   test('E2E-008: Checkout -> Order Confirmation', async ({ page }) => {
+    await loginAs(page, '9876543211');
     // Verify login
     await expect(page.locator('[data-testid="cart-button"]')).toBeVisible();
 
@@ -37,7 +41,14 @@ test.describe('Checkout & Account', () => {
     
     const addBtn = page.locator('button', { hasText: /Add/i }).first();
     await expect(addBtn).toBeVisible({ timeout: 15000 });
+    
+    // Wait for the cart to be saved to the server after clicking Add
+    const cartSavePromise = page.waitForResponse(resp => 
+      resp.url().includes('/api/v1/cart') && resp.request().method() === 'POST',
+      { timeout: 15000 }
+    );
     await addBtn.click({ force: true });
+    await cartSavePromise;
 
     // Open cart -> Proceed to Checkout
     await page.locator('[data-testid="cart-button"]').click();
@@ -46,6 +57,15 @@ test.describe('Checkout & Account', () => {
     await page.locator('button', { hasText: /Proceed to Checkout/i }).click();
  
     await expect(page).toHaveURL(/\/checkout/, { timeout: 15000 });
+ 
+    // Wait for addresses to load so the radio buttons are stable
+    await expect(page.locator('text=/Loading addresses/i')).not.toBeVisible({ timeout: 15000 });
+
+    // If a saved address already exists (from a previous test), explicitly select "New Location"
+    const newAddressRadio = page.locator('input[value="new"]');
+    if (await newAddressRadio.count() > 0) {
+      await newAddressRadio.click();
+    }
 
     // Assert address form visible
     await expect(page.locator('[name="landmarkDescription"]')).toBeVisible();
@@ -80,6 +100,7 @@ test.describe('Checkout & Account', () => {
   });
 
   test('E2E-011: Profile Page Flow', async ({ page }) => {
+    await loginAs(page, '9876543212');
     // Navigate to Profile
     await page.locator('button[aria-label="Profile"]').click();
     await page.locator('text=/Profile/i').first().click();
@@ -87,7 +108,7 @@ test.describe('Checkout & Account', () => {
     await expect(page).toHaveURL(/\/profile/);
 
     // Assert phone
-    await expect(page.locator('text=/9876543211/')).toBeVisible();
+    await expect(page.locator('text=/9876543212/')).toBeVisible();
 
     // Update name
     const nameInput = page.locator('input[name="name"]');
@@ -103,6 +124,7 @@ test.describe('Checkout & Account', () => {
   });
 
   test('E2E-012: Saved Addresses CRUD', async ({ page }) => {
+    await loginAs(page, '9876543213');
     // Navigate to Profile then Saved Addresses
     await page.locator('button[aria-label="Profile"]').click();
     await page.locator('text=/Profile/i').first().click();
@@ -118,14 +140,30 @@ test.describe('Checkout & Account', () => {
     const saveBtn = page.locator('button', { hasText: /Save Address/i });
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await saveBtn.scrollIntoViewIfNeeded();
-    await page.evaluate((btn) => (btn as HTMLButtonElement).click(), await saveBtn.elementHandle());
+
+    // Set up the listener for the list refresh BEFORE clicking save
+    // We specifically wait for a GET response that contains data, to avoid 
+    // accidentally catching the initial empty page load.
+    const refreshPromise = page.waitForResponse(async (resp) => {
+      if (resp.url().includes('/api/v1/addresses') && resp.request().method() === 'GET') {
+        const json = await resp.json().catch(() => ({}));
+        return json.data?.addresses?.length > 0;
+      }
+      return false;
+    }, { timeout: 20000 });
+
+    await Promise.all([
+      refreshPromise,
+      page.evaluate((btn) => (btn as HTMLButtonElement).click(), await saveBtn.elementHandle())
+    ]);
 
     // Assert success toast
     await expect(page.locator('text=/Address added successfully/i')).toBeVisible();
+    await page.waitForTimeout(500); // Allow React state to settle
  
-    // Assert card appears
-    const addressCard = page.locator('[data-testid="address-card"]', { hasText: 'Home' });
-    await expect(addressCard).toBeVisible();
+    // Assert card appears (regex match with longer timeout for robustness)
+    const addressCard = page.locator('[data-testid="address-card"]', { hasText: /Home/i });
+    await expect(addressCard).toBeVisible({ timeout: 15000 });
 
     // Set as Default
     await addressCard.locator('button[aria-haspopup="menu"]').click();

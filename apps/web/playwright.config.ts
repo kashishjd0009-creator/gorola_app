@@ -1,4 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Read from the root .env file
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -22,7 +31,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:5180',
+    baseURL: 'http://127.0.0.1:5180',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -40,19 +49,33 @@ export default defineConfig({
     }
   ],
 
-  /* Run your local servers using production builds for CI stability */
+  /* Run your local servers. Use production builds in CI for stability, dev mode locally for speed. */
   webServer: [
     {
-      command: 'pnpm --filter @gorola/web preview --port 5180 --host',
-      url: 'http://localhost:5180',
+      command: process.env.CI 
+        ? 'pnpm --filter @gorola/web preview --port 5180 --host 127.0.0.1' 
+        : 'pnpm --filter @gorola/web dev --port 5180 --host 127.0.0.1',
+      url: 'http://127.0.0.1:5180',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
+      env: {
+        VITE_API_BASE_URL: 'http://127.0.0.1:3001',
+      }
     },
     {
-      command: 'pnpm --filter @gorola/api exec node dist/app.js',
-      url: 'http://localhost:3001/api/health',
+      command: process.env.CI 
+        ? 'pnpm --filter @gorola/api exec node dist/app.js' 
+        : 'pnpm --filter @gorola/api exec prisma migrate reset --force && pnpm --filter @gorola/api exec tsx scripts/seed-e2e.ts && pnpm --filter @gorola/api dev',
+      url: 'http://127.0.0.1:3001/api/health',
       reuseExistingServer: !process.env.CI,
-      timeout: 120000,
+      timeout: 180000,
+      env: {
+        DATABASE_URL: process.env.DATABASE_URL_TEST!,
+        CORS_ALLOWED_ORIGINS: 'http://127.0.0.1:5180',
+        HOST: '127.0.0.1',
+        GOROLA_DUMMY_OTP: '123456',
+        NODE_ENV: 'test'
+      }
     },
   ],
 });
