@@ -102,6 +102,25 @@ We updated `playwright.config.ts` to perform a deterministic double-seed:
 
 ---
 
+## 7. Principle of Idempotency & Retry Safety
+
+### **The Problem: The "Strict Mode" Crash during Retries**
+Playwright's "Strict Mode" ensures that if you look for an element (like an address card), there is exactly **one** match. However, if a test fails halfway through and Playwright triggers a **Retry**, the state from the first (failed) attempt still exists in the database. When the second attempt runs, it creates the same data again. Now the test sees **two** elements and crashes with a "Strict Mode" violation.
+
+### **The Solution: Deterministic Uniqueness**
+Make your tests idempotent by ensuring that every run (including retries) creates **unique** data. Use the test metadata (project name + retry attempt) to suffix your data labels.
+
+**GoRola Case Study:**
+Instead of a static label like `"Home"`, we use a dynamic label:
+```typescript
+// checkout.spec.ts
+const uniqueLabel = `Home-${testInfo.project.name}-${testInfo.retry}`;
+await page.locator('input[name="label"]').fill(uniqueLabel);
+```
+Even if the test retries, `uniqueLabel` remains deterministic but isolated from previous failed attempts.
+
+---
+
 ## Summary for Future Projects
 1. **Isolate** your data by using unique identities for every suite.
 2. **Standardize** on `127.0.0.1` to avoid IPv6 resolution flakiness.

@@ -20,7 +20,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-14
-- **Session Summary:** Session 122 — Finalized E2E infrastructure hardening. Implemented strict **Proxy Isolation** via `VITE_E2E_PROXY` to prevent local dev "ghost connections" to test backends. Fixed **Cache Invalidation** in the checkout flow so new orders and addresses appear instantly without page reload. Optimized CI performance with pnpm and Playwright browser caching.
+- **Session Summary:** Session 122 — Finalized E2E infrastructure hardening. Implemented strict **Proxy Isolation** via `VITE_E2E_PROXY` and **Idempotency Hardening** (unique labels per retry) to ensure deterministic CI runs. Fixed **Cache Invalidation** in the checkout flow. Optimized CI performance with pnpm and Playwright browser caching.
 - **Next Session Must Start With:** **Phase 3 (Store Owner Foundation)** — Initialize store owner dashboard and authentication modules in `phase3_4_state.md`.
 - **In Progress Right Now:** None. Phase 2 complete.
 - **Current Blocker:** None.
@@ -150,7 +150,7 @@
 - **Session 119 (Phase 2.23.1 Stabilization):** Implemented five critical fixes for E2E stabilization: resolved OrderConfirmationPage envelope bug, added bootstrap gating to page unit tests, implemented GSAP window.isE2E speed-up, hardened server.ts type safety, and resolved all security audit vulnerabilities via pnpm overrides.
 - **Session 120 (Final E2E Stabilization & Phase 2 Completion):** Resolved intermittent Radix UI dropdown failures in SavedAddressesPage unit tests. Confirmed 100% stability across all 34 E2E flows and monorepo-wide ci:quality. Formally marked Phase 2 as complete.
 - **Session 121 (Infrastructure Hardening & Isolation):** Implemented "Isolation Strategy" (unique users) and **API Port Isolation** (shifting E2E to port 3002) to prevent conflicts with dev tools. Hardened environment config by removing DB fallbacks and implemented content-aware `waitForResponse` synchronization for race condition resolution. Total suite at 34/34 green with full quality gate pass.
-- **Session 122 (E2E Proxy Hardening & DX Improvements):** Implemented strict `VITE_E2E_PROXY: 'true'` requirement in `vite.config.ts` to prevent local dev "ghost connections" to test backends. Fixed cache invalidation in `CheckoutPage.tsx` so new orders and addresses appear instantly without page reload. **Optimized CI performance by implementing pnpm dependency caching and Playwright browser binary caching in GitHub Actions.**
+- **Session 122 (E2E Proxy Hardening & DX Improvements):** Implemented strict `VITE_E2E_PROXY: 'true'` requirement in `vite.config.ts` to prevent local dev "ghost connections" to test backends. Resolved CI "Strict Mode" crashes by implementing **Test Idempotency** (unique labels per retry) in the Address CRUD suite. Fixed cache invalidation in `CheckoutPage.tsx` and optimized CI performance via pnpm/Playwright caching.
 
 ---
 
@@ -1953,10 +1953,11 @@ _(Append new entries ” never delete old ones)_
 - **Quality Gate:** Achieved a perfect 34/34 E2E pass rate.
 
 **Session 122 (E2E Proxy Hardening & DX Improvements):**
-- **Decision 036 (Proxy Hardening)**: Implemented a strict `VITE_E2E_PROXY: 'true'` requirement in `vite.config.ts`. This ensures that local development (port 3001) is protected from accidental "Ghost Connections" to E2E test backends (port 3002) even if environment variables leak in the developer's shell.
-- **Cache Invalidation Fix**: Resolved a persistent UX bug where new orders and addresses would not appear in the buyer's profile until a hard page reload. Added `queryClient.invalidateQueries` calls to the `CheckoutPage` order mutation success handler for both `["orders", "history"]` and `["buyer-addresses"]`.
-- **CI Performance**: Finalized deep caching for `pnpm` dependencies and Playwright browser binaries in `.github/workflows/ci.yml`. This significantly reduces CI cycle time by skipping redundant downloads and installations on every run.
-- **Verification**: Confirmed a clean 34/34 E2E pass rate with the new isolation flags. Verified that local dev (3001) and E2E (3002) can now safely run simultaneously without data leakage between databases.
+- **Decision 036 (Proxy Hardening)**: Implemented a strict `VITE_E2E_PROXY: 'true'` requirement in `vite.config.ts`. This ensures that local development (port 3001) is protected from accidental "Ghost Connections" to E2E test backends (port 3002).
+- **Idempotency Hardening**: Resolved a critical CI blocker where test retries caused "Strict Mode" violations due to duplicate address labels. Implemented a **Unique Label Strategy** using `testInfo.project.name` and `testInfo.retry` to ensure every test attempt creates isolated data.
+- **Cache Invalidation Fix**: Resolved a persistent UX bug where new orders and addresses would not appear in the buyer's profile until a hard page reload. Added `queryClient.invalidateQueries` calls to the `CheckoutPage` order mutation success handler.
+- **CI Performance**: Finalized deep caching for `pnpm` dependencies and Playwright browser binaries in `.github/workflows/ci.yml`.
+- **Verification**: Confirmed a clean 34/34 E2E pass rate with the new isolation and idempotency flags.
 
 
 ---

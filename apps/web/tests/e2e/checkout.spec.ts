@@ -123,8 +123,11 @@ test.describe('Checkout & Account', () => {
     await expect(page.locator('.hero-greeting')).toHaveText(/Playwright Tester/i);
   });
 
-  test('E2E-012: Saved Addresses CRUD', async ({ page }) => {
+  test('E2E-012: Saved Addresses CRUD', async ({ page }, testInfo) => {
     await loginAs(page, '9876543213');
+    // Unique label prevents "Strict Mode" violations if the test retries or runs in parallel projects
+    const uniqueLabel = `Home-${testInfo.project.name}-${testInfo.retry}`;
+
     // Navigate to Profile then Saved Addresses
     await page.locator('button[aria-label="Profile"]').click();
     await page.locator('text=/Profile/i').first().click();
@@ -135,19 +138,16 @@ test.describe('Checkout & Account', () => {
  
     // Add New Address
     await page.getByRole('button', { name: /Add New/i }).click();
-    await page.locator('input[name="label"]').fill('Home');
+    await page.locator('input[name="label"]').fill(uniqueLabel);
     await page.locator('[name="landmarkDescription"]').fill('Opposite Savoy Hotel, Landour');
     const saveBtn = page.locator('button', { hasText: /Save Address/i });
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await saveBtn.scrollIntoViewIfNeeded();
 
-    // Set up the listener for the list refresh BEFORE clicking save
-    // We specifically wait for a GET response that contains data, to avoid 
-    // accidentally catching the initial empty page load.
     const refreshPromise = page.waitForResponse(async (resp) => {
       if (resp.url().includes('/api/v1/addresses') && resp.request().method() === 'GET') {
         const json = await resp.json().catch(() => ({}));
-        return json.data?.addresses?.length > 0;
+        return json.data?.addresses?.some((a: any) => a.label === uniqueLabel);
       }
       return false;
     }, { timeout: 20000 });
@@ -159,25 +159,30 @@ test.describe('Checkout & Account', () => {
 
     // Assert success toast
     await expect(page.locator('text=/Address added successfully/i')).toBeVisible();
-    await page.waitForTimeout(500); // Allow React state to settle
+    await page.waitForTimeout(1000); // Allow React state and animations to settle
  
-    // Assert card appears (regex match with longer timeout for robustness)
-    const addressCard = page.locator('[data-testid="address-card"]', { hasText: /Home/i });
+    // Assert card appears with the UNIQUE label
+    const addressCard = page.locator('[data-testid="address-card"]', { hasText: uniqueLabel });
     await expect(addressCard).toBeVisible({ timeout: 15000 });
 
     // Set as Default
-    await addressCard.locator('button[aria-haspopup="menu"]').click();
+    const menuBtn = addressCard.locator('button[aria-haspopup="menu"]');
+    await expect(menuBtn).toBeVisible();
+    await menuBtn.click();
+    
     const defaultItem = page.getByRole('menuitem', { name: /Set as Default/i });
-    await expect(defaultItem).toBeVisible();
+    await expect(defaultItem).toBeVisible({ timeout: 10000 });
     await defaultItem.click();
     await expect(addressCard.locator('[data-testid="default-badge"]')).toBeVisible();
  
     // Delete
     page.on('dialog', dialog => dialog.accept());
-    await addressCard.locator('button[aria-haspopup="menu"]').click();
+    await menuBtn.click();
     const deleteItem = page.getByRole('menuitem', { name: /Delete/i });
-    await expect(deleteItem).toBeVisible();
+    await expect(deleteItem).toBeVisible({ timeout: 10000 });
     await deleteItem.click();
-    await expect(addressCard).not.toBeVisible();
+    
+    // Explicitly wait for the card to disappear
+    await expect(addressCard).not.toBeVisible({ timeout: 10000 });
   });
 });
