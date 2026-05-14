@@ -57,8 +57,9 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v3
         with:
-          # Inside each group, any ONE match sets the output to "true" (OR logic).
-          # A file in both groups can trigger both deploys independently.
+          # On a push (like a merge to main), compare against the previous state of main.
+          # On a PR, use the default behavior (compare against the target branch).
+          base: ${{ github.event_name == 'push' ? github.event.before : '' }}
           filters: |
             vercel:
               - 'apps/web/**'
