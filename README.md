@@ -98,10 +98,21 @@ This command runs the **exact** same sequence as the GitHub Actions CI pipeline:
 Run these from `GoRola_app` root:
 
 ```bash
+# Quality Gates
+pnpm ci:quality   # Full pipeline: Lint -> Typecheck -> Build -> Unit -> E2E
+
+# Testing
+pnpm test         # Run all Vitest unit/integration tests
+pnpm test:e2e     # Run all Playwright E2E tests
+
+# Maintenance
 pnpm lint         # Lint all packages
 pnpm typecheck    # Typecheck all packages
-pnpm test         # Run all tests
 pnpm build        # Build all packages
+
+# Database
+pnpm db:local:bootstrap   # Clean and seed local development DB
+pnpm db:test:prepare      # Clean and seed test DB (used for E2E)
 ```
 
 ---

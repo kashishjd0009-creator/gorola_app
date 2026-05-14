@@ -20,7 +20,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-14
-- **Session Summary:** Session 121 — Hardened E2E infrastructure by implementing a strict **Isolation Strategy** (unique user accounts) and **API Port Isolation** (shifting tests to port 3002). This allows E2E suites to run against a test database side-by-side with local development (port 3001) without conflicts. Removed hardcoded DB fallbacks and implemented content-aware `waitForResponse` inspection for race condition resolution. Successfully cleared the 34/34 E2E quality gate alongside a full `ci:quality` pass.
+- **Session Summary:** Session 121 — Hardened E2E infrastructure by implementing a strict **Isolation Strategy** (unique user accounts) and **API Port Isolation** (shifting tests to port 3002). Resolved a critical CI blocker by implementing a **Dynamic Proxy Target** in `vite.config.ts`, ensuring that static production builds in CI can correctly route to the isolated test backend. Successfully cleared the 34/34 E2E quality gate alongside a full `ci:quality` pass.
 - **Next Session Must Start With:** **Phase 3 (Store Owner Foundation)** — Initialize store owner dashboard and authentication modules in `phase3_4_state.md`.
 - **In Progress Right Now:** None. Phase 2 complete.
 - **Current Blocker:** None.
@@ -1950,6 +1950,7 @@ _(Append new entries ” never delete old ones)_
 - **Race Condition Resolution:** Hardened asynchronous synchronization using content-aware `waitForResponse` listeners, ensuring the UI only proceeds after the API has successfully committed data.
 - **Composite Seeding:** Resolved a major blocker where catalog navigation failed due to an empty database. Updated `playwright.config.ts` to implement a deterministic "Double Seed" (Core Catalog + E2E Identities) after every database reset.
 - **CI-Alignment Hardening:** Synchronized the local `pnpm ci:quality` command with the GitHub Actions workflow. Created `bootstrap-test-db.cjs` to automate test-database preparation. The quality gate now includes: Audit -> DB Setup -> Lint -> Typecheck -> Build -> Unit/Int Tests -> E2E.
+- **API Shutdown Hardening:** Resolved a hang issue where the E2E suite stayed active after completion. Updated `app.ts` to explicitly disconnect Prisma and Redis clients on `SIGTERM`, ensuring a clean process exit.
 - **Quality Gate:** Achieved a perfect 34/34 E2E pass rate alongside a full `ci:quality` pass.
 
 

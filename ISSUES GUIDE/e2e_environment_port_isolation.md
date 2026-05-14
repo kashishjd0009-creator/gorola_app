@@ -70,7 +70,44 @@ To prevent tests from accidentally writing to a developer's local database or a 
 
 ---
 
-## 5. Summary for Future Projects
+## 5. CI Compatibility: Dynamic Proxying
+
+While shifting ports works in `dev` mode (where environment variables are injected at runtime), it can fail in CI when using `preview` mode with a static production build. This is because a static build has the API URL "baked in" at build-time.
+
+### **The Solution: Dynamic Proxy Targets**
+To solve this, we make the **Vite Proxy** dynamic. Instead of hardcoding `3001` in `vite.config.ts`, we use an environment variable. This allows the `vite preview` server to route requests correctly even if the frontend code was built with a different default.
+
+**GoRola Implementation:**
+
+1. **Vite Config:**
+```typescript
+// apps/web/vite.config.ts
+proxy: {
+  "/api": {
+    target: `http://127.0.0.1:${process.env.PORT_API || "3001"}`,
+    changeOrigin: true
+  }
+}
+```
+
+2. **Playwright Config:**
+```typescript
+// apps/web/playwright.config.ts
+webServer: [
+  {
+    command: 'pnpm preview',
+    env: { 
+      PORT_API: '3002' // Forces the proxy to the test backend
+    }
+  }
+]
+```
+
+This ensures that the CI pipeline remains stable, even when running against a production bundle.
+
+---
+
+## 6. Summary for Future Projects
 1. **Assign** a unique, non-colliding port range for your E2E suite (e.g., `+10` or `+100` from defaults).
 2. **Inject** these ports into your application via environment variables during the test boot sequence.
 3. **Bind** explicitly to `127.0.0.1` to ensure cross-platform consistency.

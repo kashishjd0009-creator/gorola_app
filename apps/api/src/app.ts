@@ -23,12 +23,19 @@ export async function startApp(): Promise<void> {
     registerRoutes: registerAppRoutes
   });
   const closeWithTelemetry = async (): Promise<void> => {
+    const { disconnectPrisma } = await import("./lib/prisma.js");
+    const { disconnectRedis } = await import("./lib/redis.js");
+    getLogger().info("shutdown signal received — closing connections");
     try {
       if (typeof app.close === "function") {
         await app.close();
       }
     } finally {
+      await disconnectPrisma();
+      await disconnectRedis();
       await shutdownTelemetry();
+      getLogger().info("shutdown complete — exiting");
+      process.exit(0);
     }
   };
   process.once("SIGINT", () => {

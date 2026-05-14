@@ -61,6 +61,7 @@ export default defineConfig({
       timeout: 120000,
       env: {
         VITE_API_BASE_URL: 'http://127.0.0.1:3002',
+        PORT_API: '3002',
       }
     },
     {
