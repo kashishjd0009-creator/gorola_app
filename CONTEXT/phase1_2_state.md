@@ -20,7 +20,7 @@
 ## 📍 Last Updated
 
 - **Date:** 2026-05-14
-- **Session Summary:** Session 121 — Hardened E2E infrastructure by implementing a strict **Isolation Strategy** (unique user accounts per test flow) and synchronized API response inspection. Removed all hardcoded database fallbacks from the configuration, making the suite 100% environment-safe for CI/CD. Successfully cleared the 34/34 E2E quality gate alongside a full `ci:quality` pass.
+- **Session Summary:** Session 121 — Hardened E2E infrastructure by implementing a strict **Isolation Strategy** (unique user accounts) and **API Port Isolation** (shifting tests to port 3002). This allows E2E suites to run against a test database side-by-side with local development (port 3001) without conflicts. Removed hardcoded DB fallbacks and implemented content-aware `waitForResponse` inspection for race condition resolution. Successfully cleared the 34/34 E2E quality gate alongside a full `ci:quality` pass.
 - **Next Session Must Start With:** **Phase 3 (Store Owner Foundation)** — Initialize store owner dashboard and authentication modules in `phase3_4_state.md`.
 - **In Progress Right Now:** None. Phase 2 complete.
 - **Current Blocker:** None.
@@ -149,7 +149,7 @@
 - **Session 118 (Phase 2.23.1 Planning — E2E Root Cause Analysis & Fix Specification):** Performed deep root-cause analysis of all 5 remaining E2E blockers. Authored Phase 2.23.1 in `phase1_2_state.md` with explicit TDD-format instructions (RED→GREEN→Verification Chain) for: (1) OCP `query.data?.data` envelope bug, (2) missing `isBootstrapPending: false` in page unit tests, (3) `window.isE2E` GSAP speed-up, (4) `server.ts` `any` cast type safety, (5) `pnpm audit` security overrides. Unchecked Phase 2.23 Quality Gate — it was incorrectly pre-checked. Phase 2.23.1 checklist is now ready for implementation.
 - **Session 119 (Phase 2.23.1 Stabilization):** Implemented five critical fixes for E2E stabilization: resolved OrderConfirmationPage envelope bug, added bootstrap gating to page unit tests, implemented GSAP window.isE2E speed-up, hardened server.ts type safety, and resolved all security audit vulnerabilities via pnpm overrides.
 - **Session 120 (Final E2E Stabilization & Phase 2 Completion):** Resolved intermittent Radix UI dropdown failures in SavedAddressesPage unit tests. Confirmed 100% stability across all 34 E2E flows and monorepo-wide ci:quality. Formally marked Phase 2 as complete.
-- **Session 121 (Infrastructure Hardening & Isolation):** Implemented "Isolation Strategy" using unique phone numbers per test flow to eliminate cross-test data pollution. Hardened environment configuration by removing hardcoded DB fallbacks and switching to strict `.env` loading via `dotenv`. Resolved non-deterministic race conditions using synchronized `waitForResponse` content inspection. Total suite at 34/34 green with full quality gate pass.
+- **Session 121 (Infrastructure Hardening & Isolation):** Implemented "Isolation Strategy" (unique users) and **API Port Isolation** (shifting E2E to port 3002) to prevent conflicts with dev tools. Hardened environment config by removing DB fallbacks and implemented content-aware `waitForResponse` synchronization for race condition resolution. Total suite at 34/34 green with full quality gate pass.
 
 ---
 
@@ -1945,7 +1945,7 @@ _(Append new entries ” never delete old ones)_
 
 **Session 121 (Infrastructure Hardening & Isolation Strategy):**
 - **Decision 035:** Implemented a strict **User Isolation Strategy** for E2E. Each test suite (Checkout, Profile, CRUD) is assigned a unique user identity (phone number) to prevent data leakage and "ghost" state between test runs.
-- **Hardened Networking:** Transitioned from `localhost` to `127.0.0.1` in all configurations to eliminate IPv6 resolution delays and inconsistent port binding across Windows/Linux/CI environments.
+- **Parallel Environment Isolation:** Reconfigured `playwright.config.ts` to use a non-standard port for the API (**3002**) and explicit `127.0.0.1` binding. This prevents `EADDRINUSE` conflicts when developers are running their local API server (3001) while tests are executing. The frontend continues to use port **5180** (standard for this project).
 - **Environment Security:** Removed all hardcoded database URL fallbacks. The system now strictly requires a `.env` file loaded via `dotenv`, ensuring that tests never accidentally run against production or dev databases if the test env is missing.
 - **Race Condition Resolution:** Hardened asynchronous synchronization using content-aware `waitForResponse` listeners, ensuring the UI only proceeds after the API has successfully committed data.
 - **Composite Seeding:** Resolved a major blocker where catalog navigation failed due to an empty database. Updated `playwright.config.ts` to implement a deterministic "Double Seed" (Core Catalog + E2E Identities) after every database reset.

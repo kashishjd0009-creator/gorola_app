@@ -62,7 +62,20 @@ await page.waitForResponse(async (resp) => {
 
 ---
 
-## 4. Principle of Zero-Fallback Configuration
+## 4. Principle of Client-Side Hydration Synchronization
+
+### **The Problem: The "Visible but Dead" Element**
+In modern SSR/SSG frameworks (like Next.js or Vite-based SPAs), HTML is often rendered before the Javascript "hydrates" the interactive elements. A test might see a button, click it, but nothing happens because the event listener hasn't been attached yet.
+
+### **The Solution: Hydration Guards**
+Implement a global "Hydration Ready" flag in your application state. The E2E suite should wait for this flag to be true (or for a specific `data-hydrated="true"` attribute) before attempting any interactions.
+
+**GoRola Case Study:**
+We introduced an `isBootstrapPending` state in the auth store. The `ProtectedRoute` and all major layout components wait for the session bootstrap to settle before allowing user interactions. E2E tests were updated to explicitly wait for the "Bootstrap Settled" network call or the removal of the loading overlay.
+
+---
+
+## 5. Principle of Zero-Fallback Configuration
 
 ### **The Problem: Accidental Production Mutation**
 Configuration files often include "default" values (e.g., `DATABASE_URL || 'postgres://localhost...'`). In a CI environment, if the secret injection fails, the test might silently fall back to a local dev database or, worse, a misconfigured production string.
@@ -75,7 +88,7 @@ We removed all hardcoded strings from `playwright.config.ts`. The config now use
 
 ---
 
-## 5. Principle of Composite Seeding
+## 6. Principle of Composite Seeding
 
 ### **The Problem: The "Skeleton" Environment**
 A specialized E2E seed (e.g., `seed-e2e.ts`) often only contains test users and specific orders. If the main application seed (catalog, categories, products) is missing or reset, the E2E suite will fail because it's trying to interact with "ghost" products that don't exist in the current database state.
@@ -93,5 +106,6 @@ We updated `playwright.config.ts` to perform a deterministic double-seed:
 1. **Isolate** your data by using unique identities for every suite.
 2. **Standardize** on `127.0.0.1` to avoid IPv6 resolution flakiness.
 3. **Synchronize** using JSON inspection, not just URL matching.
-4. **Enforce** environment variable presence with zero-fallback logic.
-5. **Layer** your seeds to ensure a fully populated world for every test run.
+4. **Hydrate** explicitly by waiting for application-ready flags.
+5. **Enforce** environment variable presence with zero-fallback logic.
+6. **Layer** your seeds to ensure a fully populated world for every test run.
