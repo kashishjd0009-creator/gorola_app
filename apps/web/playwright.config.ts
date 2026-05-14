@@ -40,10 +40,18 @@ export default defineConfig({
     }
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'pnpm dev --port 5180',
-    url: 'http://localhost:5180',
-    reuseExistingServer: !process.env.CI,
-  },
+  /* Run your local dev servers before starting the tests */
+  webServer: [
+    {
+      command: 'pnpm dev --port 5180',
+      url: 'http://localhost:5180',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: 'pnpm --filter @gorola/api dev',
+      url: 'http://localhost:3001/api/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+    },
+  ],
 });

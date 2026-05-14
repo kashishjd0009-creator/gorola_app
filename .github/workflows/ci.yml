@@ -117,14 +117,33 @@ jobs:
       - name: Prisma — migrate (test DB)
         run: pnpm --filter @gorola/api exec prisma migrate deploy
 
+      # Seed the database with both baseline catalog data (categories, products)
+      # and specific E2E test data (test users, predefined orders).
+      - name: Prisma — seed (standard + E2E data)
+        run: |
+          pnpm --filter @gorola/api exec prisma db seed
+          pnpm --filter @gorola/api exec tsx scripts/seed-e2e.ts
+
       - name: Lint
         run: pnpm lint --max-warnings 0
 
       - name: Typecheck
         run: pnpm typecheck
 
+      # Runs all Vitest-based unit and integration tests across the monorepo.
+      # This includes:
+      # - API Integration tests (Database, Auth flows, Repository logic)
+      # - Web Unit tests (React components, Zustand stores, utility logic)
       - name: Test
         run: pnpm test
+
+      # Install Playwright browser binaries and system dependencies.
+      - name: Install Playwright Browsers
+        run: pnpm --filter @gorola/web exec playwright install --with-deps
+      # Executes the full Playwright E2E suite against a live dev server and API.
+      # This validates the complete user journey from Login to Order Confirmation.
+      - name: Run E2E tests
+        run: pnpm --filter @gorola/web test:e2e
 
       - name: Build
         run: pnpm build
