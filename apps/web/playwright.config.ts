@@ -40,15 +40,16 @@ export default defineConfig({
     }
   ],
 
-  /* Run your local dev servers before starting the tests */
+  /* Run your local servers using production builds for CI stability */
   webServer: [
     {
-      command: 'pnpm dev --port 5180',
+      command: 'pnpm --filter @gorola/web preview --port 5180 --host',
       url: 'http://localhost:5180',
       reuseExistingServer: !process.env.CI,
+      timeout: 120000,
     },
     {
-      command: 'pnpm --filter @gorola/api dev',
+      command: 'pnpm --filter @gorola/api exec node dist/app.js',
       url: 'http://localhost:3001/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,

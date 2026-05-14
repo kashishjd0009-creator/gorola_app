@@ -130,6 +130,11 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Pre-build the entire monorepo. This is required for E2E tests (which use 
+      # pnpm preview/node dist) and ensures the production bundle is valid.
+      - name: Build
+        run: pnpm build
+
       # Runs all Vitest-based unit and integration tests across the monorepo.
       # This includes:
       # - API Integration tests (Database, Auth flows, Repository logic)
@@ -145,5 +150,4 @@ jobs:
       - name: Run E2E tests
         run: pnpm --filter @gorola/web test:e2e
 
-      - name: Build
-        run: pnpm build
+
