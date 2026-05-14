@@ -27,6 +27,9 @@ describe("SavedAddressesPage", () => {
     queryClient.clear();
     vi.clearAllMocks();
     useAuthStore.setState({ isBootstrapPending: false });
+    
+    // Radix UI leaves pointer-events: none on body if forcefully unmounted
+    document.body.style.pointerEvents = 'auto';
 
     apiGetSpy = vi.spyOn(api!, "get").mockResolvedValue({
       data: {
@@ -129,6 +132,7 @@ describe("SavedAddressesPage", () => {
     });
 
     const menuBtns = screen.getAllByRole("button", { name: /Open menu/i });
+    fireEvent.pointerDown(menuBtns[0]!);
     fireEvent.click(menuBtns[0]!); // Click on first address's menu
 
     const editBtn = await screen.findByRole("menuitem", { name: /Edit/i });
@@ -159,6 +163,7 @@ describe("SavedAddressesPage", () => {
     });
 
     const menuBtns = screen.getAllByRole("button", { name: /Open menu/i });
+    fireEvent.pointerDown(menuBtns[0]!);
     fireEvent.click(menuBtns[0]!); // Click on first address's menu
 
     const deleteBtn = await screen.findByRole("menuitem", { name: /Delete/i });
@@ -177,6 +182,7 @@ describe("SavedAddressesPage", () => {
     });
 
     const menuBtns = screen.getAllByRole("button", { name: /Open menu/i });
+    fireEvent.pointerDown(menuBtns[1]!);
     fireEvent.click(menuBtns[1]!); // Click on second address's menu (Work)
 
     const defaultBtn = await screen.findByRole("menuitem", { name: /Set as Default/i });

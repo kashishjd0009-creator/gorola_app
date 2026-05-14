@@ -64,7 +64,6 @@ test.describe('Order Management', () => {
       initialCount = parseInt(txt || '0');
     }
 
-    // 2. Click "Reorder" and wait for both reorder and cart sync responses
     const firstReorderBtn = orderCards.first().locator('button', { hasText: /Reorder/i });
     const reorderResponse = page.waitForResponse(resp => 
       resp.url().includes('/api/v1/orders/') && resp.url().includes('/reorder') && resp.request().method() === 'POST'
@@ -83,7 +82,7 @@ test.describe('Order Management', () => {
     
     // 4. Assert count has increased (using polling to handle state updates)
     await expect(async () => {
-      const txt = await cartBadge.textContent();
+      const txt = await cartBadge.textContent({ timeout: 1000 }).catch(() => '0');
       const currentCount = parseInt(txt || '0');
       expect(currentCount).toBeGreaterThan(initialCount);
     }).toPass({ timeout: 15000 });
