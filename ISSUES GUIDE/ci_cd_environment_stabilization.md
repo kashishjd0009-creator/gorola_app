@@ -44,3 +44,32 @@ This respects the database's rules (Foreign Key Constraints) and prevents cleanu
 1.  **Don't rely on local `.env` for tests**: Always provide fallbacks for critical objects in test mode.
 2.  **Mocks > Spies for CI**: Mocking the entire module (`vi.mock`) is safer in CI because it skips the execution of the real file entirely.
 3.  **Update Cleanups**: Every time a new database model is added, check the integration test cleanup functions to see if they need to be updated.
+
+---
+
+## 5. Case Study: The "Leaky" Websocket Test
+
+### The Symptom
+Unit tests were passing, but the terminal was filled with "noisy" error messages:
+`Socket connection error: TransportError: websocket error` and `code: 'ECONNREFUSED'`.
+
+### The Cause
+This was a variation of the **Mock vs. Spy** problem. Because `socket.io-client` was not mocked, Vitest loaded the **Real** library. The real library executed its real logic—trying to connect to a backend server at `localhost:3001`—which didn't exist in the unit test environment.
+
+### The Resolution
+We implemented a **Global Mock** in `apps/web/src/test/setup.ts`. 
+
+```typescript
+vi.mock("socket.io-client", () => ({
+  io: () => ({
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+    disconnect: vi.fn(),
+    connect: vi.fn(),
+  }),
+}));
+```
+
+### Key Takeaway
+**Unit tests must be 100% isolated.** If you see a network-related error (Connection Refused, Timeout) in a unit test, it means a real library is "leaking" into your test. Always intercept network-dependent libraries at the global setup level to keep tests clean and fast.
