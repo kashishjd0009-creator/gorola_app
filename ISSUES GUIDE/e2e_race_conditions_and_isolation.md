@@ -75,8 +75,23 @@ We removed all hardcoded strings from `playwright.config.ts`. The config now use
 
 ---
 
+## 5. Principle of Composite Seeding
+
+### **The Problem: The "Skeleton" Environment**
+A specialized E2E seed (e.g., `seed-e2e.ts`) often only contains test users and specific orders. If the main application seed (catalog, categories, products) is missing or reset, the E2E suite will fail because it's trying to interact with "ghost" products that don't exist in the current database state.
+
+### **The Solution: Deterministic Layering**
+Always chain your seeds. Ensure that any database reset is followed by the **Core Application Seed** first, and then the **Specialized E2E Seed**. This ensures the world is fully populated before the test actors are introduced.
+
+**GoRola Case Study:**
+We updated `playwright.config.ts` to perform a deterministic double-seed:
+`prisma migrate reset --force && prisma db seed && tsx scripts/seed-e2e.ts`
+
+---
+
 ## Summary for Future Projects
 1. **Isolate** your data by using unique identities for every suite.
 2. **Standardize** on `127.0.0.1` to avoid IPv6 resolution flakiness.
 3. **Synchronize** using JSON inspection, not just URL matching.
 4. **Enforce** environment variable presence with zero-fallback logic.
+5. **Layer** your seeds to ensure a fully populated world for every test run.

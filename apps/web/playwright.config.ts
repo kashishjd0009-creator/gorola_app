@@ -65,7 +65,7 @@ export default defineConfig({
     {
       command: process.env.CI 
         ? 'pnpm --filter @gorola/api exec node dist/app.js' 
-        : 'pnpm --filter @gorola/api exec prisma migrate reset --force && pnpm --filter @gorola/api exec tsx scripts/seed-e2e.ts && pnpm --filter @gorola/api dev',
+        : 'pnpm --filter @gorola/api exec prisma migrate reset --force && pnpm --filter @gorola/api exec prisma db seed && pnpm --filter @gorola/api exec tsx scripts/seed-e2e.ts && pnpm --filter @gorola/api dev',
       url: 'http://127.0.0.1:3001/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 180000,

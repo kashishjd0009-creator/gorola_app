@@ -1948,6 +1948,7 @@ _(Append new entries ” never delete old ones)_
 - **Hardened Networking:** Transitioned from `localhost` to `127.0.0.1` in all configurations to eliminate IPv6 resolution delays and inconsistent port binding across Windows/Linux/CI environments.
 - **Environment Security:** Removed all hardcoded database URL fallbacks. The system now strictly requires a `.env` file loaded via `dotenv`, ensuring that tests never accidentally run against production or dev databases if the test env is missing.
 - **Race Condition Resolution:** Hardened asynchronous synchronization using content-aware `waitForResponse` listeners, ensuring the UI only proceeds after the API has successfully committed data.
+- **Composite Seeding:** Resolved a major blocker where catalog navigation failed due to an empty database. Updated `playwright.config.ts` to implement a deterministic "Double Seed" (Core Catalog + E2E Identities) after every database reset.
 - **Quality Gate:** Achieved a perfect 34/34 E2E pass rate alongside a full `ci:quality` pass.
 
 
