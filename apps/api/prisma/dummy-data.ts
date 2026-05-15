@@ -37,6 +37,18 @@ export async function seedDummyData(prisma: PrismaClient, storeAId: string, stor
     }
   });
 
+  const medicalTestsCategory = await prisma.category.upsert({
+    where: { slug: "medical-tests" },
+    update: { imageUrl: "https://picsum.photos/seed/medical-tests/400/300" },
+    create: {
+      slug: "medical-tests",
+      name: "Medical tests",
+      imageUrl: "https://picsum.photos/seed/medical-tests/400/300",
+      displayOrder: 3,
+      isActive: true
+    }
+  });
+
   // -------------------------
   // SUBCATEGORIES - Groceries
   // -------------------------
@@ -112,6 +124,20 @@ export async function seedDummyData(prisma: PrismaClient, storeAId: string, stor
       imageUrl: "https://picsum.photos/seed/supplements/200/200",
       categoryId: medicalCategory.id,
       displayOrder: 3,
+      isActive: true,
+    }
+  });
+
+  const subMedTestsAll = await prisma.subCategory.upsert({
+    where: { slug: "all-tests" },
+    update: { categoryId: medicalTestsCategory.id },
+    create: {
+      slug: "all-tests",
+      name: "All Tests",
+      imageUrl: "https://picsum.photos/seed/all-tests/200/200",
+      categoryId: medicalTestsCategory.id,
+      displayOrder: 1,
+      isActive: true,
     }
   });
 
@@ -202,6 +228,12 @@ export async function seedDummyData(prisma: PrismaClient, storeAId: string, stor
   await createProduct("prod_sup_5", storeBId, medicalCategory.id, subMedSupplements.id, "Protein Powder", "950.00", 20, "500 g");
 
   // -------------------------
+  // PRODUCTS - Medical Tests
+  // -------------------------
+  await createProduct("prod_test_1", storeBId, medicalTestsCategory.id, subMedTestsAll.id, "CBC (Complete Blood Count)", "300.00", 999, "Test");
+  await createProduct("prod_test_2", storeBId, medicalTestsCategory.id, subMedTestsAll.id, "HbA1c", "550.00", 999, "Test");
+
+  // -------------------------
   // ADVERTISEMENTS
   // -------------------------
   await prisma.advertisement.deleteMany({});
@@ -243,5 +275,5 @@ export async function seedDummyData(prisma: PrismaClient, storeAId: string, stor
     ]
   });
 
-  console.info("Dummy data seeded successfully (30 products, 3 advertisements across 6 subcategories)");
+  console.info("Dummy data seeded successfully (32 products, 3 advertisements across 7 subcategories)");
 }
