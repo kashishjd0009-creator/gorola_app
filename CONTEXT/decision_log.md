@@ -979,3 +979,34 @@ Extend the Prisma schema and business logic under a unified, hybrid architecture
 **Alternatives Considered:**
 - **Separate Microservices / Repositories**: Rejected. The modular monolith structure handles both domains beautifully and enables sharing core user identity, addresses, and layout systems.
 - **Polymorphic Table Inheritance**: Rejected. Prisma does not support model polymorphism easily, and creating completely separate Order tables for quick vs booking would break the shared history pages, order status tracking, and shared analytical reporting.
+
+---
+
+## [DECISION-033] No Separate `Service` Table — Reuse `Product` + `ProductVariant` for Booking Commerce
+
+**Date:** 2026-05-18
+**Status:** Accepted
+
+**Context:**
+When designing the Booking Commerce schema (Phase 7), the question arose: should medical tests and repair services live in their own `Service` / `ServiceVariant` table, or should they reuse the existing `Product` / `ProductVariant` models?
+
+**Decision:**
+Reuse `Product` and `ProductVariant` for all booking commerce catalog items (medical tests, repairs). Do NOT create a separate `Service` table.
+
+The only booking-specific fields — `allowedTimeslots String[]` and `requiresFasting Boolean` — are added directly onto `ProductVariant`. Everything else that makes a service "different" from a physical product (the approval gate, no stock deduction, the timeslot picker UI, the `BookingOrder` record) is handled at the **order layer**, not the catalog layer.
+
+**Rationale:**
+- **Structural equivalence at catalog level:** A "service" and a "product" are identical at the catalog level — both have a `name`, `description`, `imageUrl`, `price`, `categoryId`, `subCategoryId`, and `storeId`. Creating a `Service` table would duplicate ~90% of the `Product` schema.
+- **Minimal extension needed:** Only two fields differ — `allowedTimeslots` and `requiresFasting`. Adding two nullable fields to `ProductVariant` is far cheaper than a new table with new repositories, new controllers, new routes, new frontend types, and new admin CRUD.
+- **Single buyer browse experience:** The buyer catalog (category grid → product list → product detail) works identically for both store types. The `storeType` discriminator on `Store` is what changes the CTA from "Add to Cart" to "Book Now" — not a different catalog entity.
+- **Single admin CRUD:** Store owners manage tests and services using the same product CRUD panel they use for physical goods. No second admin interface needed.
+- **Order layer handles the difference:** The `BookingOrder` table + `OrderType` enum is where booking commerce diverges from quick commerce. The catalog layer stays clean and unified.
+
+**Tradeoffs:**
+- `ProductVariant` grows two new fields (`allowedTimeslots`, `requiresFasting`) that are always `null` / `[]` for quick-commerce products. This is a small schema denormalization acceptable at our scale.
+- A developer unfamiliar with the codebase might not immediately understand that a `Product` in a `BOOKING_COMMERCE` store is really a "service" — mitigated by the `storeType` discriminator and this decision log entry.
+
+**Alternatives Considered:**
+1. Separate `Service` + `ServiceVariant` tables — rejected: ~90% field duplication, doubles repository/service/controller/frontend-type surface area, breaks the unified buyer browse experience.
+2. Abstract base table with `Product` and `Service` inheriting from it — rejected: Prisma does not support table inheritance; would require complex manual joins or union queries.
+3. JSON `metadata` field on `Product` for booking-specific config — rejected: loses type safety, makes Prisma queries against `allowedTimeslots` impossible, harder to validate in Zod.
