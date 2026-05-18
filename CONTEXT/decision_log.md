@@ -937,3 +937,45 @@ The GoRola monorepo uses `eslint-plugin-security` to detect common Node.js vulne
 **Alternatives Considered:**
 1. **Line-by-line silencing for the whole repo:** Rejected. Adding 50+ disable comments in React components just to handle basic state access is unmaintainable and reduces developer velocity without adding security value.
 2. **Disable the plugin entirely:** Rejected. We need the protection for the backend API.
+
+---
+
+## [DECISION-032] Phase 7 Booking Commerce Architecture & Hybrid Schema
+
+**Date:** 2026-05-18
+**Status:** Accepted
+
+**Context:**
+GoRola is expanding from purely "Quick Commerce" (instant checkout, immediate rider delivery, physical inventory deduction) to support "Booking Commerce" services (e.g., medical test appointments, home appliance/hardware repairs). This requires a schema and ordering flow that supports calendar-date scheduling, buyer-selected timeslots, fasting constraints, merchant-side approval queues, and field technician dispatch, all while completely isolating and preserving the existing quick-commerce flow.
+
+**Decision:**
+Extend the Prisma schema and business logic under a unified, hybrid architecture:
+1. **DB Schema Extensions**:
+   - Introduce `StoreType` enum (`QUICK_COMMERCE`, `BOOKING_COMMERCE`) on the `Store` model to control the overall workflow.
+   - Introduce `OrderType` enum (`QUICK`, `BOOKING`) on the `Order` model.
+   - Introduce `BookingOrder` model (one-to-one relationship with `Order`) to house booking-specific fields (`scheduledDate`, `timeslot`, `requiresFasting`, `approvalStatus`, `rejectionReason`, `assignedTechnicianId`).
+   - Add new `BookingApprovalStatus` enum: `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `COMPLETED`, `CANCELLED`.
+   - Add new `RiderType` enum (`DELIVERY`, `FIELD_TECHNICIAN`) on the `DeliveryRider` model to support field technician dispatch.
+   - Extend `OrderStatus` enum to include `PENDING_APPROVAL` and `APPROVED` status options for booking orders.
+2. **Strict Flow Isolation & Core Rules**:
+   - **Cart Bypass**: Booking order products bypass the shopping cart entirely. The buyer clicks "Book Now" on a product detail page, which redirects to the booking scheduler flow.
+   - **No Stock Deduction**: Booking orders represent services rather than physical inventory. They bypass the quick commerce stock movements (`StockMovement`) and stock depletion locks.
+   - **Fasting Regulations**: Fasting tests (`requiresFasting: true`) only permit selecting the early morning slot `"06:00-09:00"`; other slots are filtered out.
+   - **Booking Lead Days**: Ensure calendar scheduling respects the store's `bookingLeadDays` configuration (e.g. if `leadDays = 1`, today is disabled).
+   - **Merchant Approval Gate**: Placed bookings enter `PENDING_APPROVAL` state, requiring the store owner to explicitly approve (`APPROVED`) or reject (`REJECTED` with a non-empty reason). Buyers can cancel pending bookings at any time, but cannot cancel approved bookings without store owner action.
+3. **Dual-Aware Frontend Components**:
+   - The product detail page, grid cards, and category views are updated to handle both store types seamlessly. A `storeType` property is serialized in all product and category API responses.
+   - Separate dashboards/views are maintained under `/bookings/new` for scheduling and `/store/bookings` for merchants, so that booking-specific scheduling controls do not clutter the standard checkout interfaces.
+
+**Rationale:**
+- **Zero-Regression Guarantee**: Keeping standard quick commerce fully separated and unchanged means existing user paths and tests remain 100% functional.
+- **Relational Integrity**: Placing booking metadata in a dedicated `BookingOrder` model keeps the `Order` table clean, avoids massive null columns on standard quick orders, and enforces clean foreign key referential constraints.
+- **Improved UX & Conversion**: Bypassing the cart for bookings maps to standard service-hiring behaviors, eliminating confusion and reducing the steps needed to confirm an appointment.
+
+**Tradeoffs:**
+- Adds schema complexity (additional enums, tables, and conditional logic branches).
+- The `OrderStatus` enum is shared, meaning quick commerce orders technically have access to status values like `PENDING_APPROVAL`, though this is strictly blocked at the application service/validation layers.
+
+**Alternatives Considered:**
+- **Separate Microservices / Repositories**: Rejected. The modular monolith structure handles both domains beautifully and enables sharing core user identity, addresses, and layout systems.
+- **Polymorphic Table Inheritance**: Rejected. Prisma does not support model polymorphism easily, and creating completely separate Order tables for quick vs booking would break the shared history pages, order status tracking, and shared analytical reporting.
